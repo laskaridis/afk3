@@ -107,10 +107,8 @@ export function startAfk(options: {
     options.onStdout?.(chunk, run);
   });
   child.stderr.on("data", (chunk: string) => (run.stderr += chunk));
-  // Leave stdin open (never ended) when data is supplied so a leaking
-  // inheritance would be observable; otherwise close it.
-  if (options.stdin !== undefined) child.stdin.write(options.stdin);
-  else child.stdin.end();
+  // afk reads non-TTY stdin to EOF, so stdin is always ended.
+  child.stdin.end(options.stdin ?? "");
 
   const done = new Promise<AfkRun>((resolveDone) => {
     child.on("close", (code) => {

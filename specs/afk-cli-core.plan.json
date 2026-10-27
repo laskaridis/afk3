@@ -201,7 +201,7 @@
     {
       "id": "TASK-007",
       "objective": "Resolve exactly one launch prompt from a positional argument, `--prompt-file`, or piped stdin, and select the workspace with `--cwd`, rejecting ambiguous, missing, empty, or unreadable input before any Codex launch.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-001"
       ],

@@ -154,3 +154,31 @@
   - Tests written with implementation (no separate RED run). No independent subagent review run.
 - Follow up needed: none.
 ---
+
+## 2026-10-27 TASK-007
+- Task id: TASK-007
+- What was implemented:
+  - src/prompt.ts `resolvePrompt({ positional, promptFile, stdinIsTTY, readStdin })` -> `{ok:true,prompt}` | `{ok:false,message}`. Exactly one source; blank stdin is not a source; TTY stdin is never read; blank/unreadable/multiple/missing sources are input errors.
+  - cli.ts: prompt is now optional variadic `[prompt...]`, new `--prompt-file <path>` and `--cwd <directory>` (validated as existing directory, option error exit 2); cwd used for the session's process cwd and `-C`. Input errors print `[afk] input error: ...`, exit 2, no launch.
+  - Prompt reaches codex unmodified (only the session instruction block is appended, as before).
+- Files changed:
+  - src/prompt.ts, src/cli.ts
+  - test/prompt.test.ts, test/prompt-input.test.ts
+  - test/helpers.ts (startAfk now always ends stdin, since afk reads non-TTY stdin to EOF), test/tracer-bullet.test.ts (stdin-isolation test now supplies the prompt via stdin)
+  - specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm test` (build + vitest): 9 files, 99 tests pass; `npm run typecheck` exits 0.
+  - --prompt-file / stdin / positional+empty stdin tests: prompt observed in the fake codex's last argv.
+  - Rejection tests (positional+file, positional+stdin, file+stdin, blank positional, blank file, missing file, directory as file, 2 positionals, no source+empty stdin): exit 2, "error" on stderr, 0 invocations.
+  - Unit test: TTY stdin with no source -> missing-input error, readStdin never called.
+  - --cwd test: 2 sessions each with child cwd == `-C` value == target; nonexistent path and regular file -> exit 2, 0 launches.
+  - Git test: fake `git` on PATH never invoked; branch list and worktree list unchanged.
+  - ACs: AC-001..AC-006.
+- Learnings for future iterations:
+  - Test helper `startAfk` ends stdin always; a never-ended stdin would hang afk now.
+  - Python is not available in this environment (asdf shim); use node for scripted edits.
+- Scope deviations:
+  - Edited test/helpers.ts and test/tracer-bullet.test.ts because reading stdin to EOF broke the "unclosed stdin + positional" assumption.
+  - Delegated review skipped; change is small and fully covered by tests.
+- Follow up needed: none
+---
