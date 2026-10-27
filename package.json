@@ -1,0 +1,28 @@
+{
+  "name": "afk-cli",
+  "version": "0.1.0",
+  "description": "Leave a coding agent implementing a feature, one task at a time, while you are away from keyboard",
+  "type": "module",
+  "bin": {
+    "afk": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && vitest run"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
