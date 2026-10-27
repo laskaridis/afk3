@@ -86,3 +86,25 @@
   - Added src/reporter.ts (listed in design, needed for exit-code mapping). No independent subagent review run.
 - Follow up needed: none.
 ---
+
+## 2026-10-27 TASK-004
+- Task id: TASK-004
+- What was implemented:
+  - runner.ts: `classify(session)` maps a session to an execution error (launch-failed, exit-status incl. signal, missing-response, invalid-response) or a valid AgentOutcome. Non-zero exit wins over a valid-looking response.
+  - runAfk allows one retry per consecutive execution error: first error -> `retryStarted` + relaunch (consumes an iteration); second consecutive error -> stop `execution-error` with the last error's kind; error on the last allowed iteration -> `iteration-limit`. Any valid response (repeat/fail) resets the allowance.
+  - cli.ts prints a distinct "retrying after execution error (...)" line via the new `retryStarted` reporter callback.
+  - Fake codex: new `writeFile` step; invocation record now includes `files` (workspace listing at start).
+- Files changed:
+  - src/runner.ts, src/cli.ts, test/runner.test.ts, test/execution-error.test.ts, test/fixtures/fake-codex.mjs, test/helpers.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm test` (build + vitest): 5 files, 63 tests pass; `npm run typecheck` exit 0.
+  - Unit: error,repeat,error,complete -> success (4 launches); error,fail,error,error -> execution-error after 4 launches; two errors -> 2 launches with last kind; retryStarted announced distinctly with iteration numbers; error on last allowed iteration -> iteration-limit (maxIterations 1 and 2).
+  - Integration: exit 7 then complete -> exit 0, stderr has "exit status 7" and "retrying"; complete response with exit 1 -> exit 3, 2 launches, no "feature complete"; two consecutive exit-status/missing-response/invalid-response errors -> exit 3, exactly 2 launches, kind named; codex absent from PATH -> launch-failed, one retry, exit 3; failed attempt's file present at retry start and identical prompt, no resume/fork.
+  - Retry never changes argv/permissions (same runSession call).
+- Learnings for future iterations:
+  - Reporter callbacks on RunReporter: iterationStarted, retryStarted, failureSurfaced. Fake codex records `files`.
+  - Launch-failure test uses PATH pointing at an empty dir (node is spawned via process.execPath).
+- Scope deviations:
+  - Tests were written together with the implementation (no separate observed RED run). No independent subagent review run.
+- Follow up needed: none.
+---

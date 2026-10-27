@@ -110,7 +110,7 @@
     {
       "id": "TASK-004",
       "objective": "Treat launch failures, non-zero exits, and missing or invalid final responses as execution errors that get one fresh-session retry per consecutive error, and stop with an identified execution error when the retry also fails.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-004",
         "US-005",

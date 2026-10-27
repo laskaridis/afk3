@@ -1,4 +1,4 @@
-import { parseFinalResponse } from "./protocol.js";
+import { parseFinalResponse, type AgentOutcome } from "./protocol.js";
 import type { SessionResult } from "./session.js";
 
 export const DEFAULT_MAX_ITERATIONS = 10;
@@ -15,6 +15,7 @@ export type SessionRunner = (launchPrompt: string) => Promise<SessionResult>;
 
 export interface RunReporter {
   iterationStarted?(iteration: number, limit: number): void;
+  retryStarted?(iteration: number, limit: number, reason: string): void;
   failureSurfaced?(failureSummary: string): void;
 }
 
@@ -29,22 +30,23 @@ export async function runAfk(
   runSession: SessionRunner,
   reporter: RunReporter = {},
 ): Promise<RunResult> {
+  let previousError: string | undefined;
   for (let iteration = 1; iteration <= config.maxIterations; iteration++) {
-    reporter.iterationStarted?.(iteration, config.maxIterations);
+    if (previousError === undefined) reporter.iterationStarted?.(iteration, config.maxIterations);
+    else reporter.retryStarted?.(iteration, config.maxIterations, previousError);
     const session = await runSession(config.launchPrompt);
 
-    if (session.kind === "launch-failed") {
-      return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
+    const classified = classify(session);
+    if ("kind" in classified) {
+      const error = classified;
+      // One retry per consecutive error; a second consecutive error stops the run.
+      if (previousError !== undefined) return error;
+      if (iteration === config.maxIterations) break;
+      previousError = error.detail;
+      continue;
     }
-    if (session.exitCode !== 0) {
-      const detail = session.signal ? `signal ${session.signal}` : `exit status ${session.exitCode}`;
-      return { kind: "execution-error", errorKind: "exit-status", detail };
-    }
-    const response = parseFinalResponse(session.finalMessage);
-    if ("violation" in response) {
-      const errorKind = session.finalMessage === undefined ? "missing-response" : "invalid-response";
-      return { kind: "execution-error", errorKind, detail: response.violation };
-    }
+    previousError = undefined;
+    const response = classified;
 
     switch (response.outcome) {
       case "complete":
@@ -59,4 +61,23 @@ export async function runAfk(
     }
   }
   return { kind: "iteration-limit", limit: config.maxIterations };
+}
+
+type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
+
+/** Classify a session as an execution error or the valid outcome it reported. */
+function classify(session: SessionResult): ExecutionError | AgentOutcome {
+  if (session.kind === "launch-failed") {
+    return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
+  }
+  if (session.exitCode !== 0) {
+    const detail = session.signal ? `signal ${session.signal}` : `exit status ${session.exitCode}`;
+    return { kind: "execution-error", errorKind: "exit-status", detail };
+  }
+  const response = parseFinalResponse(session.finalMessage);
+  if ("violation" in response) {
+    const errorKind = session.finalMessage === undefined ? "missing-response" : "invalid-response";
+    return { kind: "execution-error", errorKind, detail: response.violation };
+  }
+  return response;
 }

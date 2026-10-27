@@ -5,12 +5,13 @@
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
 //     | { "finalMessage": "text" }  (written to the -o path)
+//     | { "writeFile": "name" }  (created in the working directory)
 //     | { "exit": code }
 // Alternatively { "sessions": [[steps], ...] } scripts one step list per invocation
 // (by invocation order; the last list repeats once exhausted).
 // Every invocation appends a record (argv, cwd, stdin, env) to FAKE_CODEX_RECORD
 // as one JSON line, and the record is written before any step runs.
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const argv = process.argv.slice(2);
 const script = JSON.parse(readFileSync(process.env.FAKE_CODEX_SCRIPT, "utf8"));
@@ -35,12 +36,13 @@ const steps = script.sessions
 
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
-  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath }) + "\n",
+  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, files: readdirSync(process.cwd()) }) + "\n",
 );
 
 for (const step of steps) {
   if (step.stdout !== undefined) process.stdout.write(step.stdout);
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
+  if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
   if (step.finalMessage !== undefined && outputPath) writeFileSync(outputPath, step.finalMessage);
   if (step.exit !== undefined) process.exit(step.exit);
