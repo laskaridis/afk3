@@ -132,3 +132,25 @@
   - Tests written together with implementation (no separate observed RED run). No independent subagent review run.
 - Follow up needed: none.
 ---
+
+## 2026-10-27 TASK-006
+- Task id: TASK-006
+- What was implemented:
+  - `--session-timeout <seconds>` (positive number; 0, negative, non-numeric -> option error, exit 2, no launch). Applies per session.
+  - session.ts: `timeoutSeconds` option; on expiry reuses the same SIGINT->SIGTERM->SIGKILL termination as interruption, waits for child close, resolves `{kind:"timed-out"}`. User interrupt wins if it happened first.
+  - runner.ts: `timed-out` -> `{kind:"timeout", seconds}` immediately (no retry/next iteration). reporter.ts: exit code 5, "session timed out after N seconds".
+- Files changed:
+  - src/session.ts, src/runner.ts, src/reporter.ts, src/cli.ts, test/session-timeout.test.ts, test/runner.test.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm run typecheck` exit 0; `npm test`: 7 files, 76 tests pass.
+  - Timeout 1s vs 30s-sleeping fake: SIGINT recorded, exit 5, stderr "timed out after 1 seconds", no "retrying", 1 invocation, partial file preserved, fake pid not running.
+  - `--session-timeout 2` with ~1s repeat, repeat, complete -> exit 0, 3 invocations (per session).
+  - No option + 3s session -> exit 0, no signals.
+  - 0 / -5 / abc -> exit 2, zero invocations.
+  - Covered ACs: AC-022, AC-023, AC-024, AC-029 (timeout status).
+- Learnings for future iterations:
+  - Use `--session-timeout=-5` form in tests so commander doesn't parse the value as an option.
+- Scope deviations:
+  - Tests written with implementation (no separate RED run). No independent subagent review run.
+- Follow up needed: none.
+---

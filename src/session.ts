@@ -10,6 +10,8 @@ export interface SessionOptions {
   cwd: string;
   /** Aborting interrupts the child and ends the session as `interrupted` once it has exited. */
   signal?: AbortSignal;
+  /** Interrupts and terminates the child once this many seconds have elapsed. */
+  timeoutSeconds?: number;
   /** Wait between escalation steps (SIGINT, then SIGTERM, then SIGKILL). */
   graceMs?: number;
 }
@@ -17,6 +19,7 @@ export interface SessionOptions {
 export type SessionResult =
   | { kind: "launch-failed"; error: Error }
   | { kind: "interrupted" }
+  | { kind: "timed-out" }
   | { kind: "exited"; exitCode: number | null; signal: NodeJS.Signals | null; finalMessage?: string };
 
 /** Run exactly one non-interactive Codex session in the workspace. */
@@ -27,6 +30,7 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
   const args = ["exec", "--approve-for-me", "-C", options.cwd, "-o", outputPath, options.prompt];
 
   let interrupted = false;
+  let timedOut = false;
   try {
     const outcome = await new Promise<
       { error: Error } | { exitCode: number | null; signal: NodeJS.Signals | null }
@@ -40,11 +44,23 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
       const grace = options.graceMs ?? DEFAULT_TERMINATION_GRACE_MS;
       const escalation: NodeJS.Timeout[] = [];
       const interrupt = () => {
+        if (interrupted || timedOut) return;
         interrupted = true;
+        terminate();
+      };
+      const terminate = () => {
         child.kill("SIGINT");
         escalation.push(setTimeout(() => child.kill("SIGTERM"), grace));
         escalation.push(setTimeout(() => child.kill("SIGKILL"), grace * 2));
       };
+      if (options.timeoutSeconds !== undefined) {
+        const timer = setTimeout(() => {
+          if (interrupted) return;
+          timedOut = true;
+          terminate();
+        }, options.timeoutSeconds * 1000);
+        child.once("close", () => clearTimeout(timer));
+      }
       if (options.signal?.aborted) interrupt();
       else options.signal?.addEventListener("abort", interrupt, { once: true });
       child.once("close", () => {
@@ -54,6 +70,7 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
     });
     if ("error" in outcome) return { kind: "launch-failed", error: outcome.error };
     if (interrupted) return { kind: "interrupted" };
+    if (timedOut) return { kind: "timed-out" };
     return { kind: "exited", ...outcome, finalMessage: await readFinalMessage(outputPath) };
   } finally {
     await rm(tempDir, { recursive: true, force: true });
