@@ -10,6 +10,10 @@ export interface SessionOptions {
   cwd: string;
   /** Aborting interrupts the child and ends the session as `interrupted` once it has exited. */
   signal?: AbortSignal;
+  /** Overrides the model for this session; otherwise the user's Codex configuration applies. */
+  model?: string;
+  /** Overrides the reasoning effort for this session; otherwise the user's Codex configuration applies. */
+  reasoningEffort?: string;
   /** Interrupts and terminates the child once this many seconds have elapsed. */
   timeoutSeconds?: number;
   /** Wait between escalation steps (SIGINT, then SIGTERM, then SIGKILL). */
@@ -27,7 +31,10 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
   if (options.signal?.aborted) return { kind: "interrupted" };
   const tempDir = await mkdtemp(join(tmpdir(), "afk-"));
   const outputPath = join(tempDir, "last-message.txt");
-  const args = ["exec", "--approve-for-me", "-C", options.cwd, "-o", outputPath, options.prompt];
+  const args = ["exec", "--approve-for-me", "-C", options.cwd, "-o", outputPath];
+  if (options.model !== undefined) args.push("-m", options.model);
+  if (options.reasoningEffort !== undefined) args.push("-c", `model_reasoning_effort=${JSON.stringify(options.reasoningEffort)}`);
+  args.push(options.prompt);
 
   let interrupted = false;
   let timedOut = false;

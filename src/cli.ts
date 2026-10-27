@@ -26,6 +26,11 @@ function parseSessionTimeout(value: string): number {
   return Number(value);
 }
 
+function parseNonEmpty(value: string): string {
+  if (value.trim() === "") throw new InvalidArgumentError("must not be empty.");
+  return value;
+}
+
 function parseCwd(value: string): string {
   const directory = resolve(value);
   let isDirectory = false;
@@ -54,6 +59,8 @@ async function main(argv: string[]): Promise<number> {
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option("--max-iterations <count>", "maximum number of Codex sessions to launch", parseMaxIterations, DEFAULT_MAX_ITERATIONS)
     .option("--session-timeout <seconds>", "stop the run if a single session exceeds this many seconds", parseSessionTimeout)
+    .option("--model <name>", "model for every session (default: your Codex configuration)", parseNonEmpty)
+    .option("--reasoning-effort <level>", "reasoning effort for every session (default: your Codex configuration)", parseNonEmpty)
     .exitOverride();
   try {
     program.parse(argv);
@@ -61,11 +68,13 @@ async function main(argv: string[]): Promise<number> {
     if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : EXIT_CODES.inputError;
     throw error;
   }
-  const { maxIterations, sessionTimeout, promptFile, cwd = process.cwd() } = program.opts<{
+  const { maxIterations, sessionTimeout, promptFile, cwd = process.cwd(), model, reasoningEffort } = program.opts<{
     maxIterations: number;
     sessionTimeout?: number;
     promptFile?: string;
     cwd?: string;
+    model?: string;
+    reasoningEffort?: string;
   }>();
   const resolved = await resolvePrompt({
     positional: program.args,
@@ -86,7 +95,7 @@ async function main(argv: string[]): Promise<number> {
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
     { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd, signal: interruption.signal, graceMs, timeoutSeconds: sessionTimeout }),
+    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd, signal: interruption.signal, graceMs, timeoutSeconds: sessionTimeout, model, reasoningEffort }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
       retryStarted: (iteration, limit, reason) =>

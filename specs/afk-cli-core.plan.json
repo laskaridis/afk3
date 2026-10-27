@@ -235,7 +235,7 @@
     {
       "id": "TASK-008",
       "objective": "Support `--model` and `--reasoning-effort` overrides that apply to every session in a run, while otherwise inheriting the user's Codex configuration.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-003"
       ],
