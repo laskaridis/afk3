@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildSessionPrompt, parseFinalResponse } from "../src/protocol.js";
 
@@ -7,11 +8,12 @@ describe("buildSessionPrompt", () => {
     expect(buildSessionPrompt(launchPrompt).startsWith(launchPrompt)).toBe(true);
   });
 
-  it("instructs use of the code skill for one task and a JSON-only final response", () => {
+  it("appends the harness instructions for one task and a JSON-only final response", () => {
     const prompt = buildSessionPrompt("build feature X");
-    expect(prompt).toMatch(/code skill/i);
+    const harness = readFileSync(new URL("../src/harness.md", import.meta.url), "utf8");
+    expect(prompt).toBe(`build feature X\n\n---\n${harness}\n`);
     expect(prompt).toMatch(/one task/i);
-    expect(prompt).toMatch(/only.*JSON/i);
+    expect(prompt).toMatch(/JSON object and nothing else/i);
   });
 
   it("is identical for the same launch prompt across calls", () => {

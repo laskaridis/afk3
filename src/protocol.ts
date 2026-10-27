@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 export type AgentOutcome =
   | { outcome: "repeat" }
   | { outcome: "complete" }
@@ -6,13 +8,11 @@ export type AgentOutcome =
 
 export type ContractViolation = { violation: string };
 
-const SESSION_INSTRUCTIONS = [
-  "Use the available code skill to implement exactly one task, then follow its response protocol.",
-  "Your final message must be only the code skill's JSON protocol response: a single JSON object, with no surrounding prose and no Markdown fences.",
-].join("\n");
+// Copied next to the compiled module by the build script.
+const HARNESS = readFileSync(new URL("./harness.md", import.meta.url), "utf8");
 
 export function buildSessionPrompt(launchPrompt: string): string {
-  return `${launchPrompt}\n\n---\n${SESSION_INSTRUCTIONS}\n`;
+  return `${launchPrompt}\n\n---\n${HARNESS}\n`;
 }
 
 const TEXT_FIELD_BY_OUTCOME = {

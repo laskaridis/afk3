@@ -20,7 +20,7 @@ describe("afk <prompt> with a single Codex session", () => {
     expect(cwd).toBe(fake.workspace);
   });
 
-  it("sends the launch prompt verbatim followed by code skill instructions", async () => {
+  it("sends the launch prompt verbatim followed by the harness instructions", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
 
     await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
@@ -28,9 +28,9 @@ describe("afk <prompt> with a single Codex session", () => {
     const { argv } = fake.soleInvocation();
     const prompt = argv[argv.length - 1]!;
     expect(prompt.startsWith("build feature X")).toBe(true);
-    expect(prompt).toMatch(/code skill/i);
+    expect(prompt).toMatch(/Coding loop protocol/);
     expect(prompt).toMatch(/one task/i);
-    expect(prompt).toMatch(/only.*JSON/i);
+    expect(prompt).toMatch(/JSON object and nothing else/i);
   });
 
   it("shows codex stdout and stderr while the codex process is still running", async () => {
