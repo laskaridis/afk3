@@ -260,7 +260,7 @@
     {
       "id": "TASK-009",
       "objective": "Provide `--help`/`-h` output describing usage, all options, and exit codes, with help taking precedence over all other validation and prompt input, and reject unknown options as option errors.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-005"
       ],

@@ -202,3 +202,23 @@
   - None. Tests written alongside the implementation (no separate RED run recorded).
 - Follow up needed: none.
 ---
+
+## 2026-10-27 TASK-009
+- Task id: TASK-009
+- What was implemented:
+  - `--help`/`-h` prints usage, options (default 10 for --max-iterations) and an "Exit codes" section generated from EXIT_CODES via formatExitCodeHelp() in src/reporter.ts, so help cannot drift from the mapping.
+  - cli.ts pre-scans argv (before `--`) for -h/--help and parses only `--help`, because commander validates option values before handling help; this gives help precedence over invalid options, prompt sources, and stdin (never read).
+  - Unknown options already produced exit 2 via commander; now covered by a test.
+- Files changed:
+  - src/cli.ts, src/reporter.ts, test/help.test.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - RED: `npx vitest run test/help.test.ts` -> 4 failed before implementation.
+  - `npm test`: 11 files, 110 tests pass; `npm run typecheck` exits 0.
+  - Tests: --help and -h list every option and exit 0 with 0 launches; help exit codes equal Object.values(EXIT_CODES); `--help --max-iterations abc --prompt-file missing.txt x` with piped stdin exits 0; help with a never-closed stdin pipe exits within 3s; `--full-access` -> exit 2, 0 launches.
+  - ACs: AC-024, AC-025.
+- Learnings for future iterations:
+  - Commander validates option arguments (custom parsers) before handling --help, hence the pre-scan.
+- Scope deviations:
+  - None. Delegated review skipped; small change fully covered by tests.
+- Follow up needed: none.
+---
