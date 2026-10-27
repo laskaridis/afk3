@@ -6,6 +6,8 @@
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
 //     | { "finalMessage": "text" }  (written to the -o path)
 //     | { "exit": code }
+// Alternatively { "sessions": [[steps], ...] } scripts one step list per invocation
+// (by invocation order; the last list repeats once exhausted).
 // Every invocation appends a record (argv, cwd, stdin, env) to FAKE_CODEX_RECORD
 // as one JSON line, and the record is written before any step runs.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
@@ -26,12 +28,17 @@ if (!process.stdin.isTTY) {
   });
 }
 
+const invocationIndex = readFileSync(process.env.FAKE_CODEX_RECORD, "utf8").split("\n").filter(Boolean).length;
+const steps = script.sessions
+  ? script.sessions[Math.min(invocationIndex, script.sessions.length - 1)]
+  : script.steps;
+
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
   JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath }) + "\n",
 );
 
-for (const step of script.steps) {
+for (const step of steps) {
   if (step.stdout !== undefined) process.stdout.write(step.stdout);
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));

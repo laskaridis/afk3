@@ -28,7 +28,7 @@ export interface AfkRun {
 }
 
 /** A temp workspace with a fake `codex` first on PATH, scripted per test. */
-export function createFakeCodexEnvironment(steps: Step[]) {
+export function createFakeCodexEnvironment(steps: Step[] | { sessions: Step[][] }) {
   const sandbox = realpathSync(mkdtempSync(join(tmpdir(), "afk-test-")));
   const binDir = join(sandbox, "bin");
   const workspace = join(sandbox, "workspace");
@@ -37,7 +37,7 @@ export function createFakeCodexEnvironment(steps: Step[]) {
 
   mkdirs(binDir, workspace);
   symlinkSync(fakeCodexPath, join(binDir, "codex"));
-  writeFileSync(scriptPath, JSON.stringify({ steps }));
+  writeFileSync(scriptPath, JSON.stringify(Array.isArray(steps) ? { steps } : steps));
   writeFileSync(recordPath, "");
 
   const env = {

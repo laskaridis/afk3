@@ -4,7 +4,8 @@
 - Integration tests use `test/helpers.ts` (`createFakeCodexEnvironment(steps)`, `startAfk`) with the scripted fake `test/fixtures/fake-codex.mjs` placed first on PATH; `fake.soleInvocation()` returns argv/cwd/stdin/outputPath.
 - The build script chmods `dist/cli.js` to 755 (tsc does not); without it npm's bin link is non-executable and a globally installed `afk` shadows it.
 - A different global `afk` (afk-cli-core, from ../afk2) exists on this machine's PATH; do not rely on bare `afk`.
-- Module layout follows specs/afk-cli-core.design.md: src/cli.ts, src/protocol.ts, src/session.ts (prompt, runner, reporter still to come).
+- Module layout follows specs/afk-cli-core.design.md: src/cli.ts, src/protocol.ts, src/session.ts, src/runner.ts (runAfk with injected SessionRunner), src/reporter.ts (exitCodeFor, formatFinalStatus); prompt still to come.
+- fake codex supports per-invocation scripts: createFakeCodexEnvironment({ sessions: [steps, ...] }) (last list repeats).
 ---
 
 ## 2026-10-27 TASK-001
@@ -59,5 +60,29 @@
   - macOS: use `sed -i ''`; python is not available in this shell.
 - Scope deviations:
   - src/cli.ts touched only to adapt to the new return type. No independent subagent review run (small pure-function change).
+- Follow up needed: none.
+---
+
+## 2026-10-27 TASK-003
+- Task id: TASK-003
+- What was implemented:
+  - src/runner.ts: `runAfk(config, sessionRunner, reporter)` runs fresh sessions up to maxIterations (default 10): repeat -> next, fail -> surface summary + next, complete -> success, blocked -> stop with blocker_text, budget exhausted -> iteration-limit(limit). Decides only from session results.
+  - Execution errors (launch failure, non-zero exit, missing/invalid response) stop the run immediately as `execution-error`; retry policy is deliberately left to TASK-004.
+  - src/reporter.ts: EXIT_CODES, exitCodeFor, formatFinalStatus (codes 0/1/2/3/4 per design table; 5/130 come with later tasks).
+  - cli.ts: `--max-iterations <count>` (positive integer only, else commander option error -> exit 2, no launch), wired to runAfk with iteration banners and failure summaries on stderr.
+  - Fake codex + helpers extended with per-invocation `sessions` scripts.
+- Files changed:
+  - src/runner.ts, src/reporter.ts, src/cli.ts, test/runner.test.ts, test/run-loop.test.ts, test/fixtures/fake-codex.mjs, test/helpers.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm test` (build + vitest): 4 files, 51 tests pass; `npm run typecheck` exit 0.
+  - Unit (runner.test.ts): repeat->complete 2 sessions; blocked 1 session with blocker_text; fail surfaces summary then continues; always-repeat runs 10 launches (limit 10) and 3 with maxIterations 3 (limit 3); last iteration: fail->iteration-limit, complete->success, blocked->blocked.
+  - Integration (run-loop.test.ts): repeat/fail/complete = 3 separate `exec` launches, identical prompt and cwd, no resume/fork, exit 0; blocked "need API key" printed, exit 1, one launch; --max-iterations 0/-1/1.5/abc -> exit 2, zero launches; two consecutive runs with --max-iterations 2 and always-repeat -> 2 launches each, exit 4.
+  - Exit codes match design table for the implemented kinds.
+  - Covered ACs: AC-009, 011, 012, 014, 016, 020, 021, 024 (limit only), 026.
+- Learnings for future iterations:
+  - Tests were written alongside the implementation and passed on first run; no separate observed RED run for this task.
+  - Commander `--max-iterations -1` is accepted as the option value and rejected by the custom parser (exit 2).
+- Scope deviations:
+  - Added src/reporter.ts (listed in design, needed for exit-code mapping). No independent subagent review run.
 - Follow up needed: none.
 ---
