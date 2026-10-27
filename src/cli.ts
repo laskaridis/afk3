@@ -12,6 +12,8 @@ import { runSession } from "./session.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 function parseMaxIterations(value: string): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new InvalidArgumentError("must be a positive integer.");
@@ -22,6 +24,10 @@ function parseMaxIterations(value: string): number {
 function parseSessionTimeout(value: string): number {
   if (!/^\d+(\.\d+)?$/.test(value) || Number(value) <= 0) {
     throw new InvalidArgumentError("must be a positive number of seconds.");
+  }
+  // setTimeout treats delays above 2^31-1 ms as 1 ms.
+  if (Number(value) * 1000 > MAX_TIMER_MS) {
+    throw new InvalidArgumentError(`must be at most ${Math.floor(MAX_TIMER_MS / 1000)} seconds.`);
   }
   return Number(value);
 }
@@ -67,8 +73,9 @@ async function main(argv: string[]): Promise<number> {
     // Help takes precedence over validation of every other option.
     const optionArgs = argv.slice(2);
     const endOfOptions = optionArgs.indexOf("--");
+    const valueOptions = new Set(program.options.filter((o) => o.required || o.optional).map((o) => o.long));
     const helpRequested = (endOfOptions === -1 ? optionArgs : optionArgs.slice(0, endOfOptions)).some(
-      (arg) => arg === "--help" || arg === "-h",
+      (arg, i, args) => (arg === "--help" || arg === "-h") && !valueOptions.has(args[i - 1]),
     );
     program.parse(helpRequested ? [...argv.slice(0, 2), "--help"] : argv);
   } catch (error) {
@@ -96,8 +103,8 @@ async function main(argv: string[]): Promise<number> {
   const prompt = resolved.prompt;
 
   const interruption = new AbortController();
-  // Repeated SIGINTs are absorbed: the first one already stops the run.
-  process.on("SIGINT", () => interruption.abort());
+  // Repeated signals are absorbed: the first one already stops the run.
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => interruption.abort());
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(

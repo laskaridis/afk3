@@ -16,8 +16,10 @@ export async function resolvePrompt(input: PromptInput): Promise<PromptResult> {
   if (input.positional.length > 1) {
     return { ok: false, message: "expected a single prompt argument, got " + input.positional.length };
   }
-  // A TTY stdin is never read and never prompts.
-  const stdin = input.stdinIsTTY ? "" : await input.readStdin();
+  // Stdin is only a fallback: a TTY is never read, and an explicit source means a
+  // non-TTY stdin that is left open (cron, CI) must not block the run.
+  const explicit = input.positional.length === 1 || input.promptFile !== undefined;
+  const stdin = input.stdinIsTTY || explicit ? "" : await input.readStdin();
   const sources: { name: string; text: string }[] = [];
 
   if (input.positional.length === 1) sources.push({ name: "positional argument", text: input.positional[0]! });

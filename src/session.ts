@@ -34,7 +34,8 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
   const args = ["exec", "--approve-for-me", "-C", options.cwd, "-o", outputPath];
   if (options.model !== undefined) args.push("-m", options.model);
   if (options.reasoningEffort !== undefined) args.push("-c", `model_reasoning_effort=${JSON.stringify(options.reasoningEffort)}`);
-  args.push(options.prompt);
+  // `--` keeps a prompt that starts with `-` from being parsed as an option.
+  args.push("--", options.prompt);
 
   let interrupted = false;
   let timedOut = false;
@@ -44,16 +45,22 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
     >((resolve) => {
       // stdin is ignored: Codex appends piped stdin to its prompt.
       const child = spawn("codex", args, { cwd: options.cwd, stdio: ["ignore", "inherit", "inherit"] });
-      child.once("error", (error) => resolve({ error }));
-      child.once("close", (exitCode, signal) => resolve({ exitCode, signal }));
+      const cleanups: (() => void)[] = [];
+      const settle = (result: { error: Error } | { exitCode: number | null; signal: NodeJS.Signals | null }) => {
+        cleanups.forEach((cleanup) => cleanup());
+        resolve(result);
+      };
+      child.once("error", (error) => settle({ error }));
+      child.once("close", (exitCode, signal) => settle({ exitCode, signal }));
 
       // Forward the interruption, then escalate until the child is gone. Never detached.
       const grace = options.graceMs ?? DEFAULT_TERMINATION_GRACE_MS;
       const escalation: NodeJS.Timeout[] = [];
       const interrupt = () => {
-        if (interrupted || timedOut) return;
+        if (interrupted) return;
         interrupted = true;
-        terminate();
+        // A timeout already started the escalation; the user's interrupt just takes over the reason.
+        if (!timedOut) terminate();
       };
       const terminate = () => {
         child.kill("SIGINT");
@@ -66,11 +73,11 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
           timedOut = true;
           terminate();
         }, options.timeoutSeconds * 1000);
-        child.once("close", () => clearTimeout(timer));
+        cleanups.push(() => clearTimeout(timer));
       }
       if (options.signal?.aborted) interrupt();
       else options.signal?.addEventListener("abort", interrupt, { once: true });
-      child.once("close", () => {
+      cleanups.push(() => {
         options.signal?.removeEventListener("abort", interrupt);
         escalation.forEach(clearTimeout);
       });

@@ -28,9 +28,11 @@ describe("resolvePrompt", () => {
     expect(result).toEqual({ ok: true, prompt: "x" });
   });
 
-  it("rejects non-blank stdin combined with another source", async () => {
-    const result = await resolvePrompt({ positional: ["x"], stdinIsTTY: false, readStdin: async () => "y" });
-    expect(result.ok).toBe(false);
+  it("does not read stdin when another source exists", async () => {
+    const readStdin = vi.fn(async () => "y");
+    const result = await resolvePrompt({ positional: ["x"], stdinIsTTY: false, readStdin });
+    expect(result).toEqual({ ok: true, prompt: "x" });
+    expect(readStdin).not.toHaveBeenCalled();
   });
 
   it("rejects more than one positional argument", async () => {
