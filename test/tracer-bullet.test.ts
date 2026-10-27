@@ -93,11 +93,11 @@ describe("afk <prompt> with a single Codex session", () => {
     }
   });
 
-  it("gives codex no stdin data even when afk has stdin data available", async () => {
+  it("gives codex no stdin data even when afk's own prompt came from stdin", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
 
     await startAfk({
-      args: ["build feature X"],
+      args: [],
       cwd: fake.workspace,
       env: fake.env,
       stdin: "secret piped data",
