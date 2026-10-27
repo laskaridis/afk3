@@ -287,7 +287,7 @@
     {
       "id": "TASK-010",
       "objective": "Make run progress and every final status consistently identifiable in the terminal, and confirm the harness leaves no persistent logs or run history across all stop reasons.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-007",
         "US-006"
