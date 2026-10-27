@@ -1,0 +1,210 @@
+{
+  "spec_path": "specs/afk-cli-core.spec.md",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "objective": "Scaffold the TypeScript package and deliver a tracer bullet where `afk \"<prompt>\"` launches one non-interactive Codex session in the current directory, streams its activity live, reads its final message separately, and exits successfully on a valid `complete` response.",
+      "status": "pending",
+      "stories_enabled": ["US-001", "US-002", "US-003", "US-007"],
+      "acceptance_criteria_addressed": ["AC-001", "AC-005", "AC-006", "AC-008", "AC-010", "AC-013", "AC-028", "AC-030"],
+      "completion_criteria": [
+        "`npm run build`, `npm run typecheck`, and `npm test` succeed from a clean checkout after `npm install`.",
+        "package.json declares a `bin` entry named `afk` pointing at the compiled entry point, so that `npm exec --package=. -- afk --version`, or an equivalent local `npx` invocation, runs the CLI.",
+        "A reusable fake `codex` executable test fixture exists. Integration tests place it first on PATH, script its behavior per test, and inspect the argv, working directory, and stdin it received.",
+        "Integration test: `afk \"build feature X\"` invokes `codex exec` exactly once with `--approve-for-me`, `-C` set to the current directory, and an `-o` output-file path. The process working directory is the current directory.",
+        "Integration test: the prompt passed to Codex starts with the launch prompt verbatim, followed by instructions to use the code skill for one task and to end with only its JSON protocol response.",
+        "Integration test: output written by the fake codex to stdout and stderr appears on afk's output before the fake process exits, demonstrated by the fake pausing between writes and the test observing the first write while the fake is still running.",
+        "Integration test: when the fake writes `{\"outcome\":\"complete\"}` as its final message and exits 0, afk reports completion and exits 0.",
+        "Integration test: the received argv contains none of `--dangerously-bypass-approvals-and-sandbox`, `danger-full-access`, `--worktree`, `--ephemeral`, `--ignore-user-config`, `resume`, or `fork`.",
+        "Integration test: the fake codex receives no stdin data, even when afk itself was started with stdin data available.",
+        "Integration test: after the run, the temporary final-message file no longer exists, and afk created no new files or directories in the workspace.",
+        "A unit test verifies that the session-prompt builder output is identical for the same launch prompt across calls."
+      ],
+      "constraints": [
+        "Follow the module boundaries, Codex invocation, and testing strategy in specs/afk-cli-core.design.md.",
+        "Use TypeScript (ESM, Node.js >= 20), commander for argument parsing, and vitest for tests.",
+        "The final assistant message must be read only from the `--output-last-message` file. Streamed output must never be parsed for a protocol response.",
+        "The Codex child process must not inherit afk's stdin.",
+        "Tests must never invoke a real Codex binary or require network access."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-002",
+      "objective": "Implement strict validation of Codex's final message against the code skill's response protocol, producing either a typed outcome or a descriptive contract violation.",
+      "status": "pending",
+      "stories_enabled": ["US-002"],
+      "acceptance_criteria_addressed": ["AC-010", "AC-011"],
+      "completion_criteria": [
+        "Unit tests show that each of these inputs is accepted as the corresponding outcome: `{\"outcome\":\"repeat\"}`, `{\"outcome\":\"complete\"}`, `{\"outcome\":\"blocked\",\"blocker_text\":\"x\"}`, and `{\"outcome\":\"fail\",\"failure_summary\":\"y\"}`, each with and without surrounding whitespace and newlines.",
+        "Unit tests show these are rejected as contract violations: prose before or after the JSON, a Markdown-fenced JSON block, a JSON array, a JSON string or number, malformed JSON, two JSON objects, a missing `outcome`, an unsupported outcome value, extra fields on `repeat` or `complete`, a missing, empty, whitespace-only, or non-string `blocker_text` or `failure_summary`, and an empty or absent message.",
+        "Each rejection carries a human-readable reason suitable for display in an execution-error report.",
+        "The validator is a pure function with no I/O."
+      ],
+      "constraints": [
+        "Keep the protocol rules in the skill-contract module described in the design. No other module may interpret the response text.",
+        "Do not accept additional outcome values or field aliases beyond those defined in AC-011."
+      ],
+      "dependencies": ["TASK-001"]
+    },
+    {
+      "id": "TASK-003",
+      "objective": "Run successive fresh Codex sessions in the same workspace, acting on each valid outcome (repeat, complete, blocked, fail) and enforcing the session budget set by `--max-iterations` (default 10).",
+      "status": "pending",
+      "stories_enabled": ["US-002", "US-003", "US-005", "US-006"],
+      "acceptance_criteria_addressed": ["AC-009", "AC-011", "AC-012", "AC-014", "AC-016", "AC-020", "AC-021", "AC-024", "AC-026"],
+      "completion_criteria": [
+        "Run-loop unit tests with a scripted fake session runner show that `repeat` starts another session, `complete` ends the run successfully, `blocked` ends the run unsuccessfully with its blocker_text and no further session, and `fail` surfaces its failure_summary and starts another session.",
+        "Run-loop unit tests: with no `--max-iterations`, a runner that always returns `repeat` is invoked exactly 10 times. With `--max-iterations 3`, it is invoked exactly 3 times, and the run ends with an iteration-limit result that includes the limit 3.",
+        "Run-loop unit tests: on the last allowed iteration, `fail` produces an iteration-limit result, `complete` produces success, and `blocked` produces a blocked result.",
+        "Integration test: a fake codex scripted to return `repeat`, `fail`, then `complete` is launched three times as three separate `codex exec` processes. Each receives the identical prompt and workspace, none uses `resume` or `fork`, and afk exits 0.",
+        "Integration test: a fake codex returning `blocked` with blocker_text `need API key` causes afk to print `need API key` and exit with the blocked exit code after exactly one launch.",
+        "Integration test: `--max-iterations 0`, `-1`, `1.5`, and `abc` each produce an option error, exit code 2, and zero Codex launches.",
+        "Integration test: running afk twice in a row with the same prompt and `--max-iterations 2` against an always-`repeat` fake results in 2 launches per run (a fresh budget each run).",
+        "Exit codes match the table in specs/afk-cli-core.design.md."
+      ],
+      "constraints": [
+        "The run loop must decide only from session results and valid outcomes. It must not read task files, inspect Git, run project commands, or examine the workspace.",
+        "The run loop depends on an injectable session runner so its policy is testable without spawning processes."
+      ],
+      "dependencies": ["TASK-002"]
+    },
+    {
+      "id": "TASK-004",
+      "objective": "Treat launch failures, non-zero exits, and missing or invalid final responses as execution errors that get one fresh-session retry per consecutive error, and stop with an identified execution error when the retry also fails.",
+      "status": "pending",
+      "stories_enabled": ["US-004", "US-005", "US-007"],
+      "acceptance_criteria_addressed": ["AC-017", "AC-018", "AC-019", "AC-020", "AC-021", "AC-029"],
+      "completion_criteria": [
+        "Integration test: a fake codex that exits non-zero on the first launch and returns `complete` on the second causes afk to report the first error with its exit status, announce a retry, launch again, and exit 0.",
+        "Integration test: a fake codex that writes a valid `{\"outcome\":\"complete\"}` final message but exits with status 1 is treated as an execution error, not as completion.",
+        "Integration test: two consecutive execution errors cause afk to stop after exactly two launches with the execution-error exit code. The final status identifies the kind of the last error (launch failure, exit status N, missing response, or invalid response).",
+        "Integration test: when `codex` is not resolvable on PATH, afk reports a launch failure, retries once, and then stops with an execution error that identifies the launch failure.",
+        "Run-loop unit tests: the sequence error, `repeat`, error, `complete` succeeds, showing that a valid response resets the allowance. The sequence error, `fail`, error, error stops with an execution error after four launches, showing that `fail` resets the allowance and is not an execution error.",
+        "Run-loop unit tests: a retry consumes one iteration from the budget, and an execution error on the last allowed iteration produces an iteration-limit result, not a retry.",
+        "Integration test: a file created in the workspace by the failing first attempt still exists when the retry session starts, and the retry receives the same prompt as the first attempt."
+      ],
+      "constraints": [
+        "Allow at most one consecutive retry. Never resume, fork, or replay the failed session.",
+        "Never alter Codex permissions or approval settings on retry."
+      ],
+      "dependencies": ["TASK-003"]
+    },
+    {
+      "id": "TASK-005",
+      "objective": "Make Ctrl+C forward the interruption to the active Codex process, wait for it to terminate, prevent further iterations or retries, and exit as interrupted.",
+      "status": "pending",
+      "stories_enabled": ["US-006", "US-007"],
+      "acceptance_criteria_addressed": ["AC-025", "AC-027", "AC-029"],
+      "completion_criteria": [
+        "Integration test: sending SIGINT to the afk process while a long-running fake codex is active causes the fake to receive SIGINT. afk then exits with code 130 and a final status identifying user interruption, and no further launch occurs.",
+        "Integration test: when the fake codex ignores SIGINT, afk escalates termination within a bounded grace period. The fake process is no longer running when afk exits.",
+        "Integration test: files written to the workspace by the fake codex before the interruption remain after afk exits.",
+        "Integration test: SIGINT delivered while the session is being interrupted does not start a retry or another iteration, even if the fake exits non-zero or without a final message.",
+        "Integration test: afk does not exit while its Codex child is still running. The test verifies via the fake's PID that the child is gone at the moment afk's exit is observed."
+      ],
+      "constraints": [
+        "Do not detach the Codex child or let it outlive afk on any handled exit path.",
+        "Do not roll back workspace changes or delete any files on interruption."
+      ],
+      "dependencies": ["TASK-004"]
+    },
+    {
+      "id": "TASK-006",
+      "objective": "Add an optional per-session `--session-timeout <seconds>` that, on expiry, terminates the active session and stops the whole run as a timeout without retrying.",
+      "status": "pending",
+      "stories_enabled": ["US-005", "US-007"],
+      "acceptance_criteria_addressed": ["AC-022", "AC-023", "AC-024", "AC-029"],
+      "completion_criteria": [
+        "Integration test: with `--session-timeout 1` and a fake codex that sleeps 30 seconds, afk interrupts and terminates the fake, reports a timeout that includes the 1-second duration, exits with the timeout exit code, and launches no further session.",
+        "Integration test: with `--session-timeout 2` and a fake scripted to take about 1 second per session, returning `repeat`, `repeat`, then `complete`, the run succeeds. This shows the timeout applies to each session separately, not to the whole run.",
+        "Integration test: without `--session-timeout`, a fake codex that runs for several seconds before returning `complete` is not interrupted.",
+        "Integration test: files written by the fake before the timeout remain after afk exits, and the fake process is no longer running.",
+        "Integration test: `--session-timeout 0`, `-5`, and `abc` each produce an option error, exit code 2, and zero Codex launches."
+      ],
+      "constraints": [
+        "A timeout is never treated as an execution error and never triggers a retry.",
+        "Reuse the same termination path as interruption (graceful interrupt, then escalation, then wait for exit)."
+      ],
+      "dependencies": ["TASK-005"]
+    },
+    {
+      "id": "TASK-007",
+      "objective": "Resolve exactly one launch prompt from a positional argument, `--prompt-file`, or piped stdin, and select the workspace with `--cwd`, rejecting ambiguous, missing, empty, or unreadable input before any Codex launch.",
+      "status": "pending",
+      "stories_enabled": ["US-001"],
+      "acceptance_criteria_addressed": ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005", "AC-006"],
+      "completion_criteria": [
+        "Integration test: `afk --prompt-file spec-prompt.txt` with a non-empty file sends the file contents as the launch prompt.",
+        "Integration test: `echo 'do the thing' | afk` sends `do the thing` as the launch prompt.",
+        "Integration tests: each of the following produces a clear input error on stderr, exit code 2, and zero Codex launches: positional and `--prompt-file` together; positional with non-blank piped stdin; `--prompt-file` with non-blank piped stdin; an empty or whitespace-only positional argument; an empty or whitespace-only prompt file; a nonexistent or unreadable prompt file; more than one positional argument; no prompt source with empty stdin.",
+        "Integration test: a positional prompt with empty piped stdin (e.g. stdin from /dev/null) is accepted and uses the positional prompt.",
+        "Unit test: with stdin reported as a TTY and no other source, prompt resolution returns a missing-input error without attempting to read stdin.",
+        "Integration test: `--cwd <existing dir>` makes every session run with that directory as both the process working directory and the `-C` value.",
+        "Integration test: `--cwd` pointing at a nonexistent path or at a regular file produces an option error, exit code 2, and zero launches.",
+        "Integration test: a successful run in a Git repository leaves the current branch, the branch list, and the worktree list unchanged, and afk itself runs no git commands, as observed through a fake `git` on PATH that records invocations."
+      ],
+      "constraints": [
+        "Follow the stdin rule in specs/afk-cli-core.design.md. Non-TTY stdin is read to EOF, and empty or whitespace-only stdin does not count as a source.",
+        "Never prompt the user interactively and never combine prompt sources.",
+        "Pass the launch prompt to Codex unmodified, apart from the appended session instructions. Do not interpret referenced files or specifications."
+      ],
+      "dependencies": ["TASK-001"]
+    },
+    {
+      "id": "TASK-008",
+      "objective": "Support `--model` and `--reasoning-effort` overrides that apply to every session in a run, while otherwise inheriting the user's Codex configuration.",
+      "status": "pending",
+      "stories_enabled": ["US-003"],
+      "acceptance_criteria_addressed": ["AC-015", "AC-019"],
+      "completion_criteria": [
+        "Integration test: without overrides, the Codex argv contains no model flag and no `model_reasoning_effort` config override.",
+        "Integration test: `--model gpt-x --reasoning-effort high` results in every launch, including a retry after an execution error, receiving `-m gpt-x` and `-c model_reasoning_effort=\"high\"` (or an equivalent single model and reasoning-effort override).",
+        "Integration test: an empty `--model` or `--reasoning-effort` value produces an option error, exit code 2, and zero launches.",
+        "Integration test: a fake HOME/CODEX_HOME containing a config file is left byte-for-byte unchanged after a run with overrides."
+      ],
+      "constraints": [
+        "Overrides are passed only as Codex command-line arguments for the launched sessions. Never write or modify Codex configuration files.",
+        "Do not add any other Codex setting overrides or a general argument passthrough."
+      ],
+      "dependencies": ["TASK-004"]
+    },
+    {
+      "id": "TASK-009",
+      "objective": "Provide `--help`/`-h` output describing usage, all options, and exit codes, with help taking precedence over all other validation and prompt input, and reject unknown options as option errors.",
+      "status": "pending",
+      "stories_enabled": ["US-005"],
+      "acceptance_criteria_addressed": ["AC-024", "AC-025"],
+      "completion_criteria": [
+        "Integration test: `afk --help` and `afk -h` print text to stdout that lists the positional prompt, `--prompt-file`, `--cwd`, `--max-iterations` (default 10), `--session-timeout` (seconds), `--model`, `--reasoning-effort`, `--help`, and every exit code with its meaning. Both exit 0 with zero Codex launches.",
+        "Integration test: `afk --help --max-iterations abc --prompt-file missing.txt \"x\"` with non-blank piped stdin still prints help and exits 0 with zero launches.",
+        "Integration test: `afk --help` with a stdin pipe that is never closed exits promptly without reading stdin.",
+        "Integration test: an unknown option such as `--full-access` produces an option error on stderr, exit code 2, and zero launches.",
+        "The exit codes listed in help match the exit codes the CLI actually returns, verified by a test that compares help text against the exit-code mapping."
+      ],
+      "constraints": [
+        "Do not add options beyond those defined in the specification."
+      ],
+      "dependencies": ["TASK-006", "TASK-007", "TASK-008"]
+    },
+    {
+      "id": "TASK-010",
+      "objective": "Make run progress and every final status consistently identifiable in the terminal, and confirm the harness leaves no persistent logs or run history across all stop reasons.",
+      "status": "pending",
+      "stories_enabled": ["US-007", "US-006"],
+      "acceptance_criteria_addressed": ["AC-028", "AC-029", "AC-030", "AC-026"],
+      "completion_criteria": [
+        "Integration test: in a multi-iteration run, each session start is announced with its iteration number and the configured limit, and each execution-error retry is announced distinctly from a normal iteration start.",
+        "A table-driven integration test covers each stop reason: complete, blocked, execution error (launch failure, exit status, missing response, invalid response), iteration limit, timeout, and interruption. For each, it asserts the distinguishing final-status text (blocker_text, error kind and exit status, configured limit, configured timeout seconds) and the mapped exit code.",
+        "Integration test: only the `complete` case exits 0 and reports feature completion. No other stop reason uses completion wording.",
+        "Integration test: for each stop reason, a snapshot of the workspace and of a temporary HOME directory taken before and after the run shows no harness-created files or directories. The OS temp directory contains no leftover afk final-message files.",
+        "Integration test: files the fake codex writes into the workspace (simulating skill task and progress files) are never removed or modified by afk."
+      ],
+      "constraints": [
+        "Harness status lines go to stderr. Codex activity is passed through unmodified.",
+        "No log files, run-history directories, resume databases, or persisted settings may be introduced."
+      ],
+      "dependencies": ["TASK-009"]
+    }
+  ]
+}
