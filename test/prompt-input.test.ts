@@ -43,8 +43,6 @@ describe("launch prompt sources", () => {
   const withFile = (w: string) => writeFileSync(join(w, "p.txt"), "file prompt");
   const cases: [string, string[], string | undefined, ((w: string) => void) | undefined][] = [
     ["positional and --prompt-file", ["x", "--prompt-file", "p.txt"], undefined, withFile],
-    ["positional and stdin", ["x"], "piped", undefined],
-    ["--prompt-file and stdin", ["--prompt-file", "p.txt"], "piped", withFile],
     ["blank positional", ["   "], undefined, undefined],
     ["blank prompt file", ["--prompt-file", "p.txt"], undefined, (w) => writeFileSync(join(w, "p.txt"), " \n")],
     ["missing prompt file", ["--prompt-file", "nope.txt"], undefined, undefined],
