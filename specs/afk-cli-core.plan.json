@@ -4,9 +4,23 @@
     {
       "id": "TASK-001",
       "objective": "Scaffold the TypeScript package and deliver a tracer bullet where `afk \"<prompt>\"` launches one non-interactive Codex session in the current directory, streams its activity live, reads its final message separately, and exits successfully on a valid `complete` response.",
-      "status": "pending",
-      "stories_enabled": ["US-001", "US-002", "US-003", "US-007"],
-      "acceptance_criteria_addressed": ["AC-001", "AC-005", "AC-006", "AC-008", "AC-010", "AC-013", "AC-028", "AC-030"],
+      "status": "completed",
+      "stories_enabled": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-007"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-005",
+        "AC-006",
+        "AC-008",
+        "AC-010",
+        "AC-013",
+        "AC-028",
+        "AC-030"
+      ],
       "completion_criteria": [
         "`npm run build`, `npm run typecheck`, and `npm test` succeed from a clean checkout after `npm install`.",
         "package.json declares a `bin` entry named `afk` pointing at the compiled entry point, so that `npm exec --package=. -- afk --version`, or an equivalent local `npx` invocation, runs the CLI.",
@@ -33,8 +47,13 @@
       "id": "TASK-002",
       "objective": "Implement strict validation of Codex's final message against the code skill's response protocol, producing either a typed outcome or a descriptive contract violation.",
       "status": "pending",
-      "stories_enabled": ["US-002"],
-      "acceptance_criteria_addressed": ["AC-010", "AC-011"],
+      "stories_enabled": [
+        "US-002"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-010",
+        "AC-011"
+      ],
       "completion_criteria": [
         "Unit tests show that each of these inputs is accepted as the corresponding outcome: `{\"outcome\":\"repeat\"}`, `{\"outcome\":\"complete\"}`, `{\"outcome\":\"blocked\",\"blocker_text\":\"x\"}`, and `{\"outcome\":\"fail\",\"failure_summary\":\"y\"}`, each with and without surrounding whitespace and newlines.",
         "Unit tests show these are rejected as contract violations: prose before or after the JSON, a Markdown-fenced JSON block, a JSON array, a JSON string or number, malformed JSON, two JSON objects, a missing `outcome`, an unsupported outcome value, extra fields on `repeat` or `complete`, a missing, empty, whitespace-only, or non-string `blocker_text` or `failure_summary`, and an empty or absent message.",
@@ -45,14 +64,31 @@
         "Keep the protocol rules in the skill-contract module described in the design. No other module may interpret the response text.",
         "Do not accept additional outcome values or field aliases beyond those defined in AC-011."
       ],
-      "dependencies": ["TASK-001"]
+      "dependencies": [
+        "TASK-001"
+      ]
     },
     {
       "id": "TASK-003",
       "objective": "Run successive fresh Codex sessions in the same workspace, acting on each valid outcome (repeat, complete, blocked, fail) and enforcing the session budget set by `--max-iterations` (default 10).",
       "status": "pending",
-      "stories_enabled": ["US-002", "US-003", "US-005", "US-006"],
-      "acceptance_criteria_addressed": ["AC-009", "AC-011", "AC-012", "AC-014", "AC-016", "AC-020", "AC-021", "AC-024", "AC-026"],
+      "stories_enabled": [
+        "US-002",
+        "US-003",
+        "US-005",
+        "US-006"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-009",
+        "AC-011",
+        "AC-012",
+        "AC-014",
+        "AC-016",
+        "AC-020",
+        "AC-021",
+        "AC-024",
+        "AC-026"
+      ],
       "completion_criteria": [
         "Run-loop unit tests with a scripted fake session runner show that `repeat` starts another session, `complete` ends the run successfully, `blocked` ends the run unsuccessfully with its blocker_text and no further session, and `fail` surfaces its failure_summary and starts another session.",
         "Run-loop unit tests: with no `--max-iterations`, a runner that always returns `repeat` is invoked exactly 10 times. With `--max-iterations 3`, it is invoked exactly 3 times, and the run ends with an iteration-limit result that includes the limit 3.",
@@ -67,14 +103,27 @@
         "The run loop must decide only from session results and valid outcomes. It must not read task files, inspect Git, run project commands, or examine the workspace.",
         "The run loop depends on an injectable session runner so its policy is testable without spawning processes."
       ],
-      "dependencies": ["TASK-002"]
+      "dependencies": [
+        "TASK-002"
+      ]
     },
     {
       "id": "TASK-004",
       "objective": "Treat launch failures, non-zero exits, and missing or invalid final responses as execution errors that get one fresh-session retry per consecutive error, and stop with an identified execution error when the retry also fails.",
       "status": "pending",
-      "stories_enabled": ["US-004", "US-005", "US-007"],
-      "acceptance_criteria_addressed": ["AC-017", "AC-018", "AC-019", "AC-020", "AC-021", "AC-029"],
+      "stories_enabled": [
+        "US-004",
+        "US-005",
+        "US-007"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-017",
+        "AC-018",
+        "AC-019",
+        "AC-020",
+        "AC-021",
+        "AC-029"
+      ],
       "completion_criteria": [
         "Integration test: a fake codex that exits non-zero on the first launch and returns `complete` on the second causes afk to report the first error with its exit status, announce a retry, launch again, and exit 0.",
         "Integration test: a fake codex that writes a valid `{\"outcome\":\"complete\"}` final message but exits with status 1 is treated as an execution error, not as completion.",
@@ -88,14 +137,23 @@
         "Allow at most one consecutive retry. Never resume, fork, or replay the failed session.",
         "Never alter Codex permissions or approval settings on retry."
       ],
-      "dependencies": ["TASK-003"]
+      "dependencies": [
+        "TASK-003"
+      ]
     },
     {
       "id": "TASK-005",
       "objective": "Make Ctrl+C forward the interruption to the active Codex process, wait for it to terminate, prevent further iterations or retries, and exit as interrupted.",
       "status": "pending",
-      "stories_enabled": ["US-006", "US-007"],
-      "acceptance_criteria_addressed": ["AC-025", "AC-027", "AC-029"],
+      "stories_enabled": [
+        "US-006",
+        "US-007"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-025",
+        "AC-027",
+        "AC-029"
+      ],
       "completion_criteria": [
         "Integration test: sending SIGINT to the afk process while a long-running fake codex is active causes the fake to receive SIGINT. afk then exits with code 130 and a final status identifying user interruption, and no further launch occurs.",
         "Integration test: when the fake codex ignores SIGINT, afk escalates termination within a bounded grace period. The fake process is no longer running when afk exits.",
@@ -107,14 +165,24 @@
         "Do not detach the Codex child or let it outlive afk on any handled exit path.",
         "Do not roll back workspace changes or delete any files on interruption."
       ],
-      "dependencies": ["TASK-004"]
+      "dependencies": [
+        "TASK-004"
+      ]
     },
     {
       "id": "TASK-006",
       "objective": "Add an optional per-session `--session-timeout <seconds>` that, on expiry, terminates the active session and stops the whole run as a timeout without retrying.",
       "status": "pending",
-      "stories_enabled": ["US-005", "US-007"],
-      "acceptance_criteria_addressed": ["AC-022", "AC-023", "AC-024", "AC-029"],
+      "stories_enabled": [
+        "US-005",
+        "US-007"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-022",
+        "AC-023",
+        "AC-024",
+        "AC-029"
+      ],
       "completion_criteria": [
         "Integration test: with `--session-timeout 1` and a fake codex that sleeps 30 seconds, afk interrupts and terminates the fake, reports a timeout that includes the 1-second duration, exits with the timeout exit code, and launches no further session.",
         "Integration test: with `--session-timeout 2` and a fake scripted to take about 1 second per session, returning `repeat`, `repeat`, then `complete`, the run succeeds. This shows the timeout applies to each session separately, not to the whole run.",
@@ -126,14 +194,25 @@
         "A timeout is never treated as an execution error and never triggers a retry.",
         "Reuse the same termination path as interruption (graceful interrupt, then escalation, then wait for exit)."
       ],
-      "dependencies": ["TASK-005"]
+      "dependencies": [
+        "TASK-005"
+      ]
     },
     {
       "id": "TASK-007",
       "objective": "Resolve exactly one launch prompt from a positional argument, `--prompt-file`, or piped stdin, and select the workspace with `--cwd`, rejecting ambiguous, missing, empty, or unreadable input before any Codex launch.",
       "status": "pending",
-      "stories_enabled": ["US-001"],
-      "acceptance_criteria_addressed": ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005", "AC-006"],
+      "stories_enabled": [
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "AC-006"
+      ],
       "completion_criteria": [
         "Integration test: `afk --prompt-file spec-prompt.txt` with a non-empty file sends the file contents as the launch prompt.",
         "Integration test: `echo 'do the thing' | afk` sends `do the thing` as the launch prompt.",
@@ -149,14 +228,21 @@
         "Never prompt the user interactively and never combine prompt sources.",
         "Pass the launch prompt to Codex unmodified, apart from the appended session instructions. Do not interpret referenced files or specifications."
       ],
-      "dependencies": ["TASK-001"]
+      "dependencies": [
+        "TASK-001"
+      ]
     },
     {
       "id": "TASK-008",
       "objective": "Support `--model` and `--reasoning-effort` overrides that apply to every session in a run, while otherwise inheriting the user's Codex configuration.",
       "status": "pending",
-      "stories_enabled": ["US-003"],
-      "acceptance_criteria_addressed": ["AC-015", "AC-019"],
+      "stories_enabled": [
+        "US-003"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-015",
+        "AC-019"
+      ],
       "completion_criteria": [
         "Integration test: without overrides, the Codex argv contains no model flag and no `model_reasoning_effort` config override.",
         "Integration test: `--model gpt-x --reasoning-effort high` results in every launch, including a retry after an execution error, receiving `-m gpt-x` and `-c model_reasoning_effort=\"high\"` (or an equivalent single model and reasoning-effort override).",
@@ -167,14 +253,21 @@
         "Overrides are passed only as Codex command-line arguments for the launched sessions. Never write or modify Codex configuration files.",
         "Do not add any other Codex setting overrides or a general argument passthrough."
       ],
-      "dependencies": ["TASK-004"]
+      "dependencies": [
+        "TASK-004"
+      ]
     },
     {
       "id": "TASK-009",
       "objective": "Provide `--help`/`-h` output describing usage, all options, and exit codes, with help taking precedence over all other validation and prompt input, and reject unknown options as option errors.",
       "status": "pending",
-      "stories_enabled": ["US-005"],
-      "acceptance_criteria_addressed": ["AC-024", "AC-025"],
+      "stories_enabled": [
+        "US-005"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-024",
+        "AC-025"
+      ],
       "completion_criteria": [
         "Integration test: `afk --help` and `afk -h` print text to stdout that lists the positional prompt, `--prompt-file`, `--cwd`, `--max-iterations` (default 10), `--session-timeout` (seconds), `--model`, `--reasoning-effort`, `--help`, and every exit code with its meaning. Both exit 0 with zero Codex launches.",
         "Integration test: `afk --help --max-iterations abc --prompt-file missing.txt \"x\"` with non-blank piped stdin still prints help and exits 0 with zero launches.",
@@ -185,14 +278,26 @@
       "constraints": [
         "Do not add options beyond those defined in the specification."
       ],
-      "dependencies": ["TASK-006", "TASK-007", "TASK-008"]
+      "dependencies": [
+        "TASK-006",
+        "TASK-007",
+        "TASK-008"
+      ]
     },
     {
       "id": "TASK-010",
       "objective": "Make run progress and every final status consistently identifiable in the terminal, and confirm the harness leaves no persistent logs or run history across all stop reasons.",
       "status": "pending",
-      "stories_enabled": ["US-007", "US-006"],
-      "acceptance_criteria_addressed": ["AC-028", "AC-029", "AC-030", "AC-026"],
+      "stories_enabled": [
+        "US-007",
+        "US-006"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-028",
+        "AC-029",
+        "AC-030",
+        "AC-026"
+      ],
       "completion_criteria": [
         "Integration test: in a multi-iteration run, each session start is announced with its iteration number and the configured limit, and each execution-error retry is announced distinctly from a normal iteration start.",
         "A table-driven integration test covers each stop reason: complete, blocked, execution error (launch failure, exit status, missing response, invalid response), iteration limit, timeout, and interruption. For each, it asserts the distinguishing final-status text (blocker_text, error kind and exit status, configured limit, configured timeout seconds) and the mapped exit code.",
@@ -204,7 +309,9 @@
         "Harness status lines go to stderr. Codex activity is passed through unmodified.",
         "No log files, run-history directories, resume databases, or persisted settings may be introduced."
       ],
-      "dependencies": ["TASK-009"]
+      "dependencies": [
+        "TASK-009"
+      ]
     }
   ]
 }
