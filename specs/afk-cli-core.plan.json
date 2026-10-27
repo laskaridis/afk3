@@ -46,7 +46,7 @@
     {
       "id": "TASK-002",
       "objective": "Implement strict validation of Codex's final message against the code skill's response protocol, producing either a typed outcome or a descriptive contract violation.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-002"
       ],
