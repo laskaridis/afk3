@@ -71,7 +71,7 @@
     {
       "id": "TASK-003",
       "objective": "Run successive fresh Codex sessions in the same workspace, acting on each valid outcome (repeat, complete, blocked, fail) and enforcing the session budget set by `--max-iterations` (default 10).",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-002",
         "US-003",

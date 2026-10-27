@@ -1,38 +1,47 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
-import { Command, CommanderError } from "commander";
-import { buildSessionPrompt, parseFinalResponse } from "./protocol.js";
+import { Command, CommanderError, InvalidArgumentError } from "commander";
+import { buildSessionPrompt } from "./protocol.js";
+import { EXIT_CODES, exitCodeFor, formatFinalStatus } from "./reporter.js";
+import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
 import { runSession } from "./session.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
+
+function parseMaxIterations(value: string): number {
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new InvalidArgumentError("must be a positive integer.");
+  }
+  return Number(value);
+}
 
 async function main(argv: string[]): Promise<number> {
   const program = new Command()
     .name("afk")
     .version(version)
     .argument("<prompt>", "feature instructions")
+    .option("--max-iterations <count>", "maximum number of Codex sessions to launch", parseMaxIterations, DEFAULT_MAX_ITERATIONS)
     .exitOverride();
   try {
     program.parse(argv);
   } catch (error) {
-    if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : 2;
+    if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : EXIT_CODES.inputError;
     throw error;
   }
   const [prompt] = program.args as [string];
+  const { maxIterations } = program.opts<{ maxIterations: number }>();
 
-  process.stderr.write("[afk] iteration 1\n");
-  const result = await runSession({ prompt: buildSessionPrompt(prompt), cwd: process.cwd() });
-
-  if (result.kind === "exited" && result.exitCode === 0 && result.finalMessage !== undefined) {
-    const response = parseFinalResponse(result.finalMessage);
-    if ("outcome" in response && response.outcome === "complete") {
-      process.stderr.write("[afk] feature complete\n");
-      return 0;
-    }
-  }
-  process.stderr.write("[afk] execution error\n");
-  return 3;
+  const result = await runAfk(
+    { launchPrompt: prompt, maxIterations },
+    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd() }),
+    {
+      iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
+      failureSurfaced: (summary) => process.stderr.write(`[afk] failure reported: ${summary}\n`),
+    },
+  );
+  process.stderr.write(`[afk] ${formatFinalStatus(result)}\n`);
+  return exitCodeFor(result);
 }
 
 main(process.argv).then(
