@@ -130,3 +130,18 @@ describe("runAfk interruption", () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe("timed-out session", () => {
+  it("stops the run as a timeout without retrying", async () => {
+    let launches = 0;
+    const result = await runAfk(
+      { launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 },
+      async () => {
+        launches++;
+        return { kind: "timed-out" };
+      },
+    );
+    expect(result).toEqual({ kind: "timeout", seconds: 7 });
+    expect(launches).toBe(1);
+  });
+});

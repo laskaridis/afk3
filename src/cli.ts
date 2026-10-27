@@ -16,12 +16,20 @@ function parseMaxIterations(value: string): number {
   return Number(value);
 }
 
+function parseSessionTimeout(value: string): number {
+  if (!/^\d+(\.\d+)?$/.test(value) || Number(value) <= 0) {
+    throw new InvalidArgumentError("must be a positive number of seconds.");
+  }
+  return Number(value);
+}
+
 async function main(argv: string[]): Promise<number> {
   const program = new Command()
     .name("afk")
     .version(version)
     .argument("<prompt>", "feature instructions")
     .option("--max-iterations <count>", "maximum number of Codex sessions to launch", parseMaxIterations, DEFAULT_MAX_ITERATIONS)
+    .option("--session-timeout <seconds>", "stop the run if a single session exceeds this many seconds", parseSessionTimeout)
     .exitOverride();
   try {
     program.parse(argv);
@@ -30,7 +38,7 @@ async function main(argv: string[]): Promise<number> {
     throw error;
   }
   const [prompt] = program.args as [string];
-  const { maxIterations } = program.opts<{ maxIterations: number }>();
+  const { maxIterations, sessionTimeout } = program.opts<{ maxIterations: number; sessionTimeout?: number }>();
 
   const interruption = new AbortController();
   // Repeated SIGINTs are absorbed: the first one already stops the run.
@@ -38,8 +46,8 @@ async function main(argv: string[]): Promise<number> {
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
-    { launchPrompt: prompt, maxIterations },
-    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd(), signal: interruption.signal, graceMs }),
+    { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
+    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd(), signal: interruption.signal, graceMs, timeoutSeconds: sessionTimeout }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
       retryStarted: (iteration, limit, reason) =>

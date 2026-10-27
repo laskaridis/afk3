@@ -172,7 +172,7 @@
     {
       "id": "TASK-006",
       "objective": "Add an optional per-session `--session-timeout <seconds>` that, on expiry, terminates the active session and stops the whole run as a timeout without retrying.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-005",
         "US-007"

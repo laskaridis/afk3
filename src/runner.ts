@@ -10,6 +10,7 @@ export type RunResult =
   | { kind: "blocked"; blockerText: string }
   | { kind: "execution-error"; errorKind: ExecutionErrorKind; detail: string }
   | { kind: "iteration-limit"; limit: number }
+  | { kind: "timeout"; seconds: number }
   | { kind: "interrupted" };
 
 export type SessionRunner = (launchPrompt: string) => Promise<SessionResult>;
@@ -23,6 +24,8 @@ export interface RunReporter {
 export interface RunConfig {
   launchPrompt: string;
   maxIterations: number;
+  /** Per-session timeout; only used to report a timeout. */
+  sessionTimeoutSeconds?: number;
 }
 
 /** Run fresh sessions until a terminal outcome, deciding only from session results. */
@@ -38,6 +41,7 @@ export async function runAfk(
     const session = await runSession(config.launchPrompt);
 
     if (session.kind === "interrupted") return { kind: "interrupted" };
+    if (session.kind === "timed-out") return { kind: "timeout", seconds: config.sessionTimeoutSeconds ?? 0 };
 
     const classified = classify(session);
     if ("kind" in classified) {
@@ -69,7 +73,7 @@ export async function runAfk(
 type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 
 /** Classify a session as an execution error or the valid outcome it reported. */
-function classify(session: Exclude<SessionResult, { kind: "interrupted" }>): ExecutionError | AgentOutcome {
+function classify(session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
     return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
   }
