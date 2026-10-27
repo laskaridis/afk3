@@ -10,6 +10,23 @@ export const EXIT_CODES = {
   interrupted: 130,
 } as const;
 
+const EXIT_CODE_MEANINGS: Record<keyof typeof EXIT_CODES, string> = {
+  complete: "the feature was reported complete",
+  blocked: "the code skill reported a blocker",
+  inputError: "invalid options or prompt input; no session was launched",
+  executionError: "Codex failed to execute twice in a row",
+  iterationLimit: "the iteration limit was reached without reported completion",
+  timeout: "a session exceeded --session-timeout",
+  interrupted: "interrupted by the user (Ctrl+C)",
+};
+
+export function formatExitCodeHelp(): string {
+  const lines = (Object.keys(EXIT_CODES) as (keyof typeof EXIT_CODES)[]).map(
+    (name) => `  ${String(EXIT_CODES[name]).padEnd(4)}${EXIT_CODE_MEANINGS[name]}`,
+  );
+  return `\nExit codes:\n${lines.join("\n")}\n`;
+}
+
 export function exitCodeFor(result: RunResult): number {
   switch (result.kind) {
     case "complete":

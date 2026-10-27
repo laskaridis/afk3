@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
-import { EXIT_CODES, exitCodeFor, formatFinalStatus } from "./reporter.js";
+import { EXIT_CODES, exitCodeFor, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
 import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
 import { runSession } from "./session.js";
 
@@ -61,9 +61,16 @@ async function main(argv: string[]): Promise<number> {
     .option("--session-timeout <seconds>", "stop the run if a single session exceeds this many seconds", parseSessionTimeout)
     .option("--model <name>", "model for every session (default: your Codex configuration)", parseNonEmpty)
     .option("--reasoning-effort <level>", "reasoning effort for every session (default: your Codex configuration)", parseNonEmpty)
+    .addHelpText("after", formatExitCodeHelp())
     .exitOverride();
   try {
-    program.parse(argv);
+    // Help takes precedence over validation of every other option.
+    const optionArgs = argv.slice(2);
+    const endOfOptions = optionArgs.indexOf("--");
+    const helpRequested = (endOfOptions === -1 ? optionArgs : optionArgs.slice(0, endOfOptions)).some(
+      (arg) => arg === "--help" || arg === "-h",
+    );
+    program.parse(helpRequested ? [...argv.slice(0, 2), "--help"] : argv);
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : EXIT_CODES.inputError;
     throw error;
