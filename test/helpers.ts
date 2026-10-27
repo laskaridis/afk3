@@ -12,6 +12,7 @@ export type Step =
   | { stderr: string }
   | { sleepMs: number }
   | { finalMessage: string }
+  | { writeFile: string }
   | { exit: number };
 
 export interface CodexInvocation {
@@ -19,6 +20,7 @@ export interface CodexInvocation {
   cwd: string;
   stdin: string;
   outputPath?: string;
+  files: string[];
 }
 
 export interface AfkRun {

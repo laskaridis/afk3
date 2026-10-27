@@ -73,3 +73,48 @@ describe("runAfk", () => {
     expect(await runAfk(config, scripted(BLOCKED).runner)).toEqual({ kind: "blocked", blockerText: "need API key" });
   });
 });
+
+describe("runAfk execution-error retry", () => {
+  const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null };
+  const cfg = { launchPrompt: "p", maxIterations: 10 };
+
+  it("a valid response resets the allowance: error, repeat, error, complete succeeds", async () => {
+    const { runner, prompts } = scripted(ERROR, REPEAT, ERROR, COMPLETE);
+    expect(await runAfk(cfg, runner)).toEqual({ kind: "complete" });
+    expect(prompts).toHaveLength(4);
+  });
+
+  it("fail resets the allowance and is not an error: error, fail, error, error stops after four launches", async () => {
+    const { runner, prompts } = scripted(ERROR, FAIL, ERROR, ERROR);
+    expect(await runAfk(cfg, runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: "exit status 1",
+    });
+    expect(prompts).toHaveLength(4);
+  });
+
+  it("two consecutive errors stop after two launches, identifying the last error kind", async () => {
+    const { runner, prompts } = scripted(ERROR, { kind: "launch-failed", error: new Error("ENOENT") });
+    expect(await runAfk(cfg, runner)).toMatchObject({ kind: "execution-error", errorKind: "launch-failed" });
+    expect(prompts).toHaveLength(2);
+  });
+
+  it("announces a retry distinctly and consumes an iteration", async () => {
+    const { runner } = scripted(ERROR, COMPLETE);
+    const events: string[] = [];
+    await runAfk(cfg, runner, {
+      iterationStarted: (i, n) => events.push(`start ${i}/${n}`),
+      retryStarted: (i, n, reason) => events.push(`retry ${i}/${n} ${reason}`),
+    });
+    expect(events).toEqual(["start 1/10", "retry 2/10 exit status 1"]);
+  });
+
+  it("an error on the last allowed iteration yields iteration-limit, not a retry", async () => {
+    const { runner, prompts } = scripted(ERROR);
+    expect(await runAfk({ ...cfg, maxIterations: 1 }, runner)).toEqual({ kind: "iteration-limit", limit: 1 });
+    expect(prompts).toHaveLength(1);
+    const two = scripted(REPEAT, ERROR);
+    expect(await runAfk({ ...cfg, maxIterations: 2 }, two.runner)).toEqual({ kind: "iteration-limit", limit: 2 });
+  });
+});

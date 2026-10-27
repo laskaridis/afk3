@@ -37,6 +37,8 @@ async function main(argv: string[]): Promise<number> {
     (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd() }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
+      retryStarted: (iteration, limit, reason) =>
+        process.stderr.write(`[afk] retrying after execution error (${reason}): iteration ${iteration}/${limit}\n`),
       failureSurfaced: (summary) => process.stderr.write(`[afk] failure reported: ${summary}\n`),
     },
   );
