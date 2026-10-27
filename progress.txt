@@ -182,3 +182,23 @@
   - Delegated review skipped; change is small and fully covered by tests.
 - Follow up needed: none
 ---
+
+## 2026-10-27 TASK-008
+- Task id: TASK-008
+- What was implemented:
+  - `--model <name>` and `--reasoning-effort <level>` options (non-empty validated via commander -> exit 2 before any launch). runSession appends `-m <model>` and `-c model_reasoning_effort="<level>"` only when given, so every launch (including the retry) gets them; otherwise nothing is added.
+- Files changed:
+  - src/cli.ts, src/session.ts, test/model-overrides.test.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm test`: 10 files, 104 tests pass; `npm run typecheck` exits 0.
+  - Default argv: test asserts no -m/--model/-c/model_reasoning_effort.
+  - Overrides: test with crash then complete asserts both launches carry `-m gpt-x` and `-c model_reasoning_effort="high"`, exactly one of each.
+  - Empty values: tests assert exit 2 and zero invocations for each option.
+  - Config untouched: test with fake CODEX_HOME config.toml asserts byte-identical content after a run with overrides.
+  - Covered ACs: AC-015, AC-019.
+- Learnings for future iterations:
+  - New per-session Codex args belong in SessionOptions in src/session.ts; cli.ts passes them through the runSession closure.
+- Scope deviations:
+  - None. Tests written alongside the implementation (no separate RED run recorded).
+- Follow up needed: none.
+---
