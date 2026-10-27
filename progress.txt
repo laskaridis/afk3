@@ -108,3 +108,27 @@
   - Tests were written together with the implementation (no separate observed RED run). No independent subagent review run.
 - Follow up needed: none.
 ---
+
+## 2026-10-27 TASK-005
+- Task id: TASK-005
+- What was implemented:
+  - session.ts: `runSession` accepts `signal` (AbortSignal) and `graceMs`. On abort it forwards SIGINT to the child, escalates to SIGTERM after graceMs and SIGKILL after 2*graceMs, and resolves `{kind:"interrupted"}` only after the child's `close`. An already-aborted signal returns `interrupted` without launching. Child is never detached.
+  - runner.ts: `interrupted` session result -> `{kind:"interrupted"}` immediately (no retry, no further iteration).
+  - reporter.ts: exit code 130, status "interrupted by user".
+  - cli.ts: SIGINT handler aborts an AbortController (repeat SIGINTs are no-ops); `AFK_TERMINATION_GRACE_MS` env (undocumented test knob) overrides the 5s default grace.
+  - Fake codex: `ignoreSignals` step, records SIGINT/SIGTERM to `<record>.signals`, default SIGINT exits 130, record includes pid.
+- Files changed:
+  - src/session.ts, src/runner.ts, src/reporter.ts, src/cli.ts, test/fixtures/fake-codex.mjs, test/helpers.ts, test/interrupt.test.ts, test/runner.test.ts, specs/afk-cli-core.plan.json (status), progress.txt
+- Verification:
+  - `npm test` (build + vitest): 6 files, 69 tests pass; `npm run typecheck` exit 0.
+  - SIGINT test: fake logs SIGINT, afk exit 130, stderr "interrupted by user", 1 invocation.
+  - Ignoring fake: SIGINT+SIGTERM logged, exit 130, fake pid not running after afk exit (also covers "child gone when afk exit observed").
+  - Second SIGINT mid-termination and non-zero/no-message exit: still 130, 1 invocation, no "retrying".
+  - Workspace file written before interruption still exists.
+  - Covered ACs: AC-025 (interrupt), AC-027, AC-029 (interrupted status).
+- Learnings for future iterations:
+  - Session results now include `interrupted`; classify() takes the non-interrupted subset. Timeout (TASK-006) can reuse the same abort/escalation path in session.ts.
+- Scope deviations:
+  - Tests written together with implementation (no separate observed RED run). No independent subagent review run.
+- Follow up needed: none.
+---

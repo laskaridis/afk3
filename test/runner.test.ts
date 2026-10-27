@@ -118,3 +118,15 @@ describe("runAfk execution-error retry", () => {
     expect(await runAfk({ ...cfg, maxIterations: 2 }, two.runner)).toEqual({ kind: "iteration-limit", limit: 2 });
   });
 });
+
+describe("runAfk interruption", () => {
+  it("stops with interrupted without retrying or iterating", async () => {
+    const calls: string[] = [];
+    const result = await runAfk({ launchPrompt: "p", maxIterations: 5 }, async () => {
+      calls.push("x");
+      return { kind: "interrupted" };
+    });
+    expect(result).toEqual({ kind: "interrupted" });
+    expect(calls).toHaveLength(1);
+  });
+});

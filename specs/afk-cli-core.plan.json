@@ -144,7 +144,7 @@
     {
       "id": "TASK-005",
       "objective": "Make Ctrl+C forward the interruption to the active Codex process, wait for it to terminate, prevent further iterations or retries, and exit as interrupted.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-006",
         "US-007"

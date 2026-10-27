@@ -6,6 +6,7 @@ export const EXIT_CODES = {
   inputError: 2,
   executionError: 3,
   iterationLimit: 4,
+  interrupted: 130,
 } as const;
 
 export function exitCodeFor(result: RunResult): number {
@@ -18,6 +19,8 @@ export function exitCodeFor(result: RunResult): number {
       return EXIT_CODES.executionError;
     case "iteration-limit":
       return EXIT_CODES.iterationLimit;
+    case "interrupted":
+      return EXIT_CODES.interrupted;
   }
 }
 
@@ -31,5 +34,7 @@ export function formatFinalStatus(result: RunResult): string {
       return `execution error (${result.errorKind}): ${result.detail}`;
     case "iteration-limit":
       return `iteration limit of ${result.limit} reached without reported completion`;
+    case "interrupted":
+      return "interrupted by user";
   }
 }

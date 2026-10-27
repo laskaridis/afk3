@@ -32,9 +32,14 @@ async function main(argv: string[]): Promise<number> {
   const [prompt] = program.args as [string];
   const { maxIterations } = program.opts<{ maxIterations: number }>();
 
+  const interruption = new AbortController();
+  // Repeated SIGINTs are absorbed: the first one already stops the run.
+  process.on("SIGINT", () => interruption.abort());
+
+  const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
     { launchPrompt: prompt, maxIterations },
-    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd() }),
+    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd: process.cwd(), signal: interruption.signal, graceMs }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
       retryStarted: (iteration, limit, reason) =>
