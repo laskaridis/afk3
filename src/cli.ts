@@ -25,7 +25,8 @@ async function main(argv: string[]): Promise<number> {
   const result = await runSession({ prompt: buildSessionPrompt(prompt), cwd: process.cwd() });
 
   if (result.kind === "exited" && result.exitCode === 0 && result.finalMessage !== undefined) {
-    if (parseFinalResponse(result.finalMessage)?.outcome === "complete") {
+    const response = parseFinalResponse(result.finalMessage);
+    if ("outcome" in response && response.outcome === "complete") {
       process.stderr.write("[afk] feature complete\n");
       return 0;
     }
