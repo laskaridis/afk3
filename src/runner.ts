@@ -9,7 +9,8 @@ export type RunResult =
   | { kind: "complete" }
   | { kind: "blocked"; blockerText: string }
   | { kind: "execution-error"; errorKind: ExecutionErrorKind; detail: string }
-  | { kind: "iteration-limit"; limit: number };
+  | { kind: "iteration-limit"; limit: number }
+  | { kind: "interrupted" };
 
 export type SessionRunner = (launchPrompt: string) => Promise<SessionResult>;
 
@@ -35,6 +36,8 @@ export async function runAfk(
     if (previousError === undefined) reporter.iterationStarted?.(iteration, config.maxIterations);
     else reporter.retryStarted?.(iteration, config.maxIterations, previousError);
     const session = await runSession(config.launchPrompt);
+
+    if (session.kind === "interrupted") return { kind: "interrupted" };
 
     const classified = classify(session);
     if ("kind" in classified) {
@@ -66,7 +69,7 @@ export async function runAfk(
 type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 
 /** Classify a session as an execution error or the valid outcome it reported. */
-function classify(session: SessionResult): ExecutionError | AgentOutcome {
+function classify(session: Exclude<SessionResult, { kind: "interrupted" }>): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
     return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
   }

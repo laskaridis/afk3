@@ -13,6 +13,7 @@ export type Step =
   | { sleepMs: number }
   | { finalMessage: string }
   | { writeFile: string }
+  | { ignoreSignals: true }
   | { exit: number };
 
 export interface CodexInvocation {
@@ -20,6 +21,7 @@ export interface CodexInvocation {
   cwd: string;
   stdin: string;
   outputPath?: string;
+  pid: number;
   files: string[];
 }
 
@@ -62,6 +64,11 @@ export function createFakeCodexEnvironment(steps: Step[] | { sessions: Step[][] 
       const all = this.invocations();
       if (all.length !== 1) throw new Error(`expected 1 codex invocation, got ${all.length}`);
       return all[0]!;
+    },
+    signals(): string[] {
+      return existsSync(`${recordPath}.signals`)
+        ? readFileSync(`${recordPath}.signals`, "utf8").split("\n").filter(Boolean)
+        : [];
     },
     fileExists: (path: string) => existsSync(path),
   };

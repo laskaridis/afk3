@@ -6,7 +6,9 @@
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
 //     | { "finalMessage": "text" }  (written to the -o path)
 //     | { "writeFile": "name" }  (created in the working directory)
+//     | { "ignoreSignals": true }  (SIGINT/SIGTERM are recorded but no longer end the process)
 //     | { "exit": code }
+// SIGINT/SIGTERM are appended to FAKE_CODEX_RECORD + ".signals"; by default SIGINT exits 130.
 // Alternatively { "sessions": [[steps], ...] } scripts one step list per invocation
 // (by invocation order; the last list repeats once exhausted).
 // Every invocation appends a record (argv, cwd, stdin, env) to FAKE_CODEX_RECORD
@@ -36,10 +38,19 @@ const steps = script.sessions
 
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
-  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, files: readdirSync(process.cwd()) }) + "\n",
+  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, pid: process.pid, files: readdirSync(process.cwd()) }) + "\n",
 );
 
+let ignoreSignals = false;
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    appendFileSync(process.env.FAKE_CODEX_RECORD + ".signals", signal + "\n");
+    if (!ignoreSignals) process.exit(130);
+  });
+}
+
 for (const step of steps) {
+  if (step.ignoreSignals) ignoreSignals = true;
   if (step.stdout !== undefined) process.stdout.write(step.stdout);
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
