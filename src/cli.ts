@@ -18,7 +18,11 @@ function parseMaxIterations(value: string): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new InvalidArgumentError("must be a positive integer.");
   }
-  return Number(value);
+  const count = Number(value);
+  if (!Number.isSafeInteger(count)) {
+    throw new InvalidArgumentError(`must be at most ${Number.MAX_SAFE_INTEGER}.`);
+  }
+  return count;
 }
 
 function parseSessionTimeout(value: string): number {
@@ -128,3 +132,4 @@ main(process.argv).then(
     process.exit(2);
   },
 );
+
