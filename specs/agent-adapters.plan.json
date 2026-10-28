@@ -1,0 +1,204 @@
+{
+  "spec_path": "specs/agent-adapters.spec.md",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "objective": "Codex runs through an agent-neutral session runner and a registered Codex adapter, reading the final message from piped stdout with no temporary files and no live agent output in the terminal.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-003",
+        "US-005"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-010",
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-019",
+        "AC-020",
+        "AC-021"
+      ],
+      "completion_criteria": [
+        "An `AgentAdapter` module for Codex exists under src/agents/ and is registered in one registry that exposes the default agent name and the supported names.",
+        "Unit tests show Codex buildArgs yields exec, automatic approval review, the workspace, and -m / reasoning-effort overrides only when supplied, with no output-file option; unsupported settings are silently ignored.",
+        "Unit tests show Codex extractFinalMessage returns the stdout text, and reports missing for empty or whitespace-only stdout.",
+        "An integration test using a fake codex that writes the final message to stdout shows the run completes, the prompt arrives on the fake's stdin, and the terminal shows only [afk] lines on stderr and nothing on stdout.",
+        "An integration test shows no files are left in the temp directory or workspace and no output-last-message argument is passed.",
+        "The shared session runner has no Codex-specific code; the fake codex fixture and test helpers no longer use -o."
+      ],
+      "constraints": [
+        "The session runner must never select a full-access mode and must keep the existing timeout and signal-escalation behavior.",
+        "Adapters stay pure: no state, temp files, or cleanup.",
+        "Codex currently receives the prompt as an argument with stdin ignored; per AC-013 and AC-027 it must now read the prompt from stdin (via the - prompt argument)."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-002",
+      "objective": "Users select the agent with --agent, defaulting to codex, with validation and help driven by the registry.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-001",
+        "US-005"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "AC-022"
+      ],
+      "completion_criteria": [
+        "Without --agent, every session (including retries) launches the fake codex.",
+        "--agent codex is accepted; --agent with an unsupported or empty value prints an option error listing the registry names, exits 2, and launches no session.",
+        "--help and -h document --agent <name>, list the registry names, and state the default codex, and still take precedence over an invalid --agent value.",
+        "--model and --reasoning-effort values reach the adapter unchanged; with neither, no overrides are passed.",
+        "A unit test shows the names accepted by validation and listed in errors and help are exactly the registry keys, with no separate hard-coded list."
+      ],
+      "constraints": [
+        "The CLI flag stays --reasoning-effort; only the internal field is named effort."
+      ],
+      "dependencies": [
+        "TASK-001"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "objective": "A Claude Code adapter drives sessions through print-mode JSON output and its results are classified into the existing execution error kinds.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-001",
+        "US-002",
+        "US-005"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-002",
+        "AC-006",
+        "AC-007",
+        "AC-008",
+        "AC-009",
+        "AC-021"
+      ],
+      "completion_criteria": [
+        "With --agent claude, every session in the run, including retries, launches the fake claude and it appears in the --agent error list and help.",
+        "A Claude adapter is registered; unit tests show buildArgs selects print mode, JSON output, and the auto permission mode, adds --model / --effort only when supplied, and never contains a full-access permission mode.",
+        "Unit tests of extractFinalMessage cover: valid result string, invalid JSON, empty stdout, missing or empty result, and is_error true with a subtype.",
+        "Integration tests with a fake claude executable show each row of the AC-008 table maps to the specified execution error, including is_error true on exit 0 and on a non-zero exit with the subtype in the reported reason, and a non-zero exit without structured result reporting only the exit code or signal.",
+        "A fake claude run returning a valid protocol result in the JSON result field leads to the same outcomes as Codex (complete, blocked, repeat, fail).",
+        "Timeout and Ctrl+C against the fake claude end the run with the same messages, no retry, and the same exit codes as Codex."
+      ],
+      "constraints": [
+        "The runner must not parse agent-specific output; the structured error must flow through the adapter's FinalMessageResult (see design)."
+      ],
+      "dependencies": [
+        "TASK-002"
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "objective": "Run output is agent-neutral and execution errors are diagnosable from the last 20 lines of the agent's captured stderr.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-003",
+        "US-004"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-011",
+        "AC-012",
+        "AC-016",
+        "AC-017",
+        "AC-018"
+      ],
+      "completion_criteria": [
+        "Iteration lines read `[afk] Iteration <n>/<max>: starting agent session`; retry, task-failure, execution-error, and final status lines name no specific agent and use the AC-011 wording, with execution errors printed as `[afk] Execution error: …` and blocked runs as `[afk] Run blocked: …`.",
+        "Agent stderr is never shown live; a session with an execution error and stderr output prints at most its last 20 stderr lines in original order directly after the execution-error line, including for an error that leads to a retry.",
+        "No stderr lines are printed when stderr is empty, or when the session ended with a valid protocol response, a timeout, or an interruption.",
+        "The exit-code help text no longer names Codex.",
+        "Existing tests are updated to the new wording."
+      ],
+      "constraints": [
+        "Wording and tail printing live in shared code (reporter/cli), not in adapters."
+      ],
+      "dependencies": [
+        "TASK-001"
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "objective": "One shared harness behavior suite runs against every registered adapter using a fake executable per agent, proving identical behavior across agents.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-005",
+        "US-003"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-023",
+        "AC-012",
+        "AC-009"
+      ],
+      "completion_criteria": [
+        "The suite iterates over the registry and covers protocol outcomes, retry policy, iteration limit, timeout, interruption, stderr tail, and output wording for each adapter.",
+        "For the same scripted sequence of session results, the Codex and Claude runs produce identical [afk] stderr lines, final status, and exit code.",
+        "The Codex fixture emits its final message on stdout and the Claude fixture emits the JSON result object on stdout; no real agent installation is required.",
+        "Per-adapter unit tests of buildArgs and extractFinalMessage exist for every registered adapter.",
+        "`pnpm test` passes."
+      ],
+      "constraints": [
+        "Adding a new registered adapter should require only a fixture and adapter unit tests, not changes to the shared suite's cases."
+      ],
+      "dependencies": [
+        "TASK-003",
+        "TASK-004"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "objective": "Help text, README, and package metadata describe afk as agent-neutral and document each supported agent's prerequisites.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-006"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-024",
+        "AC-025",
+        "AC-026"
+      ],
+      "completion_criteria": [
+        "A help test shows the description and option texts say \"the coding agent\" instead of Codex and that --model and --reasoning-effort state the value is passed to the agent unchanged.",
+        "A README exists that describes afk as agent-neutral, documents --agent, and has a \"Supported agents\" section with prerequisites, launch mode, and honored harness settings for Codex and Claude Code, as listed in AC-025.",
+        "package.json description does not name Codex as the only agent."
+      ],
+      "constraints": [
+        "No README exists yet; create one covering the existing CLI surface at a level sufficient to host the new sections."
+      ],
+      "dependencies": [
+        "TASK-003",
+        "TASK-004"
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "objective": "Manual smoke checks against the real Codex and Claude Code CLIs are recorded as evidence, with any mismatch captured as follow-up tasks.",
+      "status": "pending",
+      "stories_enabled": [
+        "US-007"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-027"
+      ],
+      "completion_criteria": [
+        "Recorded evidence lists the codex and claude CLI versions used.",
+        "Evidence shows `codex exec --approve-for-me -o <file> -` with piped stdout prints the same final message to stdout as to the file, apart from surrounding whitespace.",
+        "Evidence shows `afk --agent codex` and `afk --agent claude` each run once in a scratch workspace with a prompt naming no specification or task list, ending in `[afk] Run blocked: …` and exit code 1.",
+        "No source files are changed by this task; any mismatch is added to the plan as a follow-up task."
+      ],
+      "constraints": [
+        "Manual check, not part of the automated suite. Requires installed and authenticated CLIs; if unavailable, stop and ask the user rather than skipping."
+      ],
+      "dependencies": [
+        "TASK-005",
+        "TASK-006"
+      ]
+    }
+  ]
+}
