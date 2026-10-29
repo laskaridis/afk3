@@ -45,3 +45,24 @@
   - none (small change; no subagent review)
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:03:55.861Z
+- TASK-003
+- What was implemented:
+  - Claude adapter (src/agents/claude.ts) registered in the registry: args -p --output-format json --permission-mode auto, --model/--effort only when supplied; extractFinalMessage parses the JSON result (missing/invalid/agentError/message).
+  - FinalMessageResult gained the agentError variant. Runner classify: signal -> exit-status; agentError -> exit-status (detail includes subtype, on exit 0 or non-zero); other non-zero exit -> plain exit status; exit 0 -> message/missing/invalid as before. Runner remains agent-agnostic.
+  - Test fixture: fake-claude.mjs wraps the shared fake (FAKE_AGENT_FORMAT=claude makes finalMessage emit the Claude JSON result; new raw { json } step). helpers.createFakeCodexEnvironment takes an optional agent argument.
+- Files changed:
+  - src/agents/{claude.ts (new),types.ts,registry.ts}, src/runner.ts
+  - test/agents/claude.test.ts (new), test/claude-agent.test.ts (new), test/fixtures/fake-claude.mjs (new), test/fixtures/fake-codex.mjs, test/helpers.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 16 files, 166 tests passed.
+  - Criteria: --agent claude launches fake claude for all sessions incl. retries and appears in help/error list; buildArgs/extractFinalMessage unit tests cover all listed cases and no bypassPermissions; every AC-008 row has an integration test (is_error on exit 0 and non-zero with subtype, non-zero without structured result reports only exit code); protocol outcomes complete/blocked/repeat/fail match Codex; timeout -> exit 5 and Ctrl+C -> exit 130 with one invocation.
+- Learnings for future iterations:
+  - Use createFakeCodexEnvironment(steps, "claude") for the Claude fake; its finalMessage step emits the JSON result wrapper. TASK-005 should parameterize the shared suite over this.
+  - Execution-error detail wording for agentError lives in runner.ts classify.
+- Scope deviations:
+  - No subagent review (change is small and fully covered by table-driven tests).
+- Follow up needed: none
+---

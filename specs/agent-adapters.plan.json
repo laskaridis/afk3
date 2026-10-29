@@ -65,7 +65,7 @@
     {
       "id": "TASK-003",
       "objective": "A Claude Code adapter drives sessions through print-mode JSON output and its results are classified into the existing execution error kinds.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-001",
         "US-002",

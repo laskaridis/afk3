@@ -82,11 +82,21 @@ function classify(
   if (session.kind === "launch-failed") {
     return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
   }
-  if (session.exitCode !== 0) {
-    const detail = session.signal ? `signal ${session.signal}` : `exit status ${session.exitCode}`;
-    return { kind: "execution-error", errorKind: "exit-status", detail };
+  if (session.signal) {
+    return { kind: "execution-error", errorKind: "exit-status", detail: `signal ${session.signal}` };
   }
   const extracted = adapter.extractFinalMessage(session.stdout);
+  if ("agentError" in extracted) {
+    const detail =
+      session.exitCode === 0
+        ? `agent reported an error (${extracted.detail})`
+        : `exit status ${session.exitCode} (agent reported an error: ${extracted.detail})`;
+    return { kind: "execution-error", errorKind: "exit-status", detail };
+  }
+  // A message from a failed process is never trusted.
+  if (session.exitCode !== 0) {
+    return { kind: "execution-error", errorKind: "exit-status", detail: `exit status ${session.exitCode}` };
+  }
   if ("invalid" in extracted) {
     return { kind: "execution-error", errorKind: "invalid-response", detail: extracted.reason };
   }

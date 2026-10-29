@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Fake `codex` executable for integration tests. Never talks to a real Codex.
+// Fake `codex` executable (also the base of fake-claude.mjs, which sets FAKE_AGENT_FORMAT=claude) for integration tests. Never talks to a real Codex.
 //
 // Behavior is scripted per test through the JSON file named by FAKE_CODEX_SCRIPT:
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
 //     | { "finalMessage": "text" }  (written to stdout, as codex does for a piped stdout)
+//     | { "json": value }  (a raw JSON line on stdout)
 //     | { "writeFile": "name" }  (created in the working directory)
 //     | { "ignoreSignals": true }  (SIGINT/SIGTERM are recorded but no longer end the process)
 //     | { "exit": code }
@@ -51,6 +52,13 @@ for (const step of steps) {
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
-  if (step.finalMessage !== undefined) process.stdout.write(step.finalMessage + "\n");
+  if (step.finalMessage !== undefined) {
+    process.stdout.write(
+      process.env.FAKE_AGENT_FORMAT === "claude"
+        ? JSON.stringify({ type: "result", subtype: "success", is_error: false, result: step.finalMessage }) + "\n"
+        : step.finalMessage + "\n",
+    );
+  }
+  if (step.json !== undefined) process.stdout.write(JSON.stringify(step.json) + "\n");
   if (step.exit !== undefined) process.exit(step.exit);
 }

@@ -1,4 +1,9 @@
-export type FinalMessageResult = { message: string } | { missing: true } | { invalid: true; reason: string };
+export type FinalMessageResult =
+  | { message: string }
+  | { missing: true }
+  | { invalid: true; reason: string }
+  /** The agent itself reported a failure in its structured output. */
+  | { agentError: true; detail: string };
 
 export interface AgentInput {
   cwd: string;
