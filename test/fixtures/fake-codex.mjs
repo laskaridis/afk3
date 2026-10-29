@@ -4,7 +4,9 @@
 // Behavior is scripted per test through the JSON file named by FAKE_CODEX_SCRIPT:
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
-//     | { "finalMessage": "text" }  (written to stdout, as codex does for a piped stdout)
+//     | { "finalMessage": "text" }  (written to stdout, as codex does for a piped stdout, wrapped in the
+//       <afk-harness-result> block using the nonce found in the prompt on stdin)
+//     | { "rawFinalMessage": "text" }  (like finalMessage but not wrapped, for invalid-response cases)
 //     | { "json": value }  (a raw JSON line on stdout)
 //     | { "writeFile": "name" }  (created in the working directory)
 //     | { "ignoreSignals": true }  (SIGINT/SIGTERM are recorded but no longer end the process)
@@ -38,6 +40,17 @@ appendFileSync(
   JSON.stringify({ argv, cwd: process.cwd(), stdin, pid: process.pid, files: readdirSync(process.cwd()) }) + "\n",
 );
 
+// The harness prompt shows the session nonce in its example result block.
+const nonce = /<afk-harness-result nonce="([^"]+)">/.exec(stdin)?.[1];
+const wrap = (text) =>
+  nonce === undefined ? text : `<afk-harness-result nonce="${nonce}">\n${text}\n</afk-harness-result>`;
+const emitFinal = (message) =>
+  process.stdout.write(
+    process.env.FAKE_AGENT_FORMAT === "claude"
+      ? JSON.stringify({ type: "result", subtype: "success", is_error: false, result: message }) + "\n"
+      : message + "\n",
+  );
+
 let ignoreSignals = false;
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
@@ -52,13 +65,8 @@ for (const step of steps) {
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
-  if (step.finalMessage !== undefined) {
-    process.stdout.write(
-      process.env.FAKE_AGENT_FORMAT === "claude"
-        ? JSON.stringify({ type: "result", subtype: "success", is_error: false, result: step.finalMessage }) + "\n"
-        : step.finalMessage + "\n",
-    );
-  }
+  if (step.finalMessage !== undefined) emitFinal(wrap(step.finalMessage));
+  if (step.rawFinalMessage !== undefined) emitFinal(step.rawFinalMessage);
   if (step.json !== undefined) process.stdout.write(JSON.stringify(step.json) + "\n");
   if (step.exit !== undefined) process.exit(step.exit);
 }

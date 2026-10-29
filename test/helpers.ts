@@ -12,10 +12,14 @@ export type Step =
   | { stderr: string }
   | { sleepMs: number }
   | { finalMessage: string }
+  | { rawFinalMessage: string }
   | { json: unknown }
   | { writeFile: string }
   | { ignoreSignals: true }
   | { exit: number };
+
+/** The session prompt with its per-session nonce masked, for comparing prompts across sessions. */
+export const withoutNonce = (prompt: string) => prompt.replaceAll(/nonce[=,] ?[`"]?[0-9a-f]{8}/g, "nonce=<nonce>");
 
 export interface CodexInvocation {
   argv: string[];

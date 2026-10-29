@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const REPEAT = say({ outcome: "repeat" });
@@ -20,7 +20,7 @@ describe("afk run loop", () => {
       expect(argv).not.toContain("resume");
       expect(argv).not.toContain("fork");
       expect(cwd).toBe(fake.workspace);
-      expect(stdin).toBe(invocations[0]!.stdin);
+      expect(withoutNonce(stdin)).toBe(withoutNonce(invocations[0]!.stdin));
     }
     expect(run.stderr).toContain("tests broke");
   });

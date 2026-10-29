@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { AgentAdapter } from "./agents/types.js";
 import { parseFinalResponse, type AgentOutcome } from "./protocol.js";
 import type { SessionResult } from "./session.js";
@@ -14,7 +15,8 @@ export type RunResult =
   | { kind: "timeout"; seconds: number }
   | { kind: "interrupted" };
 
-export type SessionRunner = (launchPrompt: string) => Promise<SessionResult>;
+/** `nonce` is unique per session and must appear in the result block the agent returns. */
+export type SessionRunner = (launchPrompt: string, nonce: string) => Promise<SessionResult>;
 
 export interface RunReporter {
   iterationStarted?(iteration: number, limit: number): void;
@@ -42,12 +44,13 @@ export async function runAfk(
   for (let iteration = 1; iteration <= config.maxIterations; iteration++) {
     if (previousError === undefined) reporter.iterationStarted?.(iteration, config.maxIterations);
     else reporter.retryStarted?.(iteration, config.maxIterations, previousError);
-    const session = await runSession(config.launchPrompt);
+    const nonce = randomBytes(4).toString("hex");
+    const session = await runSession(config.launchPrompt, nonce);
 
     if (session.kind === "interrupted") return { kind: "interrupted" };
     if (session.kind === "timed-out") return { kind: "timeout", seconds: config.sessionTimeoutSeconds ?? 0 };
 
-    const classified = classify(session, config.adapter);
+    const classified = classify(session, config.adapter, nonce);
     if ("kind" in classified) {
       const error = classified;
       reporter.executionError?.(error.detail, session.kind === "exited" ? session.stderrTail : []);
@@ -81,6 +84,7 @@ type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 function classify(
   session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>,
   adapter: AgentAdapter,
+  nonce: string,
 ): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
     return {
@@ -120,7 +124,7 @@ function classify(
     };
   }
   const finalMessage = "message" in extracted ? extracted.message : undefined;
-  const response = parseFinalResponse(finalMessage);
+  const response = parseFinalResponse(finalMessage, nonce);
   if ("violation" in response) {
     if (finalMessage === undefined) {
       return {

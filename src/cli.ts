@@ -151,10 +151,10 @@ async function main(argv: string[]): Promise<number> {
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
     { adapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt) =>
+    (launchPrompt, nonce) =>
       runSession({
         adapter,
-        prompt: buildSessionPrompt(launchPrompt),
+        prompt: buildSessionPrompt(launchPrompt, nonce),
         cwd,
         signal: interruption.signal,
         graceMs,

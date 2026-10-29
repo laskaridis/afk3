@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const COMPLETE = say({ outcome: "complete" });
@@ -72,7 +72,7 @@ describe("afk execution errors", () => {
     expect(run.exitCode).toBe(0);
     const [first, second] = fake.invocations();
     expect(second!.files).toContain("partial.txt");
-    expect(second!.stdin).toBe(first!.stdin);
+    expect(withoutNonce(second!.stdin)).toBe(withoutNonce(first!.stdin));
     expect(second!.stdin).toContain("build X");
     expect(second!.argv).not.toContain("resume");
     expect(second!.argv).not.toContain("fork");

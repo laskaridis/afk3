@@ -3,21 +3,29 @@ import { codexAdapter } from "../src/agents/codex.js";
 import { runAfk, type SessionRunner } from "../src/runner.js";
 import type { SessionResult } from "../src/session.js";
 
-const reply = (message: object): SessionResult => ({
-  kind: "exited",
-  exitCode: 0,
-  signal: null,
-  stdout: JSON.stringify(message),
-  stderrTail: [],
-});
+/** A scripted session result; replies are built from the nonce the runner passes in. */
+type Scripted = SessionResult | ((nonce: string) => SessionResult);
 
-function scripted(...results: SessionResult[]) {
+const reply =
+  (message: object): Scripted =>
+  (nonce) => ({
+    kind: "exited",
+    exitCode: 0,
+    signal: null,
+    stdout: `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(message)}\n</afk-harness-result>`,
+    stderrTail: [],
+  });
+
+function scripted(...results: Scripted[]) {
   const prompts: string[] = [];
-  const runner: SessionRunner = async (prompt) => {
+  const nonces: string[] = [];
+  const runner: SessionRunner = async (prompt, nonce) => {
     prompts.push(prompt);
-    return results[Math.min(prompts.length, results.length) - 1]!;
+    nonces.push(nonce);
+    const result = results[Math.min(prompts.length, results.length) - 1]!;
+    return typeof result === "function" ? result(nonce) : result;
   };
-  return { runner, prompts };
+  return { runner, prompts, nonces };
 }
 
 const REPEAT = reply({ outcome: "repeat" });
@@ -120,6 +128,31 @@ describe("runAfk execution-error retry", () => {
     expect(prompts).toHaveLength(1);
     const two = scripted(REPEAT, ERROR);
     expect(await runAfk({ ...cfg, maxIterations: 2 }, two.runner)).toEqual({ kind: "iteration-limit", limit: 2 });
+  });
+});
+
+describe("runAfk result block nonce", () => {
+  it("passes a fresh nonce to every session, including retries", async () => {
+    const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null, stdout: "", stderrTail: [] };
+    const { runner, nonces } = scripted(REPEAT, ERROR, COMPLETE);
+    await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 5 }, runner);
+    expect(nonces).toHaveLength(3);
+    expect(new Set(nonces).size).toBe(3);
+  });
+
+  it("treats a block carrying another nonce as an invalid response", async () => {
+    const stale: SessionResult = {
+      kind: "exited",
+      exitCode: 0,
+      signal: null,
+      stdout: '<afk-harness-result nonce="deadbeef">\n{"outcome":"complete"}\n</afk-harness-result>',
+      stderrTail: [],
+    };
+    const { runner } = scripted(stale);
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 2 }, runner)).toMatchObject({
+      kind: "execution-error",
+      errorKind: "invalid-response",
+    });
   });
 });
 
