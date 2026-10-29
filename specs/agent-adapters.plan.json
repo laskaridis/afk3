@@ -126,7 +126,7 @@
     {
       "id": "TASK-005",
       "objective": "One shared harness behavior suite runs against every registered adapter using a fake executable per agent, proving identical behavior across agents.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-005",
         "US-003"

@@ -87,3 +87,20 @@
   - No subagent review (small change, covered by tests).
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:06:41.255Z
+- TASK-005
+- What was implemented:
+  - test/agent-parity.test.ts: scenario table run for every adapter in agentNames() (protocol outcomes, retry, two-error failure with stderr tail, missing/invalid response, iteration limit, timeout, interruption) plus a cross-agent check that exit code, stderr and stdout are identical for the same scripted sessions.
+  - test/helpers.ts: fake executable resolved as test/fixtures/fake-<agent>.mjs, so a new adapter needs only a fixture and unit tests.
+- Files changed:
+  - test/agent-parity.test.ts (new), test/helpers.ts, specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 18 files, 199 tests passed.
+  - Criteria: suite iterates registry; identical-output test compares codex vs claude stderr/exit/stdout; fixtures emit stdout only (no real CLI needed); buildArgs/extractFinalMessage unit tests exist in test/agents/{codex,claude}.test.ts.
+- Learnings for future iterations:
+  - Add a new agent by registering it, adding test/fixtures/fake-<name>.mjs and adapter unit tests; the parity suite picks it up.
+- Scope deviations:
+  - none (no subagent review; test-only change)
+- Follow up needed: none
+---

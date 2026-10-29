@@ -5,10 +5,7 @@ import { delimiter, join, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const cliPath = join(repoRoot, "dist", "cli.js");
-const fakeExecutables = {
-  codex: join(repoRoot, "test", "fixtures", "fake-codex.mjs"),
-  claude: join(repoRoot, "test", "fixtures", "fake-claude.mjs"),
-};
+const fakeExecutable = (agent: string) => join(repoRoot, "test", "fixtures", `fake-${agent}.mjs`);
 
 export type Step =
   | { stdout: string }
@@ -35,10 +32,7 @@ export interface AfkRun {
 }
 
 /** A temp workspace with a fake agent executable (default `codex`) first on PATH, scripted per test. */
-export function createFakeCodexEnvironment(
-  steps: Step[] | { sessions: Step[][] },
-  agent: keyof typeof fakeExecutables = "codex",
-) {
+export function createFakeCodexEnvironment(steps: Step[] | { sessions: Step[][] }, agent = "codex") {
   const sandbox = realpathSync(mkdtempSync(join(tmpdir(), "afk-test-")));
   const binDir = join(sandbox, "bin");
   const workspace = join(sandbox, "workspace");
@@ -46,7 +40,7 @@ export function createFakeCodexEnvironment(
   const scriptPath = join(sandbox, "script.json");
 
   mkdirs(binDir, workspace);
-  symlinkSync(fakeExecutables[agent], join(binDir, agent));
+  symlinkSync(fakeExecutable(agent), join(binDir, agent));
   writeFileSync(scriptPath, JSON.stringify(Array.isArray(steps) ? { steps } : steps));
   writeFileSync(recordPath, "");
 
