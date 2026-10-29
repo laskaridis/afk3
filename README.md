@@ -36,8 +36,9 @@ policy. In every case the prompt is delivered on stdin and the workspace is the 
 ### Codex (`--agent codex`)
 
 - **Prerequisites:** Codex CLI installed and authenticated, with `--approve-for-me` support.
-- **Launch:** `codex exec --approve-for-me -C <workspace> [-m <model>] [-c model_reasoning_effort=<effort>] -`. The final
-  message is read from stdout.
+- **Launch:** `codex exec --approve-for-me -C <workspace> --output-last-message <file> [--model <model>] [--config model_reasoning_effort=<effort>] -`.
+  The final message is the content of `<file>`, a temporary file outside the workspace that `afk` removes after the
+  session; Codex's stdout is a progress log and is ignored.
 - **Honored settings:** workspace, `--model`, `--reasoning-effort`.
 
 ### Claude Code (`--agent claude`)
@@ -53,6 +54,6 @@ policy. In every case the prompt is delivered on stdin and the workspace is the 
 ## Development
 
 ```
-pnpm check   # typecheck, lint, prettier
+pnpm check   # test, typecheck, lint, prettier
 pnpm test    # build, then run the test suite
 ```

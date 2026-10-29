@@ -12,7 +12,8 @@ const reply =
     kind: "exited",
     exitCode: 0,
     signal: null,
-    stdout: `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(message)}\n</afk-harness-result>`,
+    stdout: "",
+    outputFile: `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(message)}\n</afk-harness-result>`,
     stderrTail: [],
   });
 
@@ -145,7 +146,8 @@ describe("runAfk result block nonce", () => {
       kind: "exited",
       exitCode: 0,
       signal: null,
-      stdout: '<afk-harness-result nonce="deadbeef">\n{"outcome":"complete"}\n</afk-harness-result>',
+      stdout: "",
+      outputFile: '<afk-harness-result nonce="cafebabe">\n{"outcome":"complete"}\n</afk-harness-result>',
       stderrTail: [],
     };
     const { runner } = scripted(stale);

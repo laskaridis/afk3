@@ -20,7 +20,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm format:check",
     "test": "pnpm run build && vitest run"
   },
   "dependencies": {

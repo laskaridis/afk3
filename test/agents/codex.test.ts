@@ -17,28 +17,31 @@ describe("codex adapter", () => {
 
     it("adds model and reasoning-effort overrides only when supplied", () => {
       const args = codexAdapter.buildArgs({ cwd: "/w", model: "gpt-x", effort: "high" });
-      expect(args[args.indexOf("-m") + 1]).toBe("gpt-x");
-      expect(args[args.indexOf("-c") + 1]).toBe('model_reasoning_effort="high"');
+      expect(args[args.indexOf("--model") + 1]).toBe("gpt-x");
+      expect(args[args.indexOf("--config") + 1]).toBe('model_reasoning_effort="high"');
       expect(codexAdapter.buildArgs({ cwd: "/w", model: "gpt-x" })).not.toContain("-c");
       expect(codexAdapter.buildArgs({ cwd: "/w", effort: "low" })).not.toContain("-m");
     });
 
-    it("passes no output-file option", () => {
-      const args = codexAdapter.buildArgs({ cwd: "/w", model: "m", effort: "e" });
-      expect(args).not.toContain("-o");
-      expect(args).not.toContain("--output-last-message");
+    it("asks for the final message in the output file when one is supplied", () => {
+      const args = codexAdapter.buildArgs({ cwd: "/w", outputFile: "/t/out.txt" });
+      expect(args[args.indexOf("--output-last-message") + 1]).toBe("/t/out.txt");
+      expect(codexAdapter.buildArgs({ cwd: "/w" })).not.toContain("-o");
     });
   });
 
   describe("extractFinalMessage", () => {
-    it("returns the stdout text", () => {
-      expect(codexAdapter.extractFinalMessage('{"outcome":"complete"}\n')).toEqual({
+    it("returns the output file content and ignores stdout", () => {
+      expect(codexAdapter.extractFinalMessage("progress noise\n", '{"outcome":"complete"}\n')).toEqual({
         message: '{"outcome":"complete"}\n',
       });
     });
 
-    it.each(["", "  \n\t\n"])("reports missing for empty or whitespace-only stdout (%j)", (stdout) => {
-      expect(codexAdapter.extractFinalMessage(stdout)).toEqual({ missing: true });
-    });
+    it.each([undefined, "", "  \n\t\n"])(
+      "reports missing for an absent, empty or whitespace-only output file (%j)",
+      (file) => {
+        expect(codexAdapter.extractFinalMessage("text on stdout\n", file)).toEqual({ missing: true });
+      },
+    );
   });
 });

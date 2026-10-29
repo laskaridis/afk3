@@ -87,15 +87,15 @@ describe("afk <prompt> with a single Codex session", () => {
     expect(stdin).not.toContain("secret piped data");
   });
 
-  it("passes no output-file option and leaves no files in the temp directory or workspace", async () => {
+  it("passes an output file outside the workspace and leaves no files in the temp directory or workspace", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
     const tmp = mkdtempSync(join(tmpdir(), "afk-empty-tmp-"));
 
     await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: { ...fake.env, TMPDIR: tmp } }).done;
 
     const { argv } = fake.soleInvocation();
-    expect(argv).not.toContain("-o");
-    expect(argv).not.toContain("--output-last-message");
+    const outputFile = argv[argv.indexOf("--output-last-message") + 1]!;
+    expect(outputFile.startsWith(tmp)).toBe(true);
     expect(readdirSync(fake.workspace)).toEqual([]);
     expect(readdirSync(tmp)).toEqual([]);
   });

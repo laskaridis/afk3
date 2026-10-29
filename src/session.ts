@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { AgentAdapter } from "./agents/types.js";
 
 export const DEFAULT_TERMINATION_GRACE_MS = 5000;
@@ -29,6 +32,8 @@ export type SessionResult =
       exitCode: number | null;
       signal: NodeJS.Signals | null;
       stdout: string;
+      /** What the agent wrote to the output file it was given, if anything. */
+      outputFile?: string;
       /** The last {@link STDERR_TAIL_LINES} lines the agent wrote to stderr. */
       stderrTail: string[];
     };
@@ -39,8 +44,22 @@ type Outcome =
 /** Run exactly one non-interactive agent session in the workspace. */
 export async function runSession(options: SessionOptions): Promise<SessionResult> {
   if (options.signal?.aborted) return { kind: "interrupted" };
+  const outputDir = await mkdtemp(join(tmpdir(), "afk-session-"));
+  try {
+    return await spawnSession(options, join(outputDir, "final-message.txt"));
+  } finally {
+    await rm(outputDir, { recursive: true, force: true });
+  }
+}
+
+async function spawnSession(options: SessionOptions, outputPath: string): Promise<SessionResult> {
   const { adapter } = options;
-  const args = adapter.buildArgs({ cwd: options.cwd, model: options.model, effort: options.effort });
+  const args = adapter.buildArgs({
+    cwd: options.cwd,
+    outputFile: outputPath,
+    model: options.model,
+    effort: options.effort,
+  });
 
   let interrupted = false;
   let timedOut = false;
@@ -97,7 +116,8 @@ export async function runSession(options: SessionOptions): Promise<SessionResult
   if ("error" in outcome) return { kind: "launch-failed", error: outcome.error };
   if (interrupted) return { kind: "interrupted" };
   if (timedOut) return { kind: "timed-out" };
-  return { kind: "exited", ...outcome };
+  const outputFile = await readFile(outputPath, "utf8").catch(() => undefined);
+  return { kind: "exited", ...outcome, outputFile };
 }
 
 /** Keeps the last `max` lines of a text stream, including an unterminated final line. */

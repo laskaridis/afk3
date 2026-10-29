@@ -100,7 +100,7 @@ function classify(
       detail: `agent exited unsuccessfully with signal ${session.signal}`,
     };
   }
-  const extracted = adapter.extractFinalMessage(session.stdout);
+  const extracted = adapter.extractFinalMessage(session.stdout, session.outputFile);
   if ("agentError" in extracted) {
     const detail =
       session.exitCode === 0

@@ -4,7 +4,7 @@
 // Behavior is scripted per test through the JSON file named by FAKE_CODEX_SCRIPT:
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
-//     | { "finalMessage": "text" }  (written to stdout, as codex does for a piped stdout, wrapped in the
+//     | { "finalMessage": "text" }  (written to the file named by -o, as codex does, wrapped in the
 //       <afk-harness-result> block using the nonce found in the prompt on stdin)
 //     | { "rawFinalMessage": "text" }  (like finalMessage but not wrapped, for invalid-response cases)
 //     | { "json": value }  (a raw JSON line on stdout)
@@ -44,12 +44,16 @@ appendFileSync(
 const nonce = /<afk-harness-result nonce="([^"]+)">/.exec(stdin)?.[1];
 const wrap = (text) =>
   nonce === undefined ? text : `<afk-harness-result nonce="${nonce}">\n${text}\n</afk-harness-result>`;
-const emitFinal = (message) =>
-  process.stdout.write(
-    process.env.FAKE_AGENT_FORMAT === "claude"
-      ? JSON.stringify({ type: "result", subtype: "success", is_error: false, result: message }) + "\n"
-      : message + "\n",
-  );
+const outputFileFlag = argv.indexOf("--output-last-message");
+const emitFinal = (message) => {
+  if (process.env.FAKE_AGENT_FORMAT === "claude") {
+    process.stdout.write(
+      JSON.stringify({ type: "result", subtype: "success", is_error: false, result: message }) + "\n",
+    );
+  } else if (outputFileFlag !== -1) {
+    writeFileSync(argv[outputFileFlag + 1], message + "\n");
+  }
+};
 
 let ignoreSignals = false;
 for (const signal of ["SIGINT", "SIGTERM"]) {

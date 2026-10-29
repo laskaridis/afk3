@@ -15,6 +15,7 @@ describe("afk model and reasoning-effort overrides", () => {
     expect(argv).not.toContain("-m");
     expect(argv).not.toContain("--model");
     expect(argv).not.toContain("-c");
+    expect(argv).not.toContain("--config");
     expect(argv.join(" ")).not.toContain("model_reasoning_effort");
   });
 
@@ -30,9 +31,9 @@ describe("afk model and reasoning-effort overrides", () => {
     const invocations = fake.invocations();
     expect(invocations).toHaveLength(2);
     for (const { argv } of invocations) {
-      expect(argv[argv.indexOf("-m") + 1]).toBe("gpt-x");
-      expect(argv[argv.indexOf("-c") + 1]).toBe('model_reasoning_effort="high"');
-      expect(argv.filter((a) => a === "-m" || a === "-c")).toHaveLength(2);
+      expect(argv[argv.indexOf("--model") + 1]).toBe("gpt-x");
+      expect(argv[argv.indexOf("--config") + 1]).toBe('model_reasoning_effort="high"');
+      expect(argv.filter((a) => a === "--model" || a === "--config")).toHaveLength(2);
     }
   });
 
