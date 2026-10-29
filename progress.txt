@@ -104,3 +104,20 @@
   - none (no subagent review; test-only change)
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:20:00Z
+- TASK-006
+- What was implemented:
+  - Help description and option texts agent-neutral ("the coding agent", "agent sessions"); --model / --reasoning-effort state the value is passed to the agent unchanged.
+  - README.md created (usage, options, "Supported agents" with prerequisites, launch mode, honored settings for Codex and Claude Code). package.json description was already agent-neutral.
+- Files changed:
+  - src/cli.ts, README.md (new), test/agent-neutral-docs.test.ts (new), specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 19 files, 202 tests passed.
+  - Criteria: help test asserts "the coding agent", no "Codex", and "passed to the agent unchanged" on both options; README test asserts --agent, "## Supported agents", both agents, --approve-for-me, auto, .claude/skills; package description test has no "codex".
+- Learnings for future iterations:
+  - Help text is asserted by test/agent-neutral-docs.test.ts; prettier also formats README.md.
+- Scope deviations:
+  - none (no subagent review; docs and help text only)
+- Follow up needed: none
+---

@@ -154,7 +154,7 @@
     {
       "id": "TASK-006",
       "objective": "Help text, README, and package metadata describe afk as agent-neutral and document each supported agent's prerequisites.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-006"
       ],

@@ -67,6 +67,7 @@ async function readAllStdin(): Promise<string> {
 async function main(argv: string[]): Promise<number> {
   const program = new Command()
     .name("afk")
+    .description("Leave the coding agent implementing a feature, one task at a time, while you are away from keyboard")
     .version(version)
     .argument("[prompt...]", "feature instructions (or use --prompt-file, or pipe on stdin)")
     .option(
@@ -79,7 +80,7 @@ async function main(argv: string[]): Promise<number> {
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option(
       "--max-iterations <count>",
-      "maximum number of Codex sessions to launch",
+      "maximum number of agent sessions to launch",
       parseMaxIterations,
       DEFAULT_MAX_ITERATIONS,
     )
@@ -88,10 +89,14 @@ async function main(argv: string[]): Promise<number> {
       "stop the run if a single session exceeds this many seconds",
       parseSessionTimeout,
     )
-    .option("--model <name>", "model for every session (default: your Codex configuration)", parseNonEmpty)
+    .option(
+      "--model <name>",
+      "model for every session, passed to the agent unchanged (default: the agent's configuration)",
+      parseNonEmpty,
+    )
     .option(
       "--reasoning-effort <level>",
-      "reasoning effort for every session (default: your Codex configuration)",
+      "reasoning effort for every session, passed to the agent unchanged (default: the agent's configuration)",
       parseNonEmpty,
     )
     .addHelpText("after", formatExitCodeHelp())
