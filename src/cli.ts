@@ -63,10 +63,23 @@ async function main(argv: string[]): Promise<number> {
     .argument("[prompt...]", "feature instructions (or use --prompt-file, or pipe on stdin)")
     .option("--prompt-file <path>", "read the feature instructions from a file")
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
-    .option("--max-iterations <count>", "maximum number of Codex sessions to launch", parseMaxIterations, DEFAULT_MAX_ITERATIONS)
-    .option("--session-timeout <seconds>", "stop the run if a single session exceeds this many seconds", parseSessionTimeout)
+    .option(
+      "--max-iterations <count>",
+      "maximum number of Codex sessions to launch",
+      parseMaxIterations,
+      DEFAULT_MAX_ITERATIONS,
+    )
+    .option(
+      "--session-timeout <seconds>",
+      "stop the run if a single session exceeds this many seconds",
+      parseSessionTimeout,
+    )
     .option("--model <name>", "model for every session (default: your Codex configuration)", parseNonEmpty)
-    .option("--reasoning-effort <level>", "reasoning effort for every session (default: your Codex configuration)", parseNonEmpty)
+    .option(
+      "--reasoning-effort <level>",
+      "reasoning effort for every session (default: your Codex configuration)",
+      parseNonEmpty,
+    )
     .addHelpText("after", formatExitCodeHelp())
     .exitOverride();
   try {
@@ -82,7 +95,14 @@ async function main(argv: string[]): Promise<number> {
     if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : EXIT_CODES.inputError;
     throw error;
   }
-  const { maxIterations, sessionTimeout, promptFile, cwd = process.cwd(), model, reasoningEffort } = program.opts<{
+  const {
+    maxIterations,
+    sessionTimeout,
+    promptFile,
+    cwd = process.cwd(),
+    model,
+    reasoningEffort,
+  } = program.opts<{
     maxIterations: number;
     sessionTimeout?: number;
     promptFile?: string;
@@ -109,7 +129,16 @@ async function main(argv: string[]): Promise<number> {
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
     { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt) => runSession({ prompt: buildSessionPrompt(launchPrompt), cwd, signal: interruption.signal, graceMs, timeoutSeconds: sessionTimeout, model, reasoningEffort }),
+    (launchPrompt) =>
+      runSession({
+        prompt: buildSessionPrompt(launchPrompt),
+        cwd,
+        signal: interruption.signal,
+        graceMs,
+        timeoutSeconds: sessionTimeout,
+        model,
+        reasoningEffort,
+      }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
       retryStarted: (iteration, limit, reason) =>

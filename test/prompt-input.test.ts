@@ -57,10 +57,16 @@ describe("launch prompt sources", () => {
 
 describe("--cwd", () => {
   it("runs every session in the selected directory", async () => {
-    const fake = createFakeCodexEnvironment({ sessions: [[{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }], COMPLETE] });
+    const fake = createFakeCodexEnvironment({
+      sessions: [[{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }], COMPLETE],
+    });
     const target = join(fake.workspace, "other");
     mkdirSync(target);
-    const result = await startAfk({ args: ["go", "--cwd", target], cwd: mkdtempSync(join(fake.workspace, "elsewhere-")), env: fake.env }).done;
+    const result = await startAfk({
+      args: ["go", "--cwd", target],
+      cwd: mkdtempSync(join(fake.workspace, "elsewhere-")),
+      env: fake.env,
+    }).done;
 
     expect(result.exitCode).toBe(0);
     const invocations = fake.invocations();
@@ -73,10 +79,17 @@ describe("--cwd", () => {
 
   it.each([
     ["a nonexistent path", (w: string) => join(w, "missing")],
-    ["a regular file", (w: string) => { writeFileSync(join(w, "f"), ""); return join(w, "f"); }],
+    [
+      "a regular file",
+      (w: string) => {
+        writeFileSync(join(w, "f"), "");
+        return join(w, "f");
+      },
+    ],
   ])("rejects %s", async (_name, make) => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const result = await startAfk({ args: ["go", "--cwd", make(fake.workspace)], cwd: fake.workspace, env: fake.env }).done;
+    const result = await startAfk({ args: ["go", "--cwd", make(fake.workspace)], cwd: fake.workspace, env: fake.env })
+      .done;
     expect(result.exitCode).toBe(2);
     expect(fake.invocations()).toHaveLength(0);
   });
@@ -89,7 +102,10 @@ describe("workspace preparation", () => {
     const log = join(fake.workspace, "..", "git.log");
     spawnSync("git", ["init", "-q"], { cwd: fake.workspace });
     const gitState = () =>
-      [["branch", "--all"], ["worktree", "list"]].map((a) => spawnSync("git", a, { cwd: fake.workspace, encoding: "utf8" }).stdout);
+      [
+        ["branch", "--all"],
+        ["worktree", "list"],
+      ].map((a) => spawnSync("git", a, { cwd: fake.workspace, encoding: "utf8" }).stdout);
     const before = gitState();
     writeFileSync(join(binDir, "git"), `#!/bin/sh\necho "$@" >> "${log}"\n`, { mode: 0o755 });
 

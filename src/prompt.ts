@@ -34,10 +34,16 @@ export async function resolvePrompt(input: PromptInput): Promise<PromptResult> {
   if (!isBlank(stdin)) sources.push({ name: "stdin", text: stdin });
 
   if (sources.length === 0) {
-    return { ok: false, message: "no prompt provided: pass a prompt argument, --prompt-file <path>, or pipe it on stdin" };
+    return {
+      ok: false,
+      message: "no prompt provided: pass a prompt argument, --prompt-file <path>, or pipe it on stdin",
+    };
   }
   if (sources.length > 1) {
-    return { ok: false, message: `multiple prompt sources given (${sources.map((s) => s.name).join(", ")}); use exactly one` };
+    return {
+      ok: false,
+      message: `multiple prompt sources given (${sources.map((s) => s.name).join(", ")}); use exactly one`,
+    };
   }
   const [source] = sources as [{ name: string; text: string }];
   if (isBlank(source.text)) return { ok: false, message: `the ${source.name} is empty` };

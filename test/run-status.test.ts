@@ -21,8 +21,13 @@ function until(condition: () => boolean, timeoutMs = 5000) {
   return new Promise<void>((resolve, reject) => {
     const start = Date.now();
     const timer = setInterval(() => {
-      if (condition()) (clearInterval(timer), resolve());
-      else if (Date.now() - start > timeoutMs) (clearInterval(timer), reject(new Error("timed out")));
+      if (condition()) {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error("timed out"));
+      }
     }, 20);
   });
 }
@@ -111,7 +116,9 @@ describe("run progress", () => {
     expect(run.exitCode).toBe(0);
     const lines = run.stderr.split("\n");
     expect(lines).toContain("[afk] iteration 1/5");
-    expect(lines.some((l) => l.startsWith("[afk] retrying after execution error") && l.endsWith("iteration 3/5"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("[afk] retrying after execution error") && l.endsWith("iteration 3/5"))).toBe(
+      true,
+    );
     expect(lines).toContain("[afk] iteration 2/5");
     expect(lines).not.toContain("[afk] iteration 3/5");
     expect(lines).toContain("[afk] iteration 4/5");
@@ -119,39 +126,49 @@ describe("run progress", () => {
 });
 
 describe("final status per stop reason", () => {
-  it.each(scenarios)("$name", async (scenario) => {
-    const fake = createFakeCodexEnvironment({ sessions: scenario.sessions });
-    const home = realpathSync(mkdtempSync(join(tmpdir(), "afk-home-")));
-    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "afk-tmp-")));
-    writeFileSync(join(home, "existing"), "keep");
-    // Simulated skill files in the workspace must survive untouched.
-    mkdirSync(join(fake.workspace, "specs"));
-    writeFileSync(join(fake.workspace, "progress.txt"), "notes");
-    writeFileSync(join(fake.workspace, "specs", "plan.json"), "{}");
+  it.each(scenarios)(
+    "$name",
+    async (scenario) => {
+      const fake = createFakeCodexEnvironment({ sessions: scenario.sessions });
+      const home = realpathSync(mkdtempSync(join(tmpdir(), "afk-home-")));
+      const tmp = realpathSync(mkdtempSync(join(tmpdir(), "afk-tmp-")));
+      writeFileSync(join(home, "existing"), "keep");
+      // Simulated skill files in the workspace must survive untouched.
+      mkdirSync(join(fake.workspace, "specs"));
+      writeFileSync(join(fake.workspace, "progress.txt"), "notes");
+      writeFileSync(join(fake.workspace, "specs", "plan.json"), "{}");
 
-    const env = { ...fake.env, HOME: home, CODEX_HOME: join(home, ".codex"), TMPDIR: tmp, AFK_TERMINATION_GRACE_MS: "300" };
-    if (scenario.noCodexOnPath) env.PATH = "/nonexistent-afk-test-path";
+      const env = {
+        ...fake.env,
+        HOME: home,
+        CODEX_HOME: join(home, ".codex"),
+        TMPDIR: tmp,
+        AFK_TERMINATION_GRACE_MS: "300",
+      };
+      if (scenario.noCodexOnPath) env.PATH = "/nonexistent-afk-test-path";
 
-    const workspaceBefore = snapshot(fake.workspace);
-    const homeBefore = snapshot(home);
+      const workspaceBefore = snapshot(fake.workspace);
+      const homeBefore = snapshot(home);
 
-    const afk = startAfk({ args: ["do it", ...(scenario.args ?? [])], cwd: fake.workspace, env });
-    if (scenario.interrupt) {
-      await until(() => fake.invocations().length === 1);
-      afk.child.kill("SIGINT");
-    }
-    const run = await afk.done;
+      const afk = startAfk({ args: ["do it", ...(scenario.args ?? [])], cwd: fake.workspace, env });
+      if (scenario.interrupt) {
+        await until(() => fake.invocations().length === 1);
+        afk.child.kill("SIGINT");
+      }
+      const run = await afk.done;
 
-    expect(run.exitCode).toBe(scenario.exitCode);
-    for (const text of scenario.status) expect(run.stderr).toContain(text);
-    expect(run.stdout).not.toContain("[afk]");
-    expect(/feature complete/i.test(run.stderr)).toBe(scenario.completionWording);
-    expect(run.exitCode === 0).toBe(scenario.completionWording);
+      expect(run.exitCode).toBe(scenario.exitCode);
+      for (const text of scenario.status) expect(run.stderr).toContain(text);
+      expect(run.stdout).not.toContain("[afk]");
+      expect(/feature complete/i.test(run.stderr)).toBe(scenario.completionWording);
+      expect(run.exitCode === 0).toBe(scenario.completionWording);
 
-    // No harness-created files, and the workspace content is untouched.
-    expect(snapshot(fake.workspace)).toEqual(workspaceBefore);
-    expect(readFileSync(join(fake.workspace, "progress.txt"), "utf8")).toBe("notes");
-    expect(snapshot(home)).toEqual(homeBefore);
-    expect(readdirSync(tmp)).toEqual([]);
-  }, 20000);
+      // No harness-created files, and the workspace content is untouched.
+      expect(snapshot(fake.workspace)).toEqual(workspaceBefore);
+      expect(readFileSync(join(fake.workspace, "progress.txt"), "utf8")).toBe("notes");
+      expect(snapshot(home)).toEqual(homeBefore);
+      expect(readdirSync(tmp)).toEqual([]);
+    },
+    20000,
+  );
 });

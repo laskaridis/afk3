@@ -36,7 +36,12 @@ describe("afk execution errors", () => {
   it.each([
     ["exit status", CRASH, "exit-status", "exit status 7"],
     ["missing response", [{ exit: 0 }] as Step[], "missing-response", "missing-response"],
-    ["invalid response", [{ finalMessage: "all done!" }, { exit: 0 }] as Step[], "invalid-response", "invalid-response"],
+    [
+      "invalid response",
+      [{ finalMessage: "all done!" }, { exit: 0 }] as Step[],
+      "invalid-response",
+      "invalid-response",
+    ],
   ])("stops after exactly two launches on two consecutive %s errors", async (_name, steps, kind, text) => {
     const fake = createFakeCodexEnvironment({ sessions: [steps] });
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;

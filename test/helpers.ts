@@ -80,7 +80,6 @@ function mkdirs(...dirs: string[]) {
   }
 }
 
-
 function spawnSyncMkdir(dir: string) {
   mkdirSync(dir, { recursive: true });
 }

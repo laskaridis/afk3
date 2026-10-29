@@ -27,7 +27,10 @@ function run(sessions: Step[][], args: string[]) {
 
 describe("--session-timeout", () => {
   it("terminates a hung session, reports the duration, exits 5 and launches nothing more", async () => {
-    const { fake, done } = run([[{ writeFile: "partial.txt" }, { sleepMs: 30000 }], complete], ["--session-timeout", "1"]);
+    const { fake, done } = run(
+      [[{ writeFile: "partial.txt" }, { sleepMs: 30000 }], complete],
+      ["--session-timeout", "1"],
+    );
     const result = await done;
 
     expect(result.exitCode).toBe(5);

@@ -40,7 +40,8 @@ describe("afk run loop", () => {
   it.each(["0", "-1", "1.5", "abc"])("rejects --max-iterations %s with exit 2 and no launch", async (value) => {
     const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
 
-    const run = await startAfk({ args: ["build X", "--max-iterations", value], cwd: fake.workspace, env: fake.env }).done;
+    const run = await startAfk({ args: ["build X", "--max-iterations", value], cwd: fake.workspace, env: fake.env })
+      .done;
 
     expect(run.exitCode).toBe(2);
     expect(run.stderr).toMatch(/max-iterations/);
