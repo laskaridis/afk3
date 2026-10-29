@@ -1,0 +1,142 @@
+## Project discovery
+- Tests run the built CLI (`pnpm test` builds first, then vitest); fake agent executables live in test/fixtures and are put first on PATH by test/helpers.ts.
+- No python in this environment (asdf shim fails); use node for scripted edits.
+- The fake codex `finalMessage` step writes to stdout (+ newline). Any extra `stdout` step makes Codex's final message invalid, since Codex stdout is the final message.
+- Agent prompt is delivered on stdin; fake records it as `stdin` in each invocation record.
+- Run `pnpm check` (typecheck, lint, prettier) as well as `pnpm test` before committing.
+---
+
+## 2026-10-29T10:01:15.096Z
+- TASK-001
+- What was implemented:
+  - AgentAdapter interface + FinalMessageResult (src/agents/types.ts), Codex adapter (prompt via stdin with "-", no -o), registry with agents/DEFAULT_AGENT/agentNames().
+  - session.ts is agent-neutral: spawns adapter.executable with piped stdio, writes prompt to stdin, captures stdout and a 20-line stderr tail, no temp files. SessionResult "exited" now carries stdout/stderrTail instead of finalMessage; option reasoningEffort renamed effort.
+  - runner.ts takes config.adapter and classifies via adapter.extractFinalMessage then parseFinalResponse.
+  - cli.ts wired to codexAdapter (no --agent flag yet; TASK-002).
+- Files changed:
+  - src/agents/{types,codex,registry}.ts (new), src/session.ts, src/runner.ts, src/cli.ts
+  - test/agents/codex.test.ts (new), test/fixtures/fake-codex.mjs, test/helpers.ts, test/runner.test.ts, test/tracer-bullet.test.ts, test/execution-error.test.ts, test/run-loop.test.ts, test/prompt-input.test.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check: clean. pnpm test: 13 files, 125 tests passed.
+  - Criteria: registry/adapter exist (codex.test.ts); buildArgs and extractFinalMessage unit tests; tracer-bullet tests show prompt on fake's stdin, stdout empty and only [afk] lines on stderr, no -o arg, workspace and TMPDIR empty; session.ts contains no Codex references; fixture/helpers have no -o.
+  - Read-only subagent review: no defects.
+- Learnings for future iterations:
+  - FinalMessageResult currently has message/missing/invalid only; TASK-003 must add the agentError variant and runner handling.
+  - stderrTail is captured already; printing it is TASK-004.
+  - Tests that previously read the prompt from argv now read invocation.stdin.
+- Scope deviations:
+  - Tests in execution-error, run-loop, prompt-input were edited since the prompt moved from argv to stdin.
+- Follow up needed: none
+---
+
+## 2026-10-29T10:02:28Z
+- TASK-002
+- What was implemented:
+  - `--agent <name>` option in src/cli.ts, default from DEFAULT_AGENT, validated by parseAgent against agentNames(); help text lists registry names and default. Adapter is looked up via agents[agent].
+- Files changed:
+  - src/cli.ts, test/agent-option.test.ts (new), specs/agent-adapters.plan.json, progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 14 files, 133 tests passed.
+  - Criteria: default codex incl. retry (2 invocations); --agent codex accepted; nope/"" -> exit 2, stderr lists names, 0 invocations; --help/-h list names and "default: codex"; help beats invalid --agent; registry keys unit test; model/effort passthrough and no-override covered by existing test/model-overrides.test.ts.
+- Learnings for future iterations:
+  - Commander InvalidArgumentError from an option parser yields exit 2 via the existing CommanderError mapping.
+- Scope deviations:
+  - none (small change; no subagent review)
+- Follow up needed: none
+---
+
+## 2026-10-29T10:03:55.861Z
+- TASK-003
+- What was implemented:
+  - Claude adapter (src/agents/claude.ts) registered in the registry: args -p --output-format json --permission-mode auto, --model/--effort only when supplied; extractFinalMessage parses the JSON result (missing/invalid/agentError/message).
+  - FinalMessageResult gained the agentError variant. Runner classify: signal -> exit-status; agentError -> exit-status (detail includes subtype, on exit 0 or non-zero); other non-zero exit -> plain exit status; exit 0 -> message/missing/invalid as before. Runner remains agent-agnostic.
+  - Test fixture: fake-claude.mjs wraps the shared fake (FAKE_AGENT_FORMAT=claude makes finalMessage emit the Claude JSON result; new raw { json } step). helpers.createFakeCodexEnvironment takes an optional agent argument.
+- Files changed:
+  - src/agents/{claude.ts (new),types.ts,registry.ts}, src/runner.ts
+  - test/agents/claude.test.ts (new), test/claude-agent.test.ts (new), test/fixtures/fake-claude.mjs (new), test/fixtures/fake-codex.mjs, test/helpers.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 16 files, 166 tests passed.
+  - Criteria: --agent claude launches fake claude for all sessions incl. retries and appears in help/error list; buildArgs/extractFinalMessage unit tests cover all listed cases and no bypassPermissions; every AC-008 row has an integration test (is_error on exit 0 and non-zero with subtype, non-zero without structured result reports only exit code); protocol outcomes complete/blocked/repeat/fail match Codex; timeout -> exit 5 and Ctrl+C -> exit 130 with one invocation.
+- Learnings for future iterations:
+  - Use createFakeCodexEnvironment(steps, "claude") for the Claude fake; its finalMessage step emits the JSON result wrapper. TASK-005 should parameterize the shared suite over this.
+  - Execution-error detail wording for agentError lives in runner.ts classify.
+- Scope deviations:
+  - No subagent review (change is small and fully covered by table-driven tests).
+- Follow up needed: none
+---
+
+## 2026-10-29T10:05:50.855Z
+- TASK-004
+- What was implemented:
+  - Agent-neutral wording: "[afk] Iteration n/max: starting agent session", "...: retrying agent session after execution error", "[afk] Task failure: ...", "[afk] Execution error: <reason>", "[afk] Run complete/blocked/stopped/interrupted ...". Runner details are now the agent-neutral reasons (failed to launch agent, agent exited unsuccessfully with exit code N / signal S, agent exited without a final response, agent final response is invalid: ...).
+  - New RunReporter.executionError(detail, stderrTail) called by the runner for every execution error (including retried ones); cli prints the line plus the stderr tail via reporter.formatExecutionError. formatFinalStatus returns undefined for execution errors (already printed), so there is no duplicate line.
+  - Exit-code help no longer names Codex.
+- Files changed:
+  - src/runner.ts, src/reporter.ts, src/cli.ts
+  - test/stderr-tail.test.ts (new), test/run-status.test.ts, test/execution-error.test.ts, test/claude-agent.test.ts, test/runner.test.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 17 files, 169 tests passed.
+  - Criteria: wording asserted in run-status tests; stderr-tail.test.ts shows 30 stderr lines -> last 20 in order directly after each Execution error line (including the retried one), nothing extra when stderr empty, nothing for valid response or timeout (interruption returns before any error is reported); exit-code help text edited; existing tests updated.
+- Learnings for future iterations:
+  - Help option texts in cli.ts still say Codex (--max-iterations, --model, --reasoning-effort): TASK-006.
+  - Final execution error is printed via the executionError hook, not formatFinalStatus.
+- Scope deviations:
+  - No subagent review (small change, covered by tests).
+- Follow up needed: none
+---
+
+## 2026-10-29T10:06:41.255Z
+- TASK-005
+- What was implemented:
+  - test/agent-parity.test.ts: scenario table run for every adapter in agentNames() (protocol outcomes, retry, two-error failure with stderr tail, missing/invalid response, iteration limit, timeout, interruption) plus a cross-agent check that exit code, stderr and stdout are identical for the same scripted sessions.
+  - test/helpers.ts: fake executable resolved as test/fixtures/fake-<agent>.mjs, so a new adapter needs only a fixture and unit tests.
+- Files changed:
+  - test/agent-parity.test.ts (new), test/helpers.ts, specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 18 files, 199 tests passed.
+  - Criteria: suite iterates registry; identical-output test compares codex vs claude stderr/exit/stdout; fixtures emit stdout only (no real CLI needed); buildArgs/extractFinalMessage unit tests exist in test/agents/{codex,claude}.test.ts.
+- Learnings for future iterations:
+  - Add a new agent by registering it, adding test/fixtures/fake-<name>.mjs and adapter unit tests; the parity suite picks it up.
+- Scope deviations:
+  - none (no subagent review; test-only change)
+- Follow up needed: none
+---
+
+## 2026-10-29T10:20:00Z
+- TASK-006
+- What was implemented:
+  - Help description and option texts agent-neutral ("the coding agent", "agent sessions"); --model / --reasoning-effort state the value is passed to the agent unchanged.
+  - README.md created (usage, options, "Supported agents" with prerequisites, launch mode, honored settings for Codex and Claude Code). package.json description was already agent-neutral.
+- Files changed:
+  - src/cli.ts, README.md (new), test/agent-neutral-docs.test.ts (new), specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 19 files, 202 tests passed.
+  - Criteria: help test asserts "the coding agent", no "Codex", and "passed to the agent unchanged" on both options; README test asserts --agent, "## Supported agents", both agents, --approve-for-me, auto, .claude/skills; package description test has no "codex".
+- Learnings for future iterations:
+  - Help text is asserted by test/agent-neutral-docs.test.ts; prettier also formats README.md.
+- Scope deviations:
+  - none (no subagent review; docs and help text only)
+- Follow up needed: none
+---
+
+## 2026-10-29T10:30:00Z
+- TASK-007
+- What was implemented:
+  - Manual smoke checks only; no source files changed.
+- Files changed:
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - CLI versions: codex-cli 0.164.0, Claude Code 2.1.312.
+  - `echo "Reply with exactly: pong" | codex exec --approve-for-me -o out.txt -C <scratch> -` with stdout piped: stdout "pong\n", file "pong" (identical apart from whitespace).
+  - `afk --agent codex --max-iterations 1 "Implement the feature."` in a scratch git workspace: "[afk] Run blocked: The workspace contains no feature specification, task list, ...", exit 1, stdout empty.
+  - `afk --agent claude ...` same setup: "[afk] Run blocked: No feature specification or task list was provided, ...", exit 1, stdout empty.
+  - Both ran one session, so the code skill's blocked response was parsed end to end for each agent. No mismatches, so no follow-up tasks.
+- Learnings for future iterations:
+  - Real Codex and Claude behave as the adapters assume (stdout final message; JSON result field).
+- Scope deviations:
+  - Used --max-iterations 1 so each run is exactly one session.
+- Follow up needed: none
+---

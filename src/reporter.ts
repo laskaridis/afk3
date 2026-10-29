@@ -14,7 +14,7 @@ const EXIT_CODE_MEANINGS: Record<keyof typeof EXIT_CODES, string> = {
   complete: "the feature was reported complete",
   blocked: "the code skill reported a blocker",
   inputError: "invalid options or prompt input; no session was launched",
-  executionError: "Codex failed to execute twice in a row",
+  executionError: "the agent failed to execute twice in a row",
   iterationLimit: "the iteration limit was reached without reported completion",
   timeout: "a session exceeded --session-timeout",
   interrupted: "interrupted by the user (Ctrl+C)",
@@ -44,19 +44,25 @@ export function exitCodeFor(result: RunResult): number {
   }
 }
 
-export function formatFinalStatus(result: RunResult): string {
+/** The final `[afk] ...` line; execution errors are reported as they happen, so they have none. */
+export function formatFinalStatus(result: RunResult): string | undefined {
   switch (result.kind) {
     case "complete":
-      return "feature complete";
+      return "Run complete: feature complete";
     case "blocked":
-      return `blocked: ${result.blockerText}`;
+      return `Run blocked: ${result.blockerText}`;
     case "execution-error":
-      return `execution error (${result.errorKind}): ${result.detail}`;
+      return undefined;
     case "iteration-limit":
-      return `iteration limit of ${result.limit} reached without reported completion`;
+      return `Run stopped: iteration limit of ${result.limit} reached without reported completion`;
     case "timeout":
-      return `session timed out after ${result.seconds} seconds`;
+      return `Run stopped: agent session timed out after ${result.seconds} seconds`;
     case "interrupted":
-      return "interrupted by user";
+      return "Run interrupted by user";
   }
+}
+
+/** The execution-error line followed by the agent's last stderr lines, in original order. */
+export function formatExecutionError(detail: string, stderrTail: string[]): string {
+  return [`[afk] Execution error: ${detail}`, ...stderrTail].map((line) => `${line}\n`).join("");
 }

@@ -1,21 +1,32 @@
 import { describe, expect, it } from "vitest";
+import { codexAdapter } from "../src/agents/codex.js";
 import { runAfk, type SessionRunner } from "../src/runner.js";
 import type { SessionResult } from "../src/session.js";
 
-const reply = (message: object): SessionResult => ({
-  kind: "exited",
-  exitCode: 0,
-  signal: null,
-  finalMessage: JSON.stringify(message),
-});
+/** A scripted session result; replies are built from the nonce the runner passes in. */
+type Scripted = SessionResult | ((nonce: string) => SessionResult);
 
-function scripted(...results: SessionResult[]) {
+const reply =
+  (message: object): Scripted =>
+  (nonce) => ({
+    kind: "exited",
+    exitCode: 0,
+    signal: null,
+    stdout: "",
+    outputFile: `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(message)}\n</afk-harness-result>`,
+    stderrTail: [],
+  });
+
+function scripted(...results: Scripted[]) {
   const prompts: string[] = [];
-  const runner: SessionRunner = async (prompt) => {
+  const nonces: string[] = [];
+  const runner: SessionRunner = async (prompt, nonce) => {
     prompts.push(prompt);
-    return results[Math.min(prompts.length, results.length) - 1]!;
+    nonces.push(nonce);
+    const result = results[Math.min(prompts.length, results.length) - 1]!;
+    return typeof result === "function" ? result(nonce) : result;
   };
-  return { runner, prompts };
+  return { runner, prompts, nonces };
 }
 
 const REPEAT = reply({ outcome: "repeat" });
@@ -26,13 +37,15 @@ const FAIL = reply({ outcome: "fail", failure_summary: "tests broke" });
 describe("runAfk", () => {
   it("starts another session after repeat and ends successfully on complete", async () => {
     const { runner, prompts } = scripted(REPEAT, COMPLETE);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({ kind: "complete" });
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
+      kind: "complete",
+    });
     expect(prompts).toEqual(["p", "p"]);
   });
 
   it("ends blocked with the blocker_text and starts no further session", async () => {
     const { runner, prompts } = scripted(BLOCKED, COMPLETE);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
       kind: "blocked",
       blockerText: "need API key",
     });
@@ -42,7 +55,7 @@ describe("runAfk", () => {
   it("surfaces the failure_summary and starts another session after fail", async () => {
     const { runner, prompts } = scripted(FAIL, COMPLETE);
     const surfaced: string[] = [];
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner, {
+    const result = await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner, {
       failureSurfaced: (summary) => surfaced.push(summary),
     });
     expect(result).toEqual({ kind: "complete" });
@@ -52,14 +65,14 @@ describe("runAfk", () => {
 
   it("allows 10 launches by default budget and honours a smaller limit", async () => {
     const ten = scripted(REPEAT);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, ten.runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, ten.runner)).toEqual({
       kind: "iteration-limit",
       limit: 10,
     });
     expect(ten.prompts).toHaveLength(10);
 
     const three = scripted(REPEAT);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 3 }, three.runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 3 }, three.runner)).toEqual({
       kind: "iteration-limit",
       limit: 3,
     });
@@ -67,7 +80,7 @@ describe("runAfk", () => {
   });
 
   it("on the last allowed iteration: fail hits the limit, complete succeeds, blocked reports the blocker", async () => {
-    const config = { launchPrompt: "p", maxIterations: 1 };
+    const config = { adapter: codexAdapter, launchPrompt: "p", maxIterations: 1 };
     expect(await runAfk(config, scripted(FAIL).runner)).toEqual({ kind: "iteration-limit", limit: 1 });
     expect(await runAfk(config, scripted(COMPLETE).runner)).toEqual({ kind: "complete" });
     expect(await runAfk(config, scripted(BLOCKED).runner)).toEqual({ kind: "blocked", blockerText: "need API key" });
@@ -75,8 +88,8 @@ describe("runAfk", () => {
 });
 
 describe("runAfk execution-error retry", () => {
-  const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null };
-  const cfg = { launchPrompt: "p", maxIterations: 10 };
+  const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null, stdout: "", stderrTail: [] };
+  const cfg = { adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 };
 
   it("a valid response resets the allowance: error, repeat, error, complete succeeds", async () => {
     const { runner, prompts } = scripted(ERROR, REPEAT, ERROR, COMPLETE);
@@ -89,7 +102,7 @@ describe("runAfk execution-error retry", () => {
     expect(await runAfk(cfg, runner)).toEqual({
       kind: "execution-error",
       errorKind: "exit-status",
-      detail: "exit status 1",
+      detail: "agent exited unsuccessfully with exit code 1",
     });
     expect(prompts).toHaveLength(4);
   });
@@ -107,7 +120,7 @@ describe("runAfk execution-error retry", () => {
       iterationStarted: (i, n) => events.push(`start ${i}/${n}`),
       retryStarted: (i, n, reason) => events.push(`retry ${i}/${n} ${reason}`),
     });
-    expect(events).toEqual(["start 1/10", "retry 2/10 exit status 1"]);
+    expect(events).toEqual(["start 1/10", "retry 2/10 agent exited unsuccessfully with exit code 1"]);
   });
 
   it("an error on the last allowed iteration yields iteration-limit, not a retry", async () => {
@@ -119,10 +132,36 @@ describe("runAfk execution-error retry", () => {
   });
 });
 
+describe("runAfk result block nonce", () => {
+  it("passes a fresh nonce to every session, including retries", async () => {
+    const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null, stdout: "", stderrTail: [] };
+    const { runner, nonces } = scripted(REPEAT, ERROR, COMPLETE);
+    await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 5 }, runner);
+    expect(nonces).toHaveLength(3);
+    expect(new Set(nonces).size).toBe(3);
+  });
+
+  it("treats a block carrying another nonce as an invalid response", async () => {
+    const stale: SessionResult = {
+      kind: "exited",
+      exitCode: 0,
+      signal: null,
+      stdout: "",
+      outputFile: '<afk-harness-result nonce="cafebabe">\n{"outcome":"complete"}\n</afk-harness-result>',
+      stderrTail: [],
+    };
+    const { runner } = scripted(stale);
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 2 }, runner)).toMatchObject({
+      kind: "execution-error",
+      errorKind: "invalid-response",
+    });
+  });
+});
+
 describe("runAfk interruption", () => {
   it("stops with interrupted without retrying or iterating", async () => {
     const calls: string[] = [];
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 5 }, async () => {
+    const result = await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 5 }, async () => {
       calls.push("x");
       return { kind: "interrupted" };
     });
@@ -134,10 +173,13 @@ describe("runAfk interruption", () => {
 describe("timed-out session", () => {
   it("stops the run as a timeout without retrying", async () => {
     let launches = 0;
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 }, async () => {
-      launches++;
-      return { kind: "timed-out" };
-    });
+    const result = await runAfk(
+      { adapter: codexAdapter, launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 },
+      async () => {
+        launches++;
+        return { kind: "timed-out" };
+      },
+    );
     expect(result).toEqual({ kind: "timeout", seconds: 7 });
     expect(launches).toBe(1);
   });

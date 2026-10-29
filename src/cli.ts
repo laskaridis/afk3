@@ -3,9 +3,10 @@ import { statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
+import { agentNames, agents, DEFAULT_AGENT } from "./agents/registry.js";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
-import { EXIT_CODES, exitCodeFor, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
+import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
 import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
 import { runSession } from "./session.js";
 
@@ -37,6 +38,13 @@ function parseNonEmpty(value: string): string {
   return value;
 }
 
+function parseAgent(value: string): string {
+  if (!agentNames().includes(value)) {
+    throw new InvalidArgumentError(`must be one of: ${agentNames().join(", ")}.`);
+  }
+  return value;
+}
+
 function parseCwd(value: string): string {
   const directory = resolve(value);
   let isDirectory = false;
@@ -59,13 +67,20 @@ async function readAllStdin(): Promise<string> {
 async function main(argv: string[]): Promise<number> {
   const program = new Command()
     .name("afk")
+    .description("Leave the coding agent implementing a feature, one task at a time, while you are away from keyboard")
     .version(version)
     .argument("[prompt...]", "feature instructions (or use --prompt-file, or pipe on stdin)")
+    .option(
+      "--agent <name>",
+      `coding agent for every session (supported: ${agentNames().join(", ")}; default: ${DEFAULT_AGENT})`,
+      parseAgent,
+      DEFAULT_AGENT,
+    )
     .option("--prompt-file <path>", "read the feature instructions from a file")
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option(
       "--max-iterations <count>",
-      "maximum number of Codex sessions to launch",
+      "maximum number of agent sessions to launch",
       parseMaxIterations,
       DEFAULT_MAX_ITERATIONS,
     )
@@ -74,10 +89,14 @@ async function main(argv: string[]): Promise<number> {
       "stop the run if a single session exceeds this many seconds",
       parseSessionTimeout,
     )
-    .option("--model <name>", "model for every session (default: your Codex configuration)", parseNonEmpty)
+    .option(
+      "--model <name>",
+      "model for every session, passed to the agent unchanged (default: the agent's configuration)",
+      parseNonEmpty,
+    )
     .option(
       "--reasoning-effort <level>",
-      "reasoning effort for every session (default: your Codex configuration)",
+      "reasoning effort for every session, passed to the agent unchanged (default: the agent's configuration)",
       parseNonEmpty,
     )
     .addHelpText("after", formatExitCodeHelp())
@@ -96,6 +115,7 @@ async function main(argv: string[]): Promise<number> {
     throw error;
   }
   const {
+    agent,
     maxIterations,
     sessionTimeout,
     promptFile,
@@ -103,6 +123,7 @@ async function main(argv: string[]): Promise<number> {
     model,
     reasoningEffort,
   } = program.opts<{
+    agent: string;
     maxIterations: number;
     sessionTimeout?: number;
     promptFile?: string;
@@ -110,6 +131,7 @@ async function main(argv: string[]): Promise<number> {
     model?: string;
     reasoningEffort?: string;
   }>();
+  const adapter = agents[agent]!;
   const resolved = await resolvePrompt({
     positional: program.args,
     promptFile,
@@ -128,25 +150,31 @@ async function main(argv: string[]): Promise<number> {
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
-    { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt) =>
+    { adapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
+    (launchPrompt, nonce) =>
       runSession({
-        prompt: buildSessionPrompt(launchPrompt),
+        adapter,
+        prompt: buildSessionPrompt(launchPrompt, nonce),
         cwd,
         signal: interruption.signal,
         graceMs,
         timeoutSeconds: sessionTimeout,
         model,
-        reasoningEffort,
+        effort: reasoningEffort,
       }),
     {
-      iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
-      retryStarted: (iteration, limit, reason) =>
-        process.stderr.write(`[afk] retrying after execution error (${reason}): iteration ${iteration}/${limit}\n`),
-      failureSurfaced: (summary) => process.stderr.write(`[afk] failure reported: ${summary}\n`),
+      iterationStarted: (iteration, limit) =>
+        process.stderr.write(`[afk] Iteration ${iteration}/${limit}: starting agent session\n`),
+      retryStarted: (iteration) =>
+        process.stderr.write(
+          `[afk] Iteration ${iteration}/${maxIterations}: retrying agent session after execution error\n`,
+        ),
+      failureSurfaced: (summary) => process.stderr.write(`[afk] Task failure: ${summary}\n`),
+      executionError: (detail, stderrTail) => process.stderr.write(formatExecutionError(detail, stderrTail)),
     },
   );
-  process.stderr.write(`[afk] ${formatFinalStatus(result)}\n`);
+  const finalStatus = formatFinalStatus(result);
+  if (finalStatus !== undefined) process.stderr.write(`[afk] ${finalStatus}\n`);
   return exitCodeFor(result);
 }
 

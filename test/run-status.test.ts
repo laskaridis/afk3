@@ -44,12 +44,12 @@ interface Scenario {
 }
 
 const scenarios: Scenario[] = [
-  { name: "complete", sessions: [complete], exitCode: 0, status: ["feature complete"], completionWording: true },
+  { name: "complete", sessions: [complete], exitCode: 0, status: ["Run complete"], completionWording: true },
   {
     name: "blocked",
     sessions: [[{ finalMessage: '{"outcome":"blocked","blocker_text":"need API key"}' }, { exit: 0 }]],
     exitCode: 1,
-    status: ["blocked: need API key"],
+    status: ["Run blocked: need API key"],
     completionWording: false,
   },
   {
@@ -57,28 +57,28 @@ const scenarios: Scenario[] = [
     sessions: [complete],
     noCodexOnPath: true,
     exitCode: 3,
-    status: ["execution error (launch-failed)"],
+    status: ["Execution error: failed to launch agent"],
     completionWording: false,
   },
   {
     name: "execution error: exit status",
     sessions: [[{ finalMessage: '{"outcome":"complete"}' }, { exit: 7 }]],
     exitCode: 3,
-    status: ["execution error (exit-status)", "exit status 7"],
+    status: ["Execution error: agent exited unsuccessfully with exit code 7"],
     completionWording: false,
   },
   {
     name: "execution error: missing response",
     sessions: [[{ exit: 0 }]],
     exitCode: 3,
-    status: ["execution error (missing-response)"],
+    status: ["Execution error: agent exited without a final response"],
     completionWording: false,
   },
   {
     name: "execution error: invalid response",
     sessions: [[{ finalMessage: "all done!" }, { exit: 0 }]],
     exitCode: 3,
-    status: ["execution error (invalid-response)"],
+    status: ["Execution error: agent final response is invalid: "],
     completionWording: false,
   },
   {
@@ -86,7 +86,7 @@ const scenarios: Scenario[] = [
     sessions: [repeat],
     args: ["--max-iterations", "2"],
     exitCode: 4,
-    status: ["iteration limit of 2"],
+    status: ["Run stopped: iteration limit of 2"],
     completionWording: false,
   },
   {
@@ -94,7 +94,7 @@ const scenarios: Scenario[] = [
     sessions: [[{ sleepMs: 30000 }]],
     args: ["--session-timeout", "1"],
     exitCode: 5,
-    status: ["timed out after 1 seconds"],
+    status: ["Run stopped: agent session timed out after 1 seconds"],
     completionWording: false,
   },
   {
@@ -102,7 +102,7 @@ const scenarios: Scenario[] = [
     sessions: [[{ sleepMs: 30000 }]],
     interrupt: true,
     exitCode: 130,
-    status: ["interrupted by user"],
+    status: ["Run interrupted by user"],
     completionWording: false,
   },
 ];
@@ -115,13 +115,11 @@ describe("run progress", () => {
 
     expect(run.exitCode).toBe(0);
     const lines = run.stderr.split("\n");
-    expect(lines).toContain("[afk] iteration 1/5");
-    expect(lines.some((l) => l.startsWith("[afk] retrying after execution error") && l.endsWith("iteration 3/5"))).toBe(
-      true,
-    );
-    expect(lines).toContain("[afk] iteration 2/5");
-    expect(lines).not.toContain("[afk] iteration 3/5");
-    expect(lines).toContain("[afk] iteration 4/5");
+    expect(lines).toContain("[afk] Iteration 1/5: starting agent session");
+    expect(lines).toContain("[afk] Iteration 3/5: retrying agent session after execution error");
+    expect(lines).toContain("[afk] Iteration 2/5: starting agent session");
+    expect(lines).not.toContain("[afk] Iteration 3/5: starting agent session");
+    expect(lines).toContain("[afk] Iteration 4/5: starting agent session");
   });
 });
 

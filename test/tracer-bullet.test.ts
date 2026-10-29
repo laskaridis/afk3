@@ -1,22 +1,23 @@
-import { readdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createFakeCodexEnvironment, startAfk } from "./helpers.js";
 
 const COMPLETE = { finalMessage: '{"outcome":"complete"}' };
 
 describe("afk <prompt> with a single Codex session", () => {
-  it("launches codex exec once with automatic review, the workspace, and an output file", async () => {
+  it("launches codex exec once with automatic review, the workspace, and the prompt read from stdin", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
 
     const run = await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
 
     expect(run.exitCode).toBe(0);
-    const { argv, cwd, outputPath } = fake.soleInvocation();
+    const { argv, cwd } = fake.soleInvocation();
     expect(argv[0]).toBe("exec");
     expect(argv).toContain("--approve-for-me");
     expect(argv[argv.indexOf("-C") + 1]).toBe(fake.workspace);
-    expect(argv[argv.indexOf("-o") + 1]).toBe(outputPath);
+    expect(argv.at(-1)).toBe("-");
     expect(cwd).toBe(fake.workspace);
   });
 
@@ -25,42 +26,22 @@ describe("afk <prompt> with a single Codex session", () => {
 
     await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
 
-    const { argv } = fake.soleInvocation();
-    const prompt = argv[argv.length - 1]!;
+    const { stdin: prompt } = fake.soleInvocation();
     expect(prompt.startsWith("build feature X")).toBe(true);
     expect(prompt).toMatch(/Coding loop protocol/);
     expect(prompt).toMatch(/one task/i);
     expect(prompt).toMatch(/JSON object and nothing else/i);
   });
 
-  it("shows codex stdout and stderr while the codex process is still running", async () => {
-    const fake = createFakeCodexEnvironment([
-      { stdout: "first-out\n" },
-      { stderr: "first-err\n" },
-      { sleepMs: 2500 },
-      { stdout: "last-out\n" },
-      COMPLETE,
-      { exit: 0 },
-    ]);
-    const started = Date.now();
-    let firstSeenAt: number | undefined;
-    const afk = startAfk({
-      args: ["build feature X"],
-      cwd: fake.workspace,
-      env: fake.env,
-      onStdout: (_chunk, run) => {
-        if (firstSeenAt === undefined && run.stdout.includes("first-out")) firstSeenAt = Date.now();
-      },
-    });
+  it("shows only [afk] lines on stderr and nothing on stdout", async () => {
+    const fake = createFakeCodexEnvironment([{ stderr: "agent-err\n" }, COMPLETE, { exit: 0 }]);
 
-    const run = await afk.done;
-    const finishedAt = Date.now();
+    const run = await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
 
-    expect(firstSeenAt).toBeDefined();
-    expect(firstSeenAt! - started).toBeLessThan(2000);
-    expect(finishedAt - firstSeenAt!).toBeGreaterThan(1500);
-    expect(run.stdout).toContain("last-out");
-    expect(run.stderr).toContain("first-err");
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).not.toContain("agent-err");
+    for (const line of run.stderr.split("\n").filter(Boolean)) expect(line).toMatch(/^\[afk\]/);
   });
 
   it("reports completion and exits 0 on a valid complete response", async () => {
@@ -78,8 +59,6 @@ describe("afk <prompt> with a single Codex session", () => {
     await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
 
     const { argv } = fake.soleInvocation();
-    // The prompt (last argument) is free text; check the flags only.
-    const flags = argv.slice(0, -1);
     for (const forbidden of [
       "--dangerously-bypass-approvals-and-sandbox",
       "danger-full-access",
@@ -89,34 +68,36 @@ describe("afk <prompt> with a single Codex session", () => {
       "resume",
       "fork",
     ]) {
-      expect(flags).not.toContain(forbidden);
+      expect(argv).not.toContain(forbidden);
     }
   });
 
-  it("gives codex no stdin data even when afk's own prompt came from stdin", async () => {
+  it("gives codex the session prompt on stdin, not afk's own piped stdin", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
 
     await startAfk({
-      args: [],
+      args: ["build feature X"],
       cwd: fake.workspace,
       env: fake.env,
       stdin: "secret piped data",
     }).done;
 
     const { stdin } = fake.soleInvocation();
-    expect(stdin).toBe("");
+    expect(stdin).toMatch(/^build feature X/);
+    expect(stdin).not.toContain("secret piped data");
   });
 
-  it("removes the final-message file and creates nothing in the workspace", async () => {
+  it("passes an output file outside the workspace and leaves no files in the temp directory or workspace", async () => {
     const fake = createFakeCodexEnvironment([COMPLETE, { exit: 0 }]);
+    const tmp = mkdtempSync(join(tmpdir(), "afk-empty-tmp-"));
 
-    await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
+    await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: { ...fake.env, TMPDIR: tmp } }).done;
 
-    const outputPath = fake.soleInvocation().outputPath!;
-    expect(outputPath).toBeDefined();
-    expect(fake.fileExists(outputPath)).toBe(false);
+    const { argv } = fake.soleInvocation();
+    const outputFile = argv[argv.indexOf("--output-last-message") + 1]!;
+    expect(outputFile.startsWith(tmp)).toBe(true);
     expect(readdirSync(fake.workspace)).toEqual([]);
-    expect(dirname(outputPath).startsWith(fake.workspace)).toBe(false);
+    expect(readdirSync(tmp)).toEqual([]);
   });
 });
 

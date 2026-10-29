@@ -2,13 +2,11 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const COMPLETE = say({ outcome: "complete" });
 const CRASH: Step[] = [{ exit: 7 }];
-
-const lastPrompt = (argv: string[]) => argv[argv.length - 1];
 
 describe("afk execution errors", () => {
   it("reports a non-zero exit, announces a retry, relaunches, and succeeds", async () => {
@@ -17,7 +15,7 @@ describe("afk execution errors", () => {
 
     expect(run.exitCode).toBe(0);
     expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).toContain("exit status 7");
+    expect(run.stderr).toContain("agent exited unsuccessfully with exit code 7");
     expect(run.stderr).toContain("retrying");
   });
 
@@ -30,25 +28,24 @@ describe("afk execution errors", () => {
     expect(run.exitCode).toBe(3);
     expect(fake.invocations()).toHaveLength(2);
     expect(run.stderr).not.toContain("feature complete");
-    expect(run.stderr).toContain("exit status 1");
+    expect(run.stderr).toContain("agent exited unsuccessfully with exit code 1");
   });
 
   it.each([
-    ["exit status", CRASH, "exit-status", "exit status 7"],
-    ["missing response", [{ exit: 0 }] as Step[], "missing-response", "missing-response"],
+    ["exit status", CRASH, "exit-status", "agent exited unsuccessfully with exit code 7"],
+    ["missing response", [{ exit: 0 }] as Step[], "missing-response", "agent exited without a final response"],
     [
       "invalid response",
       [{ finalMessage: "all done!" }, { exit: 0 }] as Step[],
       "invalid-response",
-      "invalid-response",
+      "agent final response is invalid: ",
     ],
-  ])("stops after exactly two launches on two consecutive %s errors", async (_name, steps, kind, text) => {
+  ])("stops after exactly two launches on two consecutive %s errors", async (_name, steps, _kind, text) => {
     const fake = createFakeCodexEnvironment({ sessions: [steps] });
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
 
     expect(run.exitCode).toBe(3);
     expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).toContain(kind);
     expect(run.stderr).toContain(text);
   });
 
@@ -62,7 +59,7 @@ describe("afk execution errors", () => {
     }).done;
 
     expect(run.exitCode).toBe(3);
-    expect(run.stderr).toContain("launch-failed");
+    expect(run.stderr).toContain("Execution error: failed to launch agent");
     expect(run.stderr.match(/retrying/g)).toHaveLength(1);
   });
 
@@ -75,7 +72,8 @@ describe("afk execution errors", () => {
     expect(run.exitCode).toBe(0);
     const [first, second] = fake.invocations();
     expect(second!.files).toContain("partial.txt");
-    expect(lastPrompt(second!.argv)).toBe(lastPrompt(first!.argv));
+    expect(withoutNonce(second!.stdin)).toBe(withoutNonce(first!.stdin));
+    expect(second!.stdin).toContain("build X");
     expect(second!.argv).not.toContain("resume");
     expect(second!.argv).not.toContain("fork");
   });
