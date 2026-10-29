@@ -66,3 +66,24 @@
   - No subagent review (change is small and fully covered by table-driven tests).
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:05:50.855Z
+- TASK-004
+- What was implemented:
+  - Agent-neutral wording: "[afk] Iteration n/max: starting agent session", "...: retrying agent session after execution error", "[afk] Task failure: ...", "[afk] Execution error: <reason>", "[afk] Run complete/blocked/stopped/interrupted ...". Runner details are now the agent-neutral reasons (failed to launch agent, agent exited unsuccessfully with exit code N / signal S, agent exited without a final response, agent final response is invalid: ...).
+  - New RunReporter.executionError(detail, stderrTail) called by the runner for every execution error (including retried ones); cli prints the line plus the stderr tail via reporter.formatExecutionError. formatFinalStatus returns undefined for execution errors (already printed), so there is no duplicate line.
+  - Exit-code help no longer names Codex.
+- Files changed:
+  - src/runner.ts, src/reporter.ts, src/cli.ts
+  - test/stderr-tail.test.ts (new), test/run-status.test.ts, test/execution-error.test.ts, test/claude-agent.test.ts, test/runner.test.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 17 files, 169 tests passed.
+  - Criteria: wording asserted in run-status tests; stderr-tail.test.ts shows 30 stderr lines -> last 20 in order directly after each Execution error line (including the retried one), nothing extra when stderr empty, nothing for valid response or timeout (interruption returns before any error is reported); exit-code help text edited; existing tests updated.
+- Learnings for future iterations:
+  - Help option texts in cli.ts still say Codex (--max-iterations, --model, --reasoning-effort): TASK-006.
+  - Final execution error is printed via the executionError hook, not formatFinalStatus.
+- Scope deviations:
+  - No subagent review (small change, covered by tests).
+- Follow up needed: none
+---

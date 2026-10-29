@@ -93,7 +93,7 @@ describe("runAfk execution-error retry", () => {
     expect(await runAfk(cfg, runner)).toEqual({
       kind: "execution-error",
       errorKind: "exit-status",
-      detail: "exit status 1",
+      detail: "agent exited unsuccessfully with exit code 1",
     });
     expect(prompts).toHaveLength(4);
   });
@@ -111,7 +111,7 @@ describe("runAfk execution-error retry", () => {
       iterationStarted: (i, n) => events.push(`start ${i}/${n}`),
       retryStarted: (i, n, reason) => events.push(`retry ${i}/${n} ${reason}`),
     });
-    expect(events).toEqual(["start 1/10", "retry 2/10 exit status 1"]);
+    expect(events).toEqual(["start 1/10", "retry 2/10 agent exited unsuccessfully with exit code 1"]);
   });
 
   it("an error on the last allowed iteration yields iteration-limit, not a retry", async () => {

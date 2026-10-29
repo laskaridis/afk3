@@ -63,10 +63,30 @@ describe("afk --agent claude", () => {
 
   describe("execution errors (two consecutive sessions)", () => {
     const rows: [string, Step[], string, string][] = [
-      ["non-zero exit without structured result", [{ exit: 7 }], "exit-status", "exit status 7"],
-      ["non-zero exit with non-error JSON", [{ json: { result: "x" } }, { exit: 2 }], "exit-status", "exit status 2"],
-      ["non-zero exit with unparseable stdout", [{ stdout: "boom" }, { exit: 2 }], "exit-status", "exit status 2"],
-      ["stdout not valid JSON", [{ stdout: "not json" }, { exit: 0 }], "invalid-response", "could not be parsed"],
+      [
+        "non-zero exit without structured result",
+        [{ exit: 7 }],
+        "exit-status",
+        "agent exited unsuccessfully with exit code 7",
+      ],
+      [
+        "non-zero exit with non-error JSON",
+        [{ json: { result: "x" } }, { exit: 2 }],
+        "exit-status",
+        "agent exited unsuccessfully with exit code 2",
+      ],
+      [
+        "non-zero exit with unparseable stdout",
+        [{ stdout: "boom" }, { exit: 2 }],
+        "exit-status",
+        "agent exited unsuccessfully with exit code 2",
+      ],
+      [
+        "stdout not valid JSON",
+        [{ stdout: "not json" }, { exit: 0 }],
+        "invalid-response",
+        "agent final response is invalid: agent output could not be parsed",
+      ],
       [
         "is_error on exit 0",
         [{ json: { is_error: true, subtype: "error_max_turns", result: "x" } }, { exit: 0 }],
@@ -77,31 +97,40 @@ describe("afk --agent claude", () => {
         "is_error on non-zero exit",
         [{ json: { is_error: true, subtype: "error_during_execution" } }, { exit: 1 }],
         "exit-status",
-        "exit status 1 (agent reported an error: error_during_execution)",
+        "agent exited unsuccessfully with exit code 1 (agent reported an error: error_during_execution)",
       ],
-      ["empty stdout", [{ exit: 0 }], "missing-response", "missing-response"],
-      ["no result field", [{ json: { is_error: false } }, { exit: 0 }], "missing-response", "missing-response"],
+      ["empty stdout", [{ exit: 0 }], "missing-response", "agent exited without a final response"],
+      [
+        "no result field",
+        [{ json: { is_error: false } }, { exit: 0 }],
+        "missing-response",
+        "agent exited without a final response",
+      ],
       [
         "empty result",
         [{ json: { is_error: false, result: "" } }, { exit: 0 }],
         "missing-response",
-        "missing-response",
+        "agent exited without a final response",
       ],
-      ["protocol violation", [{ finalMessage: "all done!" }, { exit: 0 }], "invalid-response", "invalid-response"],
+      [
+        "protocol violation",
+        [{ finalMessage: "all done!" }, { exit: 0 }],
+        "invalid-response",
+        "agent final response is invalid: ",
+      ],
     ];
-    it.each(rows)("%s", async (_name, steps, kind, text) => {
+    it.each(rows)("%s", async (_name, steps, _kind, text) => {
       const { fake, done } = runClaude([steps]);
       const run = await done;
       expect(run.exitCode).toBe(3);
       expect(fake.invocations()).toHaveLength(2);
-      expect(run.stderr).toContain(kind);
       expect(run.stderr).toContain(text);
     });
 
     it("non-zero exit without a structured result reports only the exit code", async () => {
       const { done } = runClaude([[{ stdout: "junk" }, { exit: 9 }]]);
       const run = await done;
-      expect(run.stderr).toContain("exit status 9");
+      expect(run.stderr).toContain("agent exited unsuccessfully with exit code 9");
       expect(run.stderr).not.toContain("agent reported an error");
     });
 
@@ -109,7 +138,7 @@ describe("afk --agent claude", () => {
       const { done } = runClaude([COMPLETE], [], { PATH: "/nonexistent" });
       const run = await done;
       expect(run.exitCode).toBe(3);
-      expect(run.stderr).toContain("launch-failed");
+      expect(run.stderr).toContain("Execution error: failed to launch agent");
     });
   });
 

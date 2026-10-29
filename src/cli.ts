@@ -6,7 +6,7 @@ import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { agentNames, agents, DEFAULT_AGENT } from "./agents/registry.js";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
-import { EXIT_CODES, exitCodeFor, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
+import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
 import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
 import { runSession } from "./session.js";
 
@@ -158,13 +158,18 @@ async function main(argv: string[]): Promise<number> {
         effort: reasoningEffort,
       }),
     {
-      iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),
-      retryStarted: (iteration, limit, reason) =>
-        process.stderr.write(`[afk] retrying after execution error (${reason}): iteration ${iteration}/${limit}\n`),
-      failureSurfaced: (summary) => process.stderr.write(`[afk] failure reported: ${summary}\n`),
+      iterationStarted: (iteration, limit) =>
+        process.stderr.write(`[afk] Iteration ${iteration}/${limit}: starting agent session\n`),
+      retryStarted: (iteration) =>
+        process.stderr.write(
+          `[afk] Iteration ${iteration}/${maxIterations}: retrying agent session after execution error\n`,
+        ),
+      failureSurfaced: (summary) => process.stderr.write(`[afk] Task failure: ${summary}\n`),
+      executionError: (detail, stderrTail) => process.stderr.write(formatExecutionError(detail, stderrTail)),
     },
   );
-  process.stderr.write(`[afk] ${formatFinalStatus(result)}\n`);
+  const finalStatus = formatFinalStatus(result);
+  if (finalStatus !== undefined) process.stderr.write(`[afk] ${finalStatus}\n`);
   return exitCodeFor(result);
 }
 

@@ -97,7 +97,7 @@
     {
       "id": "TASK-004",
       "objective": "Run output is agent-neutral and execution errors are diagnosable from the last 20 lines of the agent's captured stderr.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-003",
         "US-004"

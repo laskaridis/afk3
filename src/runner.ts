@@ -20,6 +20,8 @@ export interface RunReporter {
   iterationStarted?(iteration: number, limit: number): void;
   retryStarted?(iteration: number, limit: number, reason: string): void;
   failureSurfaced?(failureSummary: string): void;
+  /** Called for every execution error, including the one that leads to a retry; the stderr tail is the agent's last lines. */
+  executionError?(detail: string, stderrTail: string[]): void;
 }
 
 export interface RunConfig {
@@ -48,6 +50,7 @@ export async function runAfk(
     const classified = classify(session, config.adapter);
     if ("kind" in classified) {
       const error = classified;
+      reporter.executionError?.(error.detail, session.kind === "exited" ? session.stderrTail : []);
       // One retry per consecutive error; a second consecutive error stops the run.
       if (previousError !== undefined) return error;
       if (iteration === config.maxIterations) break;
@@ -80,31 +83,57 @@ function classify(
   adapter: AgentAdapter,
 ): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
-    return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
+    return {
+      kind: "execution-error",
+      errorKind: "launch-failed",
+      detail: `failed to launch agent: ${session.error.message}`,
+    };
   }
   if (session.signal) {
-    return { kind: "execution-error", errorKind: "exit-status", detail: `signal ${session.signal}` };
+    return {
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: `agent exited unsuccessfully with signal ${session.signal}`,
+    };
   }
   const extracted = adapter.extractFinalMessage(session.stdout);
   if ("agentError" in extracted) {
     const detail =
       session.exitCode === 0
-        ? `agent reported an error (${extracted.detail})`
-        : `exit status ${session.exitCode} (agent reported an error: ${extracted.detail})`;
+        ? `agent exited unsuccessfully (agent reported an error: ${extracted.detail})`
+        : `agent exited unsuccessfully with exit code ${session.exitCode} (agent reported an error: ${extracted.detail})`;
     return { kind: "execution-error", errorKind: "exit-status", detail };
   }
   // A message from a failed process is never trusted.
   if (session.exitCode !== 0) {
-    return { kind: "execution-error", errorKind: "exit-status", detail: `exit status ${session.exitCode}` };
+    return {
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: `agent exited unsuccessfully with exit code ${session.exitCode}`,
+    };
   }
   if ("invalid" in extracted) {
-    return { kind: "execution-error", errorKind: "invalid-response", detail: extracted.reason };
+    return {
+      kind: "execution-error",
+      errorKind: "invalid-response",
+      detail: `agent final response is invalid: ${extracted.reason}`,
+    };
   }
   const finalMessage = "message" in extracted ? extracted.message : undefined;
   const response = parseFinalResponse(finalMessage);
   if ("violation" in response) {
-    const errorKind = finalMessage === undefined ? "missing-response" : "invalid-response";
-    return { kind: "execution-error", errorKind, detail: response.violation };
+    if (finalMessage === undefined) {
+      return {
+        kind: "execution-error",
+        errorKind: "missing-response",
+        detail: "agent exited without a final response",
+      };
+    }
+    return {
+      kind: "execution-error",
+      errorKind: "invalid-response",
+      detail: `agent final response is invalid: ${response.violation}`,
+    };
   }
   return response;
 }
