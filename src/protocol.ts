@@ -30,7 +30,8 @@ export function parseFinalResponse(text: string | undefined): AgentOutcome | Con
     value = JSON.parse(text);
   } catch {
     return {
-      violation: "the final message is not a single JSON object (found prose, Markdown fences, malformed JSON, or several values)",
+      violation:
+        "the final message is not a single JSON object (found prose, Markdown fences, malformed JSON, or several values)",
     };
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -56,9 +57,7 @@ export function parseFinalResponse(text: string | undefined): AgentOutcome | Con
     if (typeof detail !== "string" || detail.trim() === "") {
       return { violation: `outcome "${outcome}" requires a non-empty string "${field}"` };
     }
-    return outcome === "blocked"
-      ? { outcome, blocker_text: detail }
-      : { outcome, failure_summary: detail };
+    return outcome === "blocked" ? { outcome, blocker_text: detail } : { outcome, failure_summary: detail };
   }
   return {
     violation: `missing or unsupported "outcome" (expected repeat, complete, blocked, or fail)`,

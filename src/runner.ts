@@ -73,7 +73,9 @@ export async function runAfk(
 type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 
 /** Classify a session as an execution error or the valid outcome it reported. */
-function classify(session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>): ExecutionError | AgentOutcome {
+function classify(
+  session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>,
+): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
     return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
   }

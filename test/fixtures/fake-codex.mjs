@@ -32,13 +32,12 @@ if (!process.stdin.isTTY) {
 }
 
 const invocationIndex = readFileSync(process.env.FAKE_CODEX_RECORD, "utf8").split("\n").filter(Boolean).length;
-const steps = script.sessions
-  ? script.sessions[Math.min(invocationIndex, script.sessions.length - 1)]
-  : script.steps;
+const steps = script.sessions ? script.sessions[Math.min(invocationIndex, script.sessions.length - 1)] : script.steps;
 
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
-  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, pid: process.pid, files: readdirSync(process.cwd()) }) + "\n",
+  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, pid: process.pid, files: readdirSync(process.cwd()) }) +
+    "\n",
 );
 
 let ignoreSignals = false;
