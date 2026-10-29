@@ -4,7 +4,7 @@
     {
       "id": "TASK-001",
       "objective": "Codex runs through an agent-neutral session runner and a registered Codex adapter, reading the final message from piped stdout with no temporary files and no live agent output in the terminal.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-003",
         "US-005"

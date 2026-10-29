@@ -3,6 +3,7 @@ import { statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
+import { codexAdapter } from "./agents/codex.js";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
 import { EXIT_CODES, exitCodeFor, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
@@ -128,16 +129,17 @@ async function main(argv: string[]): Promise<number> {
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
-    { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
+    { adapter: codexAdapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
     (launchPrompt) =>
       runSession({
+        adapter: codexAdapter,
         prompt: buildSessionPrompt(launchPrompt),
         cwd,
         signal: interruption.signal,
         graceMs,
         timeoutSeconds: sessionTimeout,
         model,
-        reasoningEffort,
+        effort: reasoningEffort,
       }),
     {
       iterationStarted: (iteration, limit) => process.stderr.write(`[afk] iteration ${iteration}/${limit}\n`),

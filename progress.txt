@@ -1,0 +1,31 @@
+## Project discovery
+- Tests run the built CLI (`pnpm test` builds first, then vitest); fake agent executables live in test/fixtures and are put first on PATH by test/helpers.ts.
+- No python in this environment (asdf shim fails); use node for scripted edits.
+- The fake codex `finalMessage` step writes to stdout (+ newline). Any extra `stdout` step makes Codex's final message invalid, since Codex stdout is the final message.
+- Agent prompt is delivered on stdin; fake records it as `stdin` in each invocation record.
+- Run `pnpm check` (typecheck, lint, prettier) as well as `pnpm test` before committing.
+---
+
+## 2026-10-29T10:01:15.096Z
+- TASK-001
+- What was implemented:
+  - AgentAdapter interface + FinalMessageResult (src/agents/types.ts), Codex adapter (prompt via stdin with "-", no -o), registry with agents/DEFAULT_AGENT/agentNames().
+  - session.ts is agent-neutral: spawns adapter.executable with piped stdio, writes prompt to stdin, captures stdout and a 20-line stderr tail, no temp files. SessionResult "exited" now carries stdout/stderrTail instead of finalMessage; option reasoningEffort renamed effort.
+  - runner.ts takes config.adapter and classifies via adapter.extractFinalMessage then parseFinalResponse.
+  - cli.ts wired to codexAdapter (no --agent flag yet; TASK-002).
+- Files changed:
+  - src/agents/{types,codex,registry}.ts (new), src/session.ts, src/runner.ts, src/cli.ts
+  - test/agents/codex.test.ts (new), test/fixtures/fake-codex.mjs, test/helpers.ts, test/runner.test.ts, test/tracer-bullet.test.ts, test/execution-error.test.ts, test/run-loop.test.ts, test/prompt-input.test.ts
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - pnpm check: clean. pnpm test: 13 files, 125 tests passed.
+  - Criteria: registry/adapter exist (codex.test.ts); buildArgs and extractFinalMessage unit tests; tracer-bullet tests show prompt on fake's stdin, stdout empty and only [afk] lines on stderr, no -o arg, workspace and TMPDIR empty; session.ts contains no Codex references; fixture/helpers have no -o.
+  - Read-only subagent review: no defects.
+- Learnings for future iterations:
+  - FinalMessageResult currently has message/missing/invalid only; TASK-003 must add the agentError variant and runner handling.
+  - stderrTail is captured already; printing it is TASK-004.
+  - Tests that previously read the prompt from argv now read invocation.stdin.
+- Scope deviations:
+  - Tests in execution-error, run-loop, prompt-input were edited since the prompt moved from argv to stdin.
+- Follow up needed: none
+---

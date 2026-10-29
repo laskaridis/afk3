@@ -20,7 +20,6 @@ export interface CodexInvocation {
   argv: string[];
   cwd: string;
   stdin: string;
-  outputPath?: string;
   pid: number;
   files: string[];
 }

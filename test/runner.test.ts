@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { codexAdapter } from "../src/agents/codex.js";
 import { runAfk, type SessionRunner } from "../src/runner.js";
 import type { SessionResult } from "../src/session.js";
 
@@ -6,7 +7,8 @@ const reply = (message: object): SessionResult => ({
   kind: "exited",
   exitCode: 0,
   signal: null,
-  finalMessage: JSON.stringify(message),
+  stdout: JSON.stringify(message),
+  stderrTail: [],
 });
 
 function scripted(...results: SessionResult[]) {
@@ -26,13 +28,15 @@ const FAIL = reply({ outcome: "fail", failure_summary: "tests broke" });
 describe("runAfk", () => {
   it("starts another session after repeat and ends successfully on complete", async () => {
     const { runner, prompts } = scripted(REPEAT, COMPLETE);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({ kind: "complete" });
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
+      kind: "complete",
+    });
     expect(prompts).toEqual(["p", "p"]);
   });
 
   it("ends blocked with the blocker_text and starts no further session", async () => {
     const { runner, prompts } = scripted(BLOCKED, COMPLETE);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner)).toEqual({
       kind: "blocked",
       blockerText: "need API key",
     });
@@ -42,7 +46,7 @@ describe("runAfk", () => {
   it("surfaces the failure_summary and starts another session after fail", async () => {
     const { runner, prompts } = scripted(FAIL, COMPLETE);
     const surfaced: string[] = [];
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 10 }, runner, {
+    const result = await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, runner, {
       failureSurfaced: (summary) => surfaced.push(summary),
     });
     expect(result).toEqual({ kind: "complete" });
@@ -52,14 +56,14 @@ describe("runAfk", () => {
 
   it("allows 10 launches by default budget and honours a smaller limit", async () => {
     const ten = scripted(REPEAT);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 10 }, ten.runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 }, ten.runner)).toEqual({
       kind: "iteration-limit",
       limit: 10,
     });
     expect(ten.prompts).toHaveLength(10);
 
     const three = scripted(REPEAT);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 3 }, three.runner)).toEqual({
+    expect(await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 3 }, three.runner)).toEqual({
       kind: "iteration-limit",
       limit: 3,
     });
@@ -67,7 +71,7 @@ describe("runAfk", () => {
   });
 
   it("on the last allowed iteration: fail hits the limit, complete succeeds, blocked reports the blocker", async () => {
-    const config = { launchPrompt: "p", maxIterations: 1 };
+    const config = { adapter: codexAdapter, launchPrompt: "p", maxIterations: 1 };
     expect(await runAfk(config, scripted(FAIL).runner)).toEqual({ kind: "iteration-limit", limit: 1 });
     expect(await runAfk(config, scripted(COMPLETE).runner)).toEqual({ kind: "complete" });
     expect(await runAfk(config, scripted(BLOCKED).runner)).toEqual({ kind: "blocked", blockerText: "need API key" });
@@ -75,8 +79,8 @@ describe("runAfk", () => {
 });
 
 describe("runAfk execution-error retry", () => {
-  const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null };
-  const cfg = { launchPrompt: "p", maxIterations: 10 };
+  const ERROR: SessionResult = { kind: "exited", exitCode: 1, signal: null, stdout: "", stderrTail: [] };
+  const cfg = { adapter: codexAdapter, launchPrompt: "p", maxIterations: 10 };
 
   it("a valid response resets the allowance: error, repeat, error, complete succeeds", async () => {
     const { runner, prompts } = scripted(ERROR, REPEAT, ERROR, COMPLETE);
@@ -122,7 +126,7 @@ describe("runAfk execution-error retry", () => {
 describe("runAfk interruption", () => {
   it("stops with interrupted without retrying or iterating", async () => {
     const calls: string[] = [];
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 5 }, async () => {
+    const result = await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 5 }, async () => {
       calls.push("x");
       return { kind: "interrupted" };
     });
@@ -134,10 +138,13 @@ describe("runAfk interruption", () => {
 describe("timed-out session", () => {
   it("stops the run as a timeout without retrying", async () => {
     let launches = 0;
-    const result = await runAfk({ launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 }, async () => {
-      launches++;
-      return { kind: "timed-out" };
-    });
+    const result = await runAfk(
+      { adapter: codexAdapter, launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 },
+      async () => {
+        launches++;
+        return { kind: "timed-out" };
+      },
+    );
     expect(result).toEqual({ kind: "timeout", seconds: 7 });
     expect(launches).toBe(1);
   });

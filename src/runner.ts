@@ -1,3 +1,4 @@
+import type { AgentAdapter } from "./agents/types.js";
 import { parseFinalResponse, type AgentOutcome } from "./protocol.js";
 import type { SessionResult } from "./session.js";
 
@@ -22,6 +23,7 @@ export interface RunReporter {
 }
 
 export interface RunConfig {
+  adapter: AgentAdapter;
   launchPrompt: string;
   maxIterations: number;
   /** Per-session timeout; only used to report a timeout. */
@@ -43,7 +45,7 @@ export async function runAfk(
     if (session.kind === "interrupted") return { kind: "interrupted" };
     if (session.kind === "timed-out") return { kind: "timeout", seconds: config.sessionTimeoutSeconds ?? 0 };
 
-    const classified = classify(session);
+    const classified = classify(session, config.adapter);
     if ("kind" in classified) {
       const error = classified;
       // One retry per consecutive error; a second consecutive error stops the run.
@@ -75,6 +77,7 @@ type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 /** Classify a session as an execution error or the valid outcome it reported. */
 function classify(
   session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>,
+  adapter: AgentAdapter,
 ): ExecutionError | AgentOutcome {
   if (session.kind === "launch-failed") {
     return { kind: "execution-error", errorKind: "launch-failed", detail: session.error.message };
@@ -83,9 +86,14 @@ function classify(
     const detail = session.signal ? `signal ${session.signal}` : `exit status ${session.exitCode}`;
     return { kind: "execution-error", errorKind: "exit-status", detail };
   }
-  const response = parseFinalResponse(session.finalMessage);
+  const extracted = adapter.extractFinalMessage(session.stdout);
+  if ("invalid" in extracted) {
+    return { kind: "execution-error", errorKind: "invalid-response", detail: extracted.reason };
+  }
+  const finalMessage = "message" in extracted ? extracted.message : undefined;
+  const response = parseFinalResponse(finalMessage);
   if ("violation" in response) {
-    const errorKind = session.finalMessage === undefined ? "missing-response" : "invalid-response";
+    const errorKind = finalMessage === undefined ? "missing-response" : "invalid-response";
     return { kind: "execution-error", errorKind, detail: response.violation };
   }
   return response;

@@ -8,8 +8,6 @@ const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message
 const COMPLETE = say({ outcome: "complete" });
 const CRASH: Step[] = [{ exit: 7 }];
 
-const lastPrompt = (argv: string[]) => argv[argv.length - 1];
-
 describe("afk execution errors", () => {
   it("reports a non-zero exit, announces a retry, relaunches, and succeeds", async () => {
     const fake = createFakeCodexEnvironment({ sessions: [CRASH, COMPLETE] });
@@ -75,7 +73,8 @@ describe("afk execution errors", () => {
     expect(run.exitCode).toBe(0);
     const [first, second] = fake.invocations();
     expect(second!.files).toContain("partial.txt");
-    expect(lastPrompt(second!.argv)).toBe(lastPrompt(first!.argv));
+    expect(second!.stdin).toBe(first!.stdin);
+    expect(second!.stdin).toContain("build X");
     expect(second!.argv).not.toContain("resume");
     expect(second!.argv).not.toContain("fork");
   });

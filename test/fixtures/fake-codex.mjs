@@ -4,7 +4,7 @@
 // Behavior is scripted per test through the JSON file named by FAKE_CODEX_SCRIPT:
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
-//     | { "finalMessage": "text" }  (written to the -o path)
+//     | { "finalMessage": "text" }  (written to stdout, as codex does for a piped stdout)
 //     | { "writeFile": "name" }  (created in the working directory)
 //     | { "ignoreSignals": true }  (SIGINT/SIGTERM are recorded but no longer end the process)
 //     | { "exit": code }
@@ -17,8 +17,6 @@ import { appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:f
 
 const argv = process.argv.slice(2);
 const script = JSON.parse(readFileSync(process.env.FAKE_CODEX_SCRIPT, "utf8"));
-const outIndex = Math.max(argv.indexOf("-o"), argv.indexOf("--output-last-message"));
-const outputPath = outIndex >= 0 ? argv[outIndex + 1] : undefined;
 
 let stdin = "";
 if (!process.stdin.isTTY) {
@@ -36,8 +34,7 @@ const steps = script.sessions ? script.sessions[Math.min(invocationIndex, script
 
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
-  JSON.stringify({ argv, cwd: process.cwd(), stdin, outputPath, pid: process.pid, files: readdirSync(process.cwd()) }) +
-    "\n",
+  JSON.stringify({ argv, cwd: process.cwd(), stdin, pid: process.pid, files: readdirSync(process.cwd()) }) + "\n",
 );
 
 let ignoreSignals = false;
@@ -54,6 +51,6 @@ for (const step of steps) {
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
-  if (step.finalMessage !== undefined && outputPath) writeFileSync(outputPath, step.finalMessage);
+  if (step.finalMessage !== undefined) process.stdout.write(step.finalMessage + "\n");
   if (step.exit !== undefined) process.exit(step.exit);
 }

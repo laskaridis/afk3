@@ -25,19 +25,19 @@ describe("launch prompt sources", () => {
       writeFileSync(join(w, "spec-prompt.txt"), "from file\n"),
     );
     expect(result.exitCode).toBe(0);
-    expect(fake.soleInvocation().argv.at(-1)).toMatch(/^from file\n/);
+    expect(fake.soleInvocation().stdin).toMatch(/^from file\n/);
   });
 
   it("reads the prompt from piped stdin", async () => {
     const { fake, result } = await afk([], "do the thing\n");
     expect(result.exitCode).toBe(0);
-    expect(fake.soleInvocation().argv.at(-1)).toMatch(/^do the thing\n/);
+    expect(fake.soleInvocation().stdin).toMatch(/^do the thing\n/);
   });
 
   it("accepts a positional prompt with empty stdin", async () => {
     const { fake, result } = await afk(["positional prompt"], "");
     expect(result.exitCode).toBe(0);
-    expect(fake.soleInvocation().argv.at(-1)).toMatch(/^positional prompt/);
+    expect(fake.soleInvocation().stdin).toMatch(/^positional prompt/);
   });
 
   const withFile = (w: string) => writeFileSync(join(w, "p.txt"), "file prompt");
