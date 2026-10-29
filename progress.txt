@@ -29,3 +29,19 @@
   - Tests in execution-error, run-loop, prompt-input were edited since the prompt moved from argv to stdin.
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:02:28Z
+- TASK-002
+- What was implemented:
+  - `--agent <name>` option in src/cli.ts, default from DEFAULT_AGENT, validated by parseAgent against agentNames(); help text lists registry names and default. Adapter is looked up via agents[agent].
+- Files changed:
+  - src/cli.ts, test/agent-option.test.ts (new), specs/agent-adapters.plan.json, progress.txt
+- Verification:
+  - pnpm check clean; pnpm test: 14 files, 133 tests passed.
+  - Criteria: default codex incl. retry (2 invocations); --agent codex accepted; nope/"" -> exit 2, stderr lists names, 0 invocations; --help/-h list names and "default: codex"; help beats invalid --agent; registry keys unit test; model/effort passthrough and no-override covered by existing test/model-overrides.test.ts.
+- Learnings for future iterations:
+  - Commander InvalidArgumentError from an option parser yields exit 2 via the existing CommanderError mapping.
+- Scope deviations:
+  - none (small change; no subagent review)
+- Follow up needed: none
+---

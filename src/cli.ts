@@ -3,7 +3,7 @@ import { statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
-import { codexAdapter } from "./agents/codex.js";
+import { agentNames, agents, DEFAULT_AGENT } from "./agents/registry.js";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
 import { EXIT_CODES, exitCodeFor, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
@@ -38,6 +38,13 @@ function parseNonEmpty(value: string): string {
   return value;
 }
 
+function parseAgent(value: string): string {
+  if (!agentNames().includes(value)) {
+    throw new InvalidArgumentError(`must be one of: ${agentNames().join(", ")}.`);
+  }
+  return value;
+}
+
 function parseCwd(value: string): string {
   const directory = resolve(value);
   let isDirectory = false;
@@ -62,6 +69,12 @@ async function main(argv: string[]): Promise<number> {
     .name("afk")
     .version(version)
     .argument("[prompt...]", "feature instructions (or use --prompt-file, or pipe on stdin)")
+    .option(
+      "--agent <name>",
+      `coding agent for every session (supported: ${agentNames().join(", ")}; default: ${DEFAULT_AGENT})`,
+      parseAgent,
+      DEFAULT_AGENT,
+    )
     .option("--prompt-file <path>", "read the feature instructions from a file")
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option(
@@ -97,6 +110,7 @@ async function main(argv: string[]): Promise<number> {
     throw error;
   }
   const {
+    agent,
     maxIterations,
     sessionTimeout,
     promptFile,
@@ -104,6 +118,7 @@ async function main(argv: string[]): Promise<number> {
     model,
     reasoningEffort,
   } = program.opts<{
+    agent: string;
     maxIterations: number;
     sessionTimeout?: number;
     promptFile?: string;
@@ -111,6 +126,7 @@ async function main(argv: string[]): Promise<number> {
     model?: string;
     reasoningEffort?: string;
   }>();
+  const adapter = agents[agent]!;
   const resolved = await resolvePrompt({
     positional: program.args,
     promptFile,
@@ -129,10 +145,10 @@ async function main(argv: string[]): Promise<number> {
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const result = await runAfk(
-    { adapter: codexAdapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
+    { adapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
     (launchPrompt) =>
       runSession({
-        adapter: codexAdapter,
+        adapter,
         prompt: buildSessionPrompt(launchPrompt),
         cwd,
         signal: interruption.signal,
