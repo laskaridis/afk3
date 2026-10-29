@@ -179,7 +179,7 @@
     {
       "id": "TASK-007",
       "objective": "Manual smoke checks against the real Codex and Claude Code CLIs are recorded as evidence, with any mismatch captured as follow-up tasks.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-007"
       ],

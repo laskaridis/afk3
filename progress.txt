@@ -121,3 +121,22 @@
   - none (no subagent review; docs and help text only)
 - Follow up needed: none
 ---
+
+## 2026-10-29T10:30:00Z
+- TASK-007
+- What was implemented:
+  - Manual smoke checks only; no source files changed.
+- Files changed:
+  - specs/agent-adapters.plan.json (status), progress.txt
+- Verification:
+  - CLI versions: codex-cli 0.164.0, Claude Code 2.1.312.
+  - `echo "Reply with exactly: pong" | codex exec --approve-for-me -o out.txt -C <scratch> -` with stdout piped: stdout "pong\n", file "pong" (identical apart from whitespace).
+  - `afk --agent codex --max-iterations 1 "Implement the feature."` in a scratch git workspace: "[afk] Run blocked: The workspace contains no feature specification, task list, ...", exit 1, stdout empty.
+  - `afk --agent claude ...` same setup: "[afk] Run blocked: No feature specification or task list was provided, ...", exit 1, stdout empty.
+  - Both ran one session, so the code skill's blocked response was parsed end to end for each agent. No mismatches, so no follow-up tasks.
+- Learnings for future iterations:
+  - Real Codex and Claude behave as the adapters assume (stdout final message; JSON result field).
+- Scope deviations:
+  - Used --max-iterations 1 so each run is exactly one session.
+- Follow up needed: none
+---
