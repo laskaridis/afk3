@@ -5,7 +5,7 @@
 - TypeScript `strict` + `noUncheckedIndexedAccess`, `module`/`moduleResolution: NodeNext`, ESM (`"type": "module"`).
   Relative imports end in `.js`; node built-ins use the `node:` prefix; type-only imports use `import type`.
 - ESLint flat config (`@eslint/js` + `typescript-eslint` recommended + prettier). Prettier: width 120, double quotes,
-  semicolons, trailing commas. Prettier also checks Markdown (`README.md`, `doc/`), but ignores `specs/` and
+  semicolons, trailing commas. Prettier also checks Markdown (`README.md`, `AGENTS.md`, `CLAUDE.md`, `doc/`), but ignores `specs/` and
   `src/harness.md`.
 
 ## Code style
@@ -21,7 +21,8 @@
 - Constants in `UPPER_SNAKE_CASE` (`DEFAULT_MAX_ITERATIONS`, `EXIT_CODES`); camelCase elsewhere. Protocol JSON fields
   keep their wire names (`blocker_text`, `failure_summary`).
 - Status lines go to stderr as `[afk] <Label>: <detail>`, where the detail is a lowercase, agent-neutral fragment
-  (e.g. `[afk] Execution error: agent exited without a final response`).
+  (e.g. `[afk] Execution error: agent exited without a final response`). The label is capitalised, except for input
+  errors, which use the lowercase `[afk] input error: <detail>`.
 
 ## Commits
 

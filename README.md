@@ -13,15 +13,15 @@ afk [options] [prompt...]
 
 The feature instructions come from the prompt arguments, `--prompt-file <path>`, or stdin.
 
-| Option                       | Description                                                            |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `--agent <name>`             | Coding agent for every session: `codex` or `claude` (default: `codex`) |
-| `--prompt-file <path>`       | Read the feature instructions from a file                              |
-| `--cwd <directory>`          | Workspace directory for every session (default: current directory)     |
-| `--max-iterations <count>`   | Maximum number of agent sessions to launch (default: 10)               |
-| `--session-timeout <secs>`   | Stop the run if a single session exceeds this many seconds             |
-| `--model <name>`             | Model for every session, passed to the agent unchanged                 |
-| `--reasoning-effort <level>` | Reasoning effort for every session, passed to the agent unchanged      |
+| Option                        | Description                                                            |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `--agent <name>`              | Coding agent for every session: `codex` or `claude` (default: `codex`) |
+| `--prompt-file <path>`        | Read the feature instructions from a file                              |
+| `--cwd <directory>`           | Workspace directory for every session (default: current directory)     |
+| `--max-iterations <count>`    | Maximum number of agent sessions to launch (default: 10)               |
+| `--session-timeout <seconds>` | Stop the run if a single session exceeds this many seconds             |
+| `--model <name>`              | Model for every session, passed to the agent unchanged                 |
+| `--reasoning-effort <level>`  | Reasoning effort for every session, passed to the agent unchanged      |
 
 Run `afk --help` for the exit codes.
 
@@ -36,7 +36,7 @@ policy. In every case the prompt is delivered on stdin and the workspace is the 
 ### Codex (`--agent codex`)
 
 - **Prerequisites:** Codex CLI installed and authenticated, with `--approve-for-me` support.
-- **Launch:** `codex exec --approve-for-me -C <workspace> --output-last-message <file> [--model <model>] [--config model_reasoning_effort=<effort>] -`.
+- **Launch:** `codex exec --approve-for-me -C <workspace> --output-last-message <file> [--model <model>] [--config model_reasoning_effort="<effort>"] -`.
   The final message is the content of `<file>`, a temporary file outside the workspace that `afk` removes after the
   session; Codex's stdout is a progress log and is ignored.
 - **Honored settings:** workspace, `--model`, `--reasoning-effort`.
