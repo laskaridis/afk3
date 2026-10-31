@@ -19,14 +19,14 @@ describe("codex adapter", () => {
       const args = codexAdapter.buildArgs({ cwd: "/w", model: "gpt-x", effort: "high" });
       expect(args[args.indexOf("--model") + 1]).toBe("gpt-x");
       expect(args[args.indexOf("--config") + 1]).toBe('model_reasoning_effort="high"');
-      expect(codexAdapter.buildArgs({ cwd: "/w", model: "gpt-x" })).not.toContain("-c");
-      expect(codexAdapter.buildArgs({ cwd: "/w", effort: "low" })).not.toContain("-m");
+      expect(codexAdapter.buildArgs({ cwd: "/w", model: "gpt-x" })).not.toContain("--config");
+      expect(codexAdapter.buildArgs({ cwd: "/w", effort: "low" })).not.toContain("--model");
     });
 
     it("asks for the final message in the output file when one is supplied", () => {
       const args = codexAdapter.buildArgs({ cwd: "/w", outputFile: "/t/out.txt" });
       expect(args[args.indexOf("--output-last-message") + 1]).toBe("/t/out.txt");
-      expect(codexAdapter.buildArgs({ cwd: "/w" })).not.toContain("-o");
+      expect(codexAdapter.buildArgs({ cwd: "/w" })).not.toContain("--output-last-message");
     });
   });
 
