@@ -4,7 +4,7 @@
 // Behavior is scripted per test through the JSON file named by FAKE_CODEX_SCRIPT:
 //   { "steps": [ ... ] } where each step is one of
 //     { "stdout": "text" } | { "stderr": "text" } | { "sleepMs": n }
-//     | { "finalMessage": "text" }  (written to the file named by -o, as codex does, wrapped in the
+//     | { "finalMessage": "text" }  (written to the file named by --output-last-message, as codex does, wrapped in the
 //       <afk-harness-result> block using the nonce found in the prompt on stdin)
 //     | { "rawFinalMessage": "text" }  (like finalMessage but not wrapped, for invalid-response cases)
 //     | { "json": value }  (a raw JSON line on stdout)
