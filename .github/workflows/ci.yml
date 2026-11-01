@@ -16,12 +16,15 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["22.13.0", "24"]
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
