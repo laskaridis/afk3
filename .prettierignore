@@ -2,4 +2,4 @@ dist
 coverage
 pnpm-lock.yaml
 specs
-src/harness.md
+src/code.md
