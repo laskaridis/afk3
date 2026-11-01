@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`afk` is a small TypeScript CLI (ESM, Node >= 20) that runs a coding agent (Codex or Claude Code) in a loop of fresh,
+`afk` is a small TypeScript CLI (ESM, Node >= 22.13.0) that runs a coding agent (Codex or Claude Code) in a loop of fresh,
 non-interactive sessions until the agent reports the feature `complete`, `blocked`, or a limit is hit. The harness only
 launches sessions and interprets each session's final response; the agent's `code` skill owns the development workflow.
 

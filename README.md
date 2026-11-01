@@ -5,6 +5,8 @@ Leave a coding agent implementing a feature, one task at a time, while you are a
 `afk` is agent-neutral: it launches a fresh session of the coding agent you choose, hands it your instructions, reads the
 agent's final response, and repeats until the feature is reported complete, blocked, or the iteration limit is reached.
 
+Requires Node.js **22.13.0 or later**.
+
 ## Usage
 
 ```
