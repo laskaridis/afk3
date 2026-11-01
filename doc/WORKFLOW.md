@@ -4,8 +4,8 @@ Features are built spec-first and implemented by running `afk` on this repo.
 
 ## Artifacts
 
-While a feature is in progress its files sit flat in `specs/`, with `progress.txt` at the repo root. Once merged, all
-of them move to `specs/_done/NNN-<slug>/` (the progress log becomes `<slug>.progress.txt`).
+While a feature is in progress its files sit flat in `specs/`, including `<slug>.code.md` implementation notes beside
+the specification. Once merged, all of them move to `specs/_done/NNN-<slug>/`, preserving their filenames.
 
 | File                | Content                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------- |
@@ -13,12 +13,12 @@ of them move to `specs/_done/NNN-<slug>/` (the progress log becomes `<slug>.prog
 | `<slug>.design.md`  | Architectural drivers, module table, key decisions                                     |
 | `<slug>.plan.json`  | `spec_path` + `tasks[]` with `id` (`TASK-00x`), `objective`, `status`, ACs, criteria   |
 | `<slug>.prompt.txt` | The launch prompt given to `afk`                                                       |
-| `progress.txt`      | Append-only log written by the `code` loop, one entry per task                         |
+| `<slug>.code.md`      | Append-only log written by the `code` loop, one entry per task                         |
 
 Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), installed locally into the git-ignored
 `.claude/skills` and `.agents/skills`.
 
-## progress.txt
+## Implementation notes
 
 - Entry format is defined in `src/code.md`: task id, what was implemented, files changed, verification evidence,
   learnings, scope deviations, follow-ups.
@@ -31,4 +31,4 @@ Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), in
 
 - One task per session and per commit; mark it `completed` in the plan only after checking every completion criterion.
 - Validation/smoke-check tasks are read-only except for bookkeeping; defects found become new follow-up tasks.
-- Real-agent smoke checks are manual and recorded as evidence in `progress.txt`, never added to the automated suite.
+- Real-agent smoke checks are manual and recorded as evidence in `<slug>.code.md`, never added to the automated suite.
