@@ -13,7 +13,7 @@ describe("buildSessionPrompt", () => {
 
   it("appends the harness instructions for one task and a result block carrying the nonce", () => {
     const prompt = buildSessionPrompt("build feature X", NONCE);
-    const harness = readFileSync(new URL("../src/harness.md", import.meta.url), "utf8");
+    const harness = readFileSync(new URL("../src/code.md", import.meta.url), "utf8");
     expect(prompt).toBe(`build feature X\n\n---\n${harness.replaceAll("{{NONCE}}", NONCE)}\n`);
     expect(prompt).toMatch(/one task/i);
     expect(prompt).toContain(`<afk-harness-result nonce="${NONCE}">`);
