@@ -9,7 +9,7 @@ export type AgentOutcome =
 export type ContractViolation = { violation: string };
 
 // Copied next to the compiled module by the build script.
-const HARNESS = readFileSync(new URL("./harness.md", import.meta.url), "utf8");
+const HARNESS = readFileSync(new URL("./code.md", import.meta.url), "utf8");
 
 const NONCE_PLACEHOLDER = "{{NONCE}}";
 
