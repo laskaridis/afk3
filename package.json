@@ -24,7 +24,7 @@
     "test": "pnpm run build && vitest run"
   },
   "dependencies": {
-    "commander": "^14.0.3"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
