@@ -13,7 +13,7 @@ the specification. Once merged, all of them move to `specs/_done/NNN-<slug>/`, p
 | `<slug>.design.md`  | Architectural drivers, module table, key decisions                                     |
 | `<slug>.plan.json`  | `spec_path` + `tasks[]` with `id` (`TASK-00x`), `objective`, `status`, ACs, criteria   |
 | `<slug>.prompt.txt` | The launch prompt given to `afk`                                                       |
-| `<slug>.code.md`      | Append-only log written by the `code` loop, one entry per task                         |
+| `<slug>.code.md`    | Append-only log written by the `code` loop, one entry per task                         |
 
 Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), installed locally into the git-ignored
 `.claude/skills` and `.agents/skills`.
