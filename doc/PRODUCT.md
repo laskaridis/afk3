@@ -10,7 +10,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 | Term               | Meaning                                                                                        |
 | ------------------ | ---------------------------------------------------------------------------------------------- |
 | launch prompt      | The user's feature instructions, from exactly one source: argument, `--prompt-file`, or stdin  |
-| session prompt     | Launch prompt + `---` + `src/harness.md` with `{{NONCE}}` replaced                             |
+| session prompt     | Launch prompt + `---` + `src/code.md` with `{{NONCE}}` replaced                                |
 | session            | One fresh, non-interactive agent process. Never resumed or forked                              |
 | iteration          | One session launch, retries included; bounded by `--max-iterations` (`DEFAULT_MAX_ITERATIONS`) |
 | nonce              | Random per session (`runner.ts`); the result block must carry it                               |
