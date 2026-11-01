@@ -14,7 +14,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('fs');fs.copyFileSync('src/harness.md','dist/harness.md');fs.chmodSync('dist/cli.js',0o755)\"",
+    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('fs');fs.copyFileSync('src/code.md','dist/code.md');fs.chmodSync('dist/cli.js',0o755)\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

@@ -20,7 +20,7 @@ Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), in
 
 ## progress.txt
 
-- Entry format is defined in `src/harness.md`: task id, what was implemented, files changed, verification evidence,
+- Entry format is defined in `src/code.md`: task id, what was implemented, files changed, verification evidence,
   learnings, scope deviations, follow-ups.
 - A `## Project discovery` section at the top consolidates reusable learnings.
 - Append only; never rewrite past entries.

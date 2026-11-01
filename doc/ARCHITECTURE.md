@@ -31,8 +31,8 @@ cli ──validate options──▶ prompt.resolvePrompt
   and abort with SIGINT → SIGTERM → SIGKILL escalation (grace `DEFAULT_TERMINATION_GRACE_MS`, overridable with the
   `AFK_TERMINATION_GRACE_MS` env var). It always waits for the child to exit. It creates one temp dir per session (`afk-session-*` under `os.tmpdir()`) for the output file and
   removes it in `finally`.
-- **`protocol`** is pure: builds the session prompt and parses the result block. `harness.md` is read at module load
-  from next to the compiled file (`new URL("./harness.md", import.meta.url)`).
+- **`protocol`** is pure: builds the session prompt and parses the result block. `code.md` is read at module load
+  from next to the compiled file (`new URL("./code.md", import.meta.url)`).
 - **`reporter`** holds exit codes and status wording as pure functions; `cli` does the actual writes.
 - **`agents/`** — `AgentAdapter` (`types.ts`): `name`, `executable`, pure `buildArgs(input)`, pure
   `extractFinalMessage(stdout, outputFile?)` returning `FinalMessageResult`

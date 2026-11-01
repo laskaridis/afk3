@@ -6,7 +6,7 @@
   Relative imports end in `.js`; node built-ins use the `node:` prefix; type-only imports use `import type`.
 - ESLint flat config (`@eslint/js` + `typescript-eslint` recommended + prettier). Prettier: width 120, double quotes,
   semicolons, trailing commas. Prettier also checks Markdown (`README.md`, `AGENTS.md`, `CLAUDE.md`, `doc/`), but ignores `specs/` and
-  `src/harness.md`.
+  `src/code.md`.
 
 ## Code style
 
