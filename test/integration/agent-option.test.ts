@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { agentNames, DEFAULT_AGENT } from "../../src/agents/registry.js";
-import { createFakeCodexEnvironment, startAfk, type Step } from "../support/helpers.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 const CRASH: Step[] = [{ exit: 7 }];

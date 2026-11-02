@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "../support/helpers.js";
+import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const REPEAT = say({ outcome: "repeat" });

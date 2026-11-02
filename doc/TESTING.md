@@ -9,7 +9,8 @@ tests spawn `dist/cli.js` — running `vitest` directly against stale `dist/` gi
 - `pnpm test:integration`: build the CLI, then run integration tests.
 - `pnpm test`: build once, then run both suites; CI runs this through `pnpm check`.
 
-Shared helpers and fake-agent fixtures live in `test/support/`; they are not test suites.
+Integration helpers live in `test/integration/support/`; fake-agent fixtures live in `test/integration/fixtures/`.
+These support files are used only by integration tests and are not test suites.
 Keep each test file in the directory matching its execution boundary; split mixed files rather than
 putting subprocess tests into the unit suite. To run one test file, use `pnpm vitest run test/unit/<file>.test.ts`
 or `pnpm build && pnpm vitest run test/integration/<file>.test.ts`.
@@ -32,7 +33,7 @@ fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
 ```
 
 - `createFakeCodexEnvironment(steps | { sessions: Step[][] }, agent = "codex")` makes a temp sandbox, symlinks
-  `test/support/fixtures/fake-<agent>.mjs` into a `bin/` first on `PATH`, and returns `workspace`, `env`, `invocations()`,
+  `test/integration/fixtures/fake-<agent>.mjs` into a `bin/` first on `PATH`, and returns `workspace`, `env`, `invocations()`,
   `soleInvocation()`, `signals()`.
 - Despite the names, `createFakeCodexEnvironment`, `FAKE_CODEX_*` and `fake-codex.mjs` serve every agent. Reuse
   them; don't add per-agent copies.

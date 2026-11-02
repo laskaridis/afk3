@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "../support/helpers.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const lines = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => `err ${from + i}`).join("\n") + "\n";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk } from "../support/helpers.js";
+import { createFakeCodexEnvironment, startAfk } from "./support/helpers.js";
 
 describe("agent-neutral documentation", () => {
   it("help refers to the coding agent and not to Codex", async () => {

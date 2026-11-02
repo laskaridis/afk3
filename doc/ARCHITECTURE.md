@@ -44,7 +44,7 @@ cli ──validate options──▶ prompt.resolvePrompt
 
 1. `src/agents/<name>.ts` exporting an `AgentAdapter`; register it in `src/agents/registry.ts`.
 2. `test/unit/agents/<name>.test.ts` unit tests for `buildArgs` and `extractFinalMessage`.
-3. `test/support/fixtures/fake-<name>.mjs` that sets `FAKE_AGENT_FORMAT=<name>` and imports `fake-codex.mjs` (see
+3. `test/integration/fixtures/fake-<name>.mjs` that sets `FAKE_AGENT_FORMAT=<name>` and imports `fake-codex.mjs` (see
    `fake-claude.mjs`), plus a branch in `emitFinal` in `fake-codex.mjs` that emits the final message the way the real
    CLI does. The parity suite then picks the agent up automatically.
 4. Document prerequisites, launch command, and honored settings under "Supported agents" in `README.md`

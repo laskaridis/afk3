@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk } from "../support/helpers.js";
+import { createFakeCodexEnvironment, startAfk } from "./support/helpers.js";
 
 const COMPLETE = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 

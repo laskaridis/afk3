@@ -3,9 +3,9 @@ import { mkdirSync, mkdtempSync, readFileSync, existsSync, symlinkSync, writeFil
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
-const repoRoot = resolve(import.meta.dirname, "../..");
+const repoRoot = resolve(import.meta.dirname, "../../..");
 const cliPath = join(repoRoot, "dist", "cli.js");
-const fakeExecutable = (agent: string) => join(repoRoot, "test", "support", "fixtures", `fake-${agent}.mjs`);
+const fakeExecutable = (agent: string) => join(repoRoot, "test", "integration", "fixtures", `fake-${agent}.mjs`);
 
 export type Step =
   | { stdout: string }
