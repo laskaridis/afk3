@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolvePrompt } from "../src/prompt.js";
+import { resolvePrompt } from "../../src/prompt.js";
 
 describe("resolvePrompt", () => {
   it("returns a missing-input error for a TTY stdin without reading it", async () => {

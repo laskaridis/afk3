@@ -57,5 +57,10 @@ policy. In every case the prompt is delivered on stdin and the workspace is the 
 
 ```
 pnpm check   # test, typecheck, lint, prettier
-pnpm test    # build, then run the test suite
+pnpm test    # build once, then run both test suites
+pnpm test:unit # run unit tests without building
+pnpm test:integration # build, then run CLI integration tests
+pnpm test:coverage # build, test, and generate coverage reports
 ```
+
+See [Testing](doc/TESTING.md#coverage) for coverage reports in CI and their scope.

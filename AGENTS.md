@@ -8,27 +8,32 @@ launches sessions and interprets each session's final response; the agent's `cod
 
 ```
 pnpm install --frozen-lockfile
+pnpm test:unit # unit tests, no build required
+pnpm test:integration # build, then CLI integration tests
 pnpm test     # builds dist/ first, then vitest (integration tests run dist/cli.js)
 pnpm check    # test + typecheck + lint + prettier --check — what CI runs; must pass before committing
 pnpm format   # prettier --write .
-pnpm build && pnpm vitest run test/<file>.test.ts   # one file; rebuild first or you test a stale dist/
+pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebuild first or you test a stale dist/
 ```
 
 ## Map
 
-| Path              | What lives there                                                                   |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `README.md`       | User-facing usage, options, supported agents and how each is launched              |
-| `src/cli.ts`      | Entry point: options (commander), wiring, signals, exit code                       |
-| `src/runner.ts`   | Run loop policy: iterations, retry-once, outcome handling, error classification    |
-| `src/session.ts`  | Spawns one agent process; stdin prompt, stdout capture, stderr tail, timeout/abort |
-| `src/protocol.ts` | Session prompt assembly and final-response parser (nonce result block)             |
-| `src/code.md`     | Instructions appended to every session prompt — a contract with the agent          |
-| `src/agents/`     | One adapter per agent + `registry.ts`                                              |
-| `src/reporter.ts` | Exit codes, `[afk]` status wording                                                 |
-| `src/prompt.ts`   | Resolves the single launch prompt (arg / `--prompt-file` / stdin)                  |
-| `test/`           | Vitest suites; `test/fixtures/fake-*.mjs` fake agents; `test/helpers.ts`           |
-| `specs/`          | Feature specs, designs, plans, progress logs; finished features in `specs/_done/`  |
+| Path                         | What lives there                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `README.md`                  | User-facing usage, options, supported agents and how each is launched              |
+| `src/cli.ts`                 | Entry point: options (commander), wiring, signals, exit code                       |
+| `src/runner.ts`              | Run loop policy: iterations, retry-once, outcome handling, error classification    |
+| `src/session.ts`             | Spawns one agent process; stdin prompt, stdout capture, stderr tail, timeout/abort |
+| `src/protocol.ts`            | Session prompt assembly and final-response parser (nonce result block)             |
+| `src/code.md`                | Instructions appended to every session prompt — a contract with the agent          |
+| `src/agents/`                | One adapter per agent + `registry.ts`                                              |
+| `src/reporter.ts`            | Exit codes, `[afk]` status wording                                                 |
+| `src/prompt.ts`              | Resolves the single launch prompt (arg / `--prompt-file` / stdin)                  |
+| `test/unit/`                 | Unit tests for source functions and static documentation checks                    |
+| `test/integration/`          | CLI integration tests that spawn `dist/cli.js` against fake agents                 |
+| `test/integration/support/`  | Helpers shared by CLI integration tests                                            |
+| `test/integration/fixtures/` | Fake-agent executables used by integration tests                                   |
+| `specs/`                     | Feature specs, designs, plans, progress logs; finished features in `specs/_done/`  |
 
 ## Read before you change…
 

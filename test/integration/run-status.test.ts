@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, statSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const complete: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 const repeat: Step[] = [{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }];

@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EXIT_CODES } from "../src/reporter.js";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { EXIT_CODES } from "../../src/reporter.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 
@@ -57,7 +57,7 @@ describe("afk --help", () => {
 
   it("exits promptly without reading a stdin pipe that is never closed", async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const child = spawn(process.execPath, [join(import.meta.dirname, "..", "dist", "cli.js"), "--help"], {
+    const child = spawn(process.execPath, [join(import.meta.dirname, "..", "..", "dist", "cli.js"), "--help"], {
       cwd: fake.workspace,
       env: fake.env,
       stdio: ["pipe", "pipe", "pipe"],

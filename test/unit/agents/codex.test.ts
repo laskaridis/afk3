@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { codexAdapter } from "../../src/agents/codex.js";
-import { DEFAULT_AGENT, agentNames, agents } from "../../src/agents/registry.js";
+import { codexAdapter } from "../../../src/agents/codex.js";
+import { DEFAULT_AGENT, agentNames, agents } from "../../../src/agents/registry.js";
 
 describe("codex adapter", () => {
   it("is registered as the default agent", () => {

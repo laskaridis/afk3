@@ -3,3 +3,4 @@ coverage
 pnpm-lock.yaml
 specs
 src/code.md
+.worktrees/

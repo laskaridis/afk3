@@ -29,6 +29,45 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Collect coverage
+        if: ${{ !cancelled() && matrix.node-version == '24' }}
+        run: pnpm test:coverage
+      - name: Summarize coverage
+        if: ${{ !cancelled() && matrix.node-version == '24' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, existsSync, readFileSync } from "node:fs";
+          const path = "coverage/coverage-summary.json";
+          if (!existsSync(path)) {
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Code coverage\n\nNo coverage report was generated. Check the test logs.\n");
+            process.exit(0);
+          }
+          const { total } = JSON.parse(readFileSync(path, "utf8"));
+          const rows = ["lines", "statements", "functions", "branches"].map((metric) => {
+            const { pct, covered, total: count } = total[metric];
+            return `| ${metric} | ${pct}% | ${covered}/${count} |`;
+          });
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+            "## Code coverage",
+            "",
+            "| Metric | Coverage | Covered / Total |",
+            "| --- | --- | --- |",
+            ...rows,
+            "",
+            "Reporting only; no minimum coverage thresholds are enforced.",
+            "Coverage includes src/**/*.ts executed inside Vitest. Spawned CLI subprocesses are not captured.",
+            "Download the coverage-report artifact and open index.html for the file-level report.",
+            "",
+          ].join("\n"));
+          NODE
+      - name: Upload coverage report
+        if: ${{ !cancelled() && matrix.node-version == '24' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
   analyze:
     name: Analyze JavaScript and TypeScript

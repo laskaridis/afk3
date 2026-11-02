@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildSessionPrompt, parseFinalResponse } from "../src/protocol.js";
+import { buildSessionPrompt, parseFinalResponse } from "../../src/protocol.js";
 
 const NONCE = "7f3a9c21";
 const block = (body: string, nonce = NONCE) => `<afk-harness-result nonce="${nonce}">\n${body}\n</afk-harness-result>`;
@@ -13,7 +13,7 @@ describe("buildSessionPrompt", () => {
 
   it("appends the harness instructions for one task and a result block carrying the nonce", () => {
     const prompt = buildSessionPrompt("build feature X", NONCE);
-    const harness = readFileSync(new URL("../src/code.md", import.meta.url), "utf8");
+    const harness = readFileSync(new URL("../../src/code.md", import.meta.url), "utf8");
     expect(prompt).toBe(`build feature X\n\n---\n${harness.replaceAll("{{NONCE}}", NONCE)}\n`);
     expect(prompt).toMatch(/one task/i);
     expect(prompt).toContain(`<afk-harness-result nonce="${NONCE}">`);

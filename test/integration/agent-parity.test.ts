@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentNames } from "../src/agents/registry.js";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { agentNames } from "../../src/agents/registry.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 /** `finalMessage` is rendered by each agent's fake in that agent's own output format. */
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];

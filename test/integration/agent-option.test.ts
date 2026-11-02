@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentNames, agents, DEFAULT_AGENT } from "../src/agents/registry.js";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { agentNames, DEFAULT_AGENT } from "../../src/agents/registry.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 const CRASH: Step[] = [{ exit: 7 }];
@@ -51,10 +51,5 @@ describe("afk --agent", () => {
     expect(run.exitCode).toBe(0);
     expect(run.stdout).toContain("--agent <name>");
     expect(fake.invocations()).toHaveLength(0);
-  });
-
-  it("derives the accepted names from the registry keys", () => {
-    expect(agentNames()).toEqual(Object.keys(agents));
-    for (const [key, adapter] of Object.entries(agents)) expect(adapter.name).toBe(key);
   });
 });
