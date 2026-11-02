@@ -29,9 +29,11 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 - A non-zero exit is an execution error even if the output contains a valid result block.
 - Timeout and interruption stop the run immediately, with no retry.
 - The harness trusts the outcome: it never reads tasks, git state, or runs tests.
-- Result blocks include `task_id` (the task implemented this iteration) and `task_plan_file` (the task plan path).
-  Either is `null` when unavailable or inapplicable. The parser preserves these fields and accepts older blocks
-  that omit them; the session instructions require both fields in new responses. They do not affect loop control.
+- Result blocks include `task_id` (the task selected for implementation this iteration, including blocked or failed
+  attempts) and `task_plan_file` (the task plan path). `task_id` is `null` only when no plan was specified or no task
+  could be selected, which requires a `blocked` outcome. `task_plan_file` is `null` only when no plan was available.
+  The parser validates and preserves these fields and accepts older blocks that omit them; the session instructions
+  require both fields in new responses. The outcome continues to control the loop.
 
 ## Output and exit codes
 

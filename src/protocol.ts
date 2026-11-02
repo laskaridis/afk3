@@ -76,6 +76,9 @@ export function parseFinalResponse(text: string | undefined, nonce: string): Age
   }
   const outcomeKeys = Object.keys(fields).filter((key) => key !== "task_id" && key !== "task_plan_file");
   const outcome = fields.outcome;
+  if (metadata.task_id === null && outcome !== "blocked") {
+    return { violation: 'a null "task_id" requires outcome "blocked" because no task could be selected' };
+  }
   if (outcome === "repeat" || outcome === "complete") {
     const extra = outcomeKeys.filter((key) => key !== "outcome");
     if (extra.length > 0) {
