@@ -103,7 +103,7 @@ Your final response to the user MUST end with exactly one result block, wrapped 
 
 ```
 <afk-harness-result nonce="{{NONCE}}">
-{"outcome":"complete"}
+{"outcome":"complete","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}
 </afk-harness-result>
 ```
 
@@ -111,17 +111,21 @@ The block body MUST be exactly one JSON object and nothing else: do not wrap it 
 
 The JSON object MUST use one of these shapes:
 
-- `{"outcome":"repeat"}`
-- `{"outcome":"complete"}`
-- `{"outcome":"blocked","blocker_text":"..."}`
-- `{"outcome":"fail","failure_summary":"..."}`
+- `{"outcome":"repeat","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+- `{"outcome":"complete","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+- `{"outcome":"blocked","blocker_text":"...","task_id":null,"task_plan_file":null}`
+- `{"outcome":"fail","failure_summary":"...","task_id":null,"task_plan_file":"specs/feature.plan.json"}`
 
 Rules:
 
 - `outcome` must be one of `repeat`, `complete`, `blocked`, or `fail`.
+- Always include `task_id` and `task_plan_file` in the result block for every outcome.
+- `task_id` must be the exact identifier from the task list of the task implemented during this iteration. Use `null` if no task was implemented (for example, the iteration was blocked before implementation or all tasks were already complete). Do not report a planned or follow-up task as implemented.
+- `task_plan_file` must be the path to the actual task list plan file used during this iteration, relative to the project root when possible. Use `null` only when no task plan file was available. Do not substitute the specification or implementation notes file.
+- Each metadata value must be a non-empty string or JSON `null`, never an empty string or the string `"null"`.
 - `blocked` responses must include a non-empty `blocker_text` string.
 - `fail` responses must include a non-empty `failure_summary` string.
-- `repeat` and `complete` responses must not include any additional fields.
+- No fields other than `outcome`, `task_id`, `task_plan_file`, and the outcome's required `blocker_text` or `failure_summary` are allowed.
 - Leading and trailing whitespace around the JSON object inside the block is allowed, but any
   other text inside the block is a contract violation.
 - A block with a different nonce, or no block at all, is a contract violation.

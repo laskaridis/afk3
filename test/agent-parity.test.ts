@@ -28,6 +28,16 @@ interface Scenario {
 const scenarios: Scenario[] = [
   { name: "complete", sessions: [COMPLETE], exitCode: 0, invocations: 1, stderr: ["feature complete"] },
   {
+    name: "task metadata survives a full coding loop",
+    sessions: [
+      say({ outcome: "repeat", task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" }),
+      say({ outcome: "complete", task_id: "TASK-012", task_plan_file: "specs/feature.plan.json" }),
+    ],
+    exitCode: 0,
+    invocations: 2,
+    stderr: ["feature complete"],
+  },
+  {
     name: "blocked",
     sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
     exitCode: 1,
