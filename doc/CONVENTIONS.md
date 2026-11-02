@@ -28,5 +28,5 @@
 
 - Imperative, sentence-case subject, no prefix/conventional-commit tags (e.g. "Add Claude Code adapter and classify its
   structured errors"). Older AFK-loop commits end with the task id, e.g. "(TASK-004)".
-- One task per commit; only the files that task touched plus its bookkeeping (`specs/*.plan.json`, `progress.txt`).
+- One task per commit; only the files that task touched plus its bookkeeping (`specs/*.plan.json`, `specs/*.code.md`).
 - Work on a feature branch and open a PR to `main`; CI (`.github/workflows/ci.yml`) runs `pnpm check`.
