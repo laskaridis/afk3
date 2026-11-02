@@ -4,7 +4,7 @@
 
 - **No full-access modes.** Codex always gets `--approve-for-me` (automatic approval review); Claude always gets
   `--permission-mode auto`. Never pass `--dangerously-bypass-approvals-and-sandbox`, `danger-full-access`,
-  `bypassPermissions`, or similar. `test/tracer-bullet.test.ts` and `test/agents/*.test.ts` assert this.
+  `bypassPermissions`, or similar. `test/integration/tracer-bullet.test.ts` and `test/unit/agents/*.test.ts` assert this.
 - **No silent broadening.** If the agent is denied an action, the expected result is a `blocked` outcome, not a retry
   with more permissions.
 - **No argument passthrough.** Only `--model` and `--reasoning-effort` reach the agent, passed unchanged as discrete

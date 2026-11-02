@@ -22,7 +22,9 @@
     "format:check": "prettier --check .",
     "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm format:check",
     "test": "pnpm run build && vitest run",
-    "test:coverage": "pnpm run build && vitest run --coverage"
+    "test:coverage": "pnpm run build && vitest run --coverage",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "pnpm run build && vitest run test/integration"
   },
   "dependencies": {
     "commander": "^15.0.0"

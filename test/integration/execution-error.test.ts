@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "../support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const COMPLETE = say({ outcome: "complete" });

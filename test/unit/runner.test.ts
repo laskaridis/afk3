@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { codexAdapter } from "../src/agents/codex.js";
-import { runAfk, type SessionRunner } from "../src/runner.js";
-import type { SessionResult } from "../src/session.js";
+import { codexAdapter } from "../../src/agents/codex.js";
+import { runAfk, type SessionRunner } from "../../src/runner.js";
+import type { SessionResult } from "../../src/session.js";
 
 /** A scripted session result; replies are built from the nonce the runner passes in. */
 type Scripted = SessionResult | ((nonce: string) => SessionResult);

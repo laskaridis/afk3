@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk } from "../support/helpers.js";
 
 const COMPLETE = { finalMessage: '{"outcome":"complete"}' };
 
@@ -105,7 +105,7 @@ describe("afk executable", () => {
   it("runs through npm exec using the bin entry", async () => {
     const { spawnSync } = await import("node:child_process");
     const result = spawnSync("npm", ["exec", "--offline", "--package=.", "--", "afk", "--version"], {
-      cwd: new URL("..", import.meta.url).pathname,
+      cwd: new URL("../..", import.meta.url).pathname,
       encoding: "utf8",
     });
     expect(result.status).toBe(0);

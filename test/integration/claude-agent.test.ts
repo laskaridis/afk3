@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "../support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const COMPLETE = say({ outcome: "complete" });

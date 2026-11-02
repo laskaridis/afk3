@@ -43,12 +43,12 @@ cli ──validate options──▶ prompt.resolvePrompt
 ## Adding an agent
 
 1. `src/agents/<name>.ts` exporting an `AgentAdapter`; register it in `src/agents/registry.ts`.
-2. `test/agents/<name>.test.ts` unit tests for `buildArgs` and `extractFinalMessage`.
-3. `test/fixtures/fake-<name>.mjs` that sets `FAKE_AGENT_FORMAT=<name>` and imports `fake-codex.mjs` (see
+2. `test/unit/agents/<name>.test.ts` unit tests for `buildArgs` and `extractFinalMessage`.
+3. `test/support/fixtures/fake-<name>.mjs` that sets `FAKE_AGENT_FORMAT=<name>` and imports `fake-codex.mjs` (see
    `fake-claude.mjs`), plus a branch in `emitFinal` in `fake-codex.mjs` that emits the final message the way the real
    CLI does. The parity suite then picks the agent up automatically.
 4. Document prerequisites, launch command, and honored settings under "Supported agents" in `README.md`
-   (`test/agent-neutral-docs.test.ts` checks every registered name appears).
+   (`test/unit/agent-neutral-docs.test.ts` checks every registered name appears).
 
 No changes to `runner`, `session`, `protocol`, `reporter`, or `cli` should be needed; if they are, reconsider.
 
@@ -57,5 +57,5 @@ No changes to `runner`, `session`, `protocol`, `reporter`, or `cli` should be ne
 1. `.option(...)` in `src/cli.ts`, with a `parse*` validator throwing `InvalidArgumentError` (→ exit 2). Help-text
    wording must stay agent-neutral.
 2. If the agent needs it, add it to `SessionOptions` / `AgentInput` and let each adapter map or ignore it silently.
-3. Tests: behavior plus `test/help.test.ts`; `test/agent-neutral-docs.test.ts` if the wording touches agents.
+3. Tests: behavior plus `test/integration/help.test.ts`; `test/unit/agent-neutral-docs.test.ts` if the wording touches agents.
 4. Add a row to the options table in `README.md`.

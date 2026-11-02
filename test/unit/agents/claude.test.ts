@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { claudeAdapter } from "../../src/agents/claude.js";
-import { agentNames, agents } from "../../src/agents/registry.js";
+import { claudeAdapter } from "../../../src/agents/claude.js";
+import { agentNames, agents } from "../../../src/agents/registry.js";
 
 describe("claude adapter", () => {
   it("is registered", () => {

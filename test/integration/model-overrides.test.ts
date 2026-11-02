@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./helpers.js";
+import { createFakeCodexEnvironment, startAfk, type Step } from "../support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
 const CRASH: Step[] = [{ exit: 7 }];
