@@ -57,15 +57,15 @@ fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
 
 ## Coverage
 
-Run `pnpm test:coverage` to build the CLI and run the suite with Vitest's V8 coverage provider.
+Run `pnpm test:coverage` to build the CLI and run both suites with Vitest's V8 coverage provider.
 It prints a coverage table and writes an HTML report (`coverage/index.html`), LCOV (`coverage/lcov.info`),
 and JSON totals (`coverage/coverage-summary.json`). Reports include all `src/**/*.ts` files, including untested files;
-tests, fixtures, and generated output are excluded. No minimum coverage thresholds are enforced.
+tests, fixtures, and generated output are excluded. Every source file must have 100% line, statement, function,
+and branch coverage. The command exits nonzero if any threshold is missed.
 
-CI collects coverage on Node 24 for pull requests, pushes to `main`, and manual runs. Open the workflow run's
+CI enforces these thresholds on Node 24 for pull requests, pushes to `main`, and manual runs. Open the workflow run's
 **Summary** for line, statement, function, and branch percentages. Download the **coverage-report** artifact and
 open `index.html` to inspect individual files. Reports are retained for 14 days and are also produced when tests fail.
 
 The report measures code executed inside Vitest. Integration tests spawn `dist/cli.js` in separate processes,
-whose execution is not captured by this provider. Files exercised only by those subprocesses can therefore show
-zero coverage; this report is not a complete measure of integration-test coverage.
+whose execution is not captured by this provider and does not contribute to satisfying the coverage gate.
