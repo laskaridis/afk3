@@ -4,16 +4,16 @@ Features are built spec-first and implemented by running `afk` on this repo.
 
 ## Artifacts
 
-While a feature is in progress its files sit flat in `specs/`, including `<slug>.code.md` implementation notes beside
-the specification. Once merged, all of them move to `specs/_done/NNN-<slug>/`, preserving their filenames.
+While a feature is in progress its files sit flat in `specs/`, including `<feature-name-slug>.code.md` implementation notes beside
+the specification. Once merged, all of them move to `specs/_done/NNN-<feature-name-slug>/`, preserving their filenames.
 
-| File                | Content                                                                                |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| `<slug>.spec.md`    | User stories (`US-00x`) with acceptance criteria (`AC-00x`), assumptions, out of scope |
-| `<slug>.design.md`  | Architectural drivers, module table, key decisions                                     |
-| `<slug>.plan.json`  | `spec_path` + `tasks[]` with `id` (`TASK-00x`), `objective`, `status`, ACs, criteria   |
-| `<slug>.prompt.txt` | The launch prompt given to `afk`                                                       |
-| `<slug>.code.md`    | Append-only log written by the `code` loop, one entry per task                         |
+| File                             | Content                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| `<feature-name-slug>.spec.md`    | User stories (`US-00x`) with acceptance criteria (`AC-00x`), assumptions, out of scope |
+| `<feature-name-slug>.design.md`  | Architectural drivers, module table, key decisions                                     |
+| `<feature-name-slug>.plan.json`  | `spec_path` + `tasks[]` with `id` (`TASK-00x`), `objective`, `status`, ACs, criteria   |
+| `<feature-name-slug>.prompt.txt` | The launch prompt given to `afk`                                                       |
+| `<feature-name-slug>.code.md`    | Append-only log written by the `code` loop, one entry per task                         |
 
 Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), installed locally into the git-ignored
 `.claude/skills` and `.agents/skills`.
@@ -31,4 +31,4 @@ Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), in
 
 - One task per session and per commit; mark it `completed` in the plan only after checking every completion criterion.
 - Validation/smoke-check tasks are read-only except for bookkeeping; defects found become new follow-up tasks.
-- Real-agent smoke checks are manual and recorded as evidence in `<slug>.code.md`, never added to the automated suite.
+- Real-agent smoke checks are manual and recorded as evidence in `<feature-name-slug>.code.md`, never added to the automated suite.

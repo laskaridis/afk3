@@ -41,19 +41,17 @@ For non-trivial changes, delegate a read-only review of the selected task’s im
 
 ## Constraints
 
-- Validation tasks are read-only except for evidence/reporting files such as the task list provided by the user and <feature name>.code.md.
+- Validation tasks are read-only except for evidence/reporting files such as the task list provided by the user and `<feature-name-slug>.code.md`.
 - If validation finds an defect create a follow-up task instead of fixing the defect inside the validation task.
-- Every task marked completed must have a matching progress entry in <feature name>.code.md using the exact task id.
+- Every task marked completed must have a matching progress entry in `<feature-name-slug>.code.md` using the exact task id.
 - Record all modified files and relevant implementation decisions in the progress report.
 - Never commit unrelated or pre-existing changes.
 
-## Implementation notes file
+## Implementation notes file and progress report format
 
-Store implementation notes in `<feature name>.code.md` in the same folder as the user-provided specification. Derive the filename by replacing the specification's `.spec.md` suffix with `.code.md` (for example, `specs/001-afk-cli-core.spec.md` uses `specs/001-afk-cli-core.code.md`). If the specification does not end in `.spec.md`, replace its final extension with `.code.md`. Use this same notes file across iterations and create it if missing.
+Store implementation notes in `<feature-name-slug>.code.md` in the same folder as the user-provided specification. Derive the filename by replacing the specification's `.spec.md` suffix with `.code.md` (for example, `specs/001-afk-cli-core.spec.md` uses `specs/001-afk-cli-core.code.md`). If the specification does not end in `.spec.md`, replace its final extension with `.code.md`. Use this same notes file across iterations and create it if missing.
 
-## Progress report file format
-
-You leave notes to yourself in this implementation notes file which you can revisit in successive iterations. For each iteration APPEND, NEVER replace, ALWAYS append to maintain traceability:
+You leave notes to yourself in `<feature-name-slug>.code.md` which you can revisit in successive iterations. For each iteration APPEND, NEVER replace, ALWAYS append to maintain traceability:
 
 ```
 ## [Timestamp]
@@ -83,7 +81,7 @@ Keeping all sections are important - they help future iterations avoid repeating
 
 ## Consolidate discoveries
 
-If you discover something that will be relevant for future iterations, add it to the `## Project discovery` section at the TOP of `<feature name>.code.md`. This section should consolidate the most important learnings:
+If you discover something that will be relevant for future iterations, add it to the `## Project discovery` section at the TOP of `<feature-name-slug>.code.md`. This section should consolidate the most important learnings:
 
 ```
 ## Project discovery 
