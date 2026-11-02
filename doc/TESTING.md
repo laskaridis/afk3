@@ -1,6 +1,6 @@
 # Testing
 
-Vitest 3, `test/**/*.test.ts` (`vitest.config.ts`). `pnpm test` runs `pnpm run build` first because integration
+Vitest, `test/**/*.test.ts` (`vitest.config.ts`). `pnpm test` runs `pnpm run build` first because integration
 tests spawn `dist/cli.js` — running `vitest` directly against stale `dist/` gives misleading results.
 
 ## Two kinds of tests
@@ -42,3 +42,18 @@ fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
 - Help text and README content are asserted (`help.test.ts`, `agent-neutral-docs.test.ts`); update them together.
 - Test files are named after the behavior (`session-timeout`, `stderr-tail`), not the module, except unit tests.
 - Write the test first (the AFK loop uses the `tdd` skill: red → green → refactor).
+
+## Coverage
+
+Run `pnpm test:coverage` to build the CLI and run the suite with Vitest's V8 coverage provider.
+It prints a coverage table and writes an HTML report (`coverage/index.html`), LCOV (`coverage/lcov.info`),
+and JSON totals (`coverage/coverage-summary.json`). Reports include all `src/**/*.ts` files, including untested files;
+tests, fixtures, and generated output are excluded. No minimum coverage thresholds are enforced.
+
+CI collects coverage on Node 24 for pull requests, pushes to `main`, and manual runs. Open the workflow run's
+**Summary** for line, statement, function, and branch percentages. Download the **coverage-report** artifact and
+open `index.html` to inspect individual files. Reports are retained for 14 days and are also produced when tests fail.
+
+The report measures code executed inside Vitest. Integration tests spawn `dist/cli.js` in separate processes,
+whose execution is not captured by this provider. Files exercised only by those subprocesses can therefore show
+zero coverage; this report is not a complete measure of integration-test coverage.
