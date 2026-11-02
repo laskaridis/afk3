@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { access, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -67,6 +68,7 @@ describe("runSession", () => {
       stderrTail: [...Array.from({ length: STDERR_TAIL_LINES - 1 }, (_, i) => `line ${i + 3}`), "partial end"],
     });
     await expect(access(outputPath)).rejects.toThrow();
+    await expect(access(dirname(outputPath))).rejects.toThrow();
   });
 
   it("returns an exited result when no output file was written and ignores stdin errors", async () => {
