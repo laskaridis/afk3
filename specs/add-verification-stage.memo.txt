@@ -1,0 +1,44 @@
+## Context
+
+My current workflow relies heavily on TDD and acceptance-criteria verification. These are strong foundations,
+but there is a structural risk: the same agent may interpret a requirement, implement it, write the tests,
+and conclude that its implementation is correct. This creates correlated errors. If an agent misunderstands
+an acceptance criterion, its implementation and tests can agree with one another while both being wrong.
+
+## Objective
+
+Add a verification phase that launches a fresh, read-only reviewer agent. Give it the original specification
+and completed changes, but require it to derive expectations independently rather than accepting the implementer's
+tests as the definition of correctness.
+
+## Specs
+
+- Integrate the new verify agent into AFK3 as a mandatory, independent quality gate after every coding iteration,
+  preserving the existing agent-driven task selection and TDD workflow.
+- The key change is that the coding agent produces candidate implementations, while AFK3 delegates verification, 
+  task completion, and progression to the verification agent. The coding agent is no longer responsible to conclude
+  the implementation of a task, the verification agent is.
+- Target workflow:
+  * 1. Coding agent, selects next pending task (unless explicitly assigned) -> TDD -> Commit candidate -> reponds
+    to launch verification stage.
+  * 2. Verification agent, runs a fresh context -> derive expectations -> inspect changes -> report findings.
+  * 2a. Outcome: PASS, Verification agent marks task completed -> responds to launch next iteration.
+  * 2b. Outcome: FAIL, Orchestrator re-invokes coding agent with same task and findings. Loop continues until done.
+- BLOCKED: or correction limit reached → Stop and report; do not advance.
+- Coding agent behaviour:
+  * Normal iteration: The coding agent autonomously selects the highest-priority eligible pending task.
+  * Correction iteration: AFK3 explicitly assigns the previously implemented task and provides its verification findings.
+  * Both cases: The coding agent uses TDD, commits a candidate implementation, and reports its task ID and revision without marking the task completed.
+- AKF orchestrator:
+  * Invokes coding agent after the user launch prompt.
+  * Invokes verification agent after each iteration completion by the coding agent.
+  * Invokes coding agent after findings have been identified by veridication agent.
+  * Stops loop after all tasks have been implemented.
+- User should be able to specify:
+  * A maximum number of verification attempts per task which when exceeded it should block.
+  * Potentially a different model and effort for the verification phase.
+
+## Assumptions
+
+- Assume that the `verify.md` prompt as a given. The content of the prompt is out of scope for the purpose
+  of this feature.
