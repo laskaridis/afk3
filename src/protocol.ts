@@ -1,10 +1,17 @@
 import { readFileSync } from "node:fs";
 
-export type AgentOutcome =
-  | { outcome: "repeat" }
-  | { outcome: "complete" }
-  | { outcome: "blocked"; blocker_text: string }
-  | { outcome: "fail"; failure_summary: string };
+type TaskMetadata = {
+  task_id?: string | null;
+  task_plan_file?: string | null;
+};
+
+export type AgentOutcome = TaskMetadata &
+  (
+    | { outcome: "repeat" }
+    | { outcome: "complete" }
+    | { outcome: "blocked"; blocker_text: string }
+    | { outcome: "fail"; failure_summary: string }
+  );
 
 export type ContractViolation = { violation: string };
 
@@ -58,17 +65,30 @@ export function parseFinalResponse(text: string | undefined, nonce: string): Age
   }
 
   const fields = value as Record<string, unknown>;
+  const metadata: TaskMetadata = {};
+  for (const key of ["task_id", "task_plan_file"] as const) {
+    if (!Object.hasOwn(fields, key)) continue;
+    const detail = fields[key];
+    if (detail !== null && (typeof detail !== "string" || detail.trim() === "")) {
+      return { violation: `"${key}" must be a non-empty string or null` };
+    }
+    metadata[key] = detail;
+  }
+  const outcomeKeys = Object.keys(fields).filter((key) => key !== "task_id" && key !== "task_plan_file");
   const outcome = fields.outcome;
+  if (metadata.task_id === null && outcome !== "blocked") {
+    return { violation: 'a null "task_id" requires outcome "blocked" because no task could be selected' };
+  }
   if (outcome === "repeat" || outcome === "complete") {
-    const extra = Object.keys(fields).filter((key) => key !== "outcome");
+    const extra = outcomeKeys.filter((key) => key !== "outcome");
     if (extra.length > 0) {
       return { violation: `outcome "${outcome}" must have no additional fields, found: ${extra.join(", ")}` };
     }
-    return { outcome };
+    return { outcome, ...metadata };
   }
   if (outcome === "blocked" || outcome === "fail") {
     const field = TEXT_FIELD_BY_OUTCOME[outcome];
-    const extra = Object.keys(fields).filter((key) => key !== "outcome" && key !== field);
+    const extra = outcomeKeys.filter((key) => key !== "outcome" && key !== field);
     if (extra.length > 0) {
       return { violation: `outcome "${outcome}" has unsupported fields: ${extra.join(", ")}` };
     }
@@ -76,7 +96,9 @@ export function parseFinalResponse(text: string | undefined, nonce: string): Age
     if (typeof detail !== "string" || detail.trim() === "") {
       return { violation: `outcome "${outcome}" requires a non-empty string "${field}"` };
     }
-    return outcome === "blocked" ? { outcome, blocker_text: detail } : { outcome, failure_summary: detail };
+    return outcome === "blocked"
+      ? { outcome, blocker_text: detail, ...metadata }
+      : { outcome, failure_summary: detail, ...metadata };
   }
   return {
     violation: `missing or unsupported "outcome" (expected repeat, complete, blocked, or fail)`,

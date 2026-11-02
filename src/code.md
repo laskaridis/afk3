@@ -103,7 +103,7 @@ Your final response to the user MUST end with exactly one result block, wrapped 
 
 ```
 <afk-harness-result nonce="{{NONCE}}">
-{"outcome":"complete"}
+{"outcome":"complete","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}
 </afk-harness-result>
 ```
 
@@ -111,17 +111,24 @@ The block body MUST be exactly one JSON object and nothing else: do not wrap it 
 
 The JSON object MUST use one of these shapes:
 
-- `{"outcome":"repeat"}`
-- `{"outcome":"complete"}`
-- `{"outcome":"blocked","blocker_text":"..."}`
-- `{"outcome":"fail","failure_summary":"..."}`
+- `{"outcome":"repeat","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+- `{"outcome":"complete","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+- `{"outcome":"blocked","blocker_text":"...","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+- `{"outcome":"fail","failure_summary":"...","task_id":"TASK-011","task_plan_file":"specs/feature.plan.json"}`
+
+If no task could be selected, use `blocked` with `task_id:null`. For example, when no task plan file was specified:
+`{"outcome":"blocked","blocker_text":"Provide a task plan file so a task can be selected.","task_id":null,"task_plan_file":null}`
 
 Rules:
 
 - `outcome` must be one of `repeat`, `complete`, `blocked`, or `fail`.
+- Always include `task_id` and `task_plan_file` in the result block for every outcome.
+- `task_id` must be the exact identifier from the task list of the task selected for implementation during this iteration. Always retain this identifier even if the attempt was blocked or failed and the task was not implemented. Use `null` only when no task plan file was specified or no task could be selected; in either case, the outcome MUST be `blocked`. Do not substitute the identifier of a follow-up task for the task attempted.
+- `task_plan_file` must be the path to the actual task list plan file used during this iteration, relative to the project root when possible. Use `null` only when no task plan file was available. Do not substitute the specification or implementation notes file.
+- Each metadata value must be a non-empty string or JSON `null`, never an empty string or the string `"null"`.
 - `blocked` responses must include a non-empty `blocker_text` string.
 - `fail` responses must include a non-empty `failure_summary` string.
-- `repeat` and `complete` responses must not include any additional fields.
+- No fields other than `outcome`, `task_id`, `task_plan_file`, and the outcome's required `blocker_text` or `failure_summary` are allowed.
 - Leading and trailing whitespace around the JSON object inside the block is allowed, but any
   other text inside the block is a contract violation.
 - A block with a different nonce, or no block at all, is a contract violation.
@@ -134,5 +141,6 @@ After completing a task, check if ALL tasks have been completed:
 - If there are still tasks incomplete, use the `repeat` outcome.
 - If progress is blocked by environment/runtime prerequisites after a revalidation pass (same blocker signature, no code-level next step), use the `blocked` outcome and provide the blocker reason plus exact unblock condition.
 - If the required specification or task list is missing, use the `blocked` outcome and identify what the user must provide.
+- If no task could be selected for implementation, use the `blocked` outcome with `task_id:null` and explain why selection was impossible and the exact unblock condition.
 - If a permission denial or material ambiguity leaves no authorized next step after checking the available context, use the `blocked` outcome and provide the reason plus exact unblock condition. Continue with an authorized alternative when one exists.
 - If validation finds a defect, use the `fail` outcome and generate a follow-up fix task instead of silently folding the fix into the validation entry.

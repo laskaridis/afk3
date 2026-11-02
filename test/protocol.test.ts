@@ -54,6 +54,48 @@ describe("parseFinalResponse", () => {
     expect(parseFinalResponse(text, NONCE)).toEqual({ outcome: "complete" });
   });
 
+  it.each(valid)("preserves task metadata for %s", (body, expected) => {
+    const metadata = { task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" };
+    const response = { ...JSON.parse(body), ...metadata };
+    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual({
+      ...(expected as object),
+      ...metadata,
+    });
+  });
+
+  it("accepts null metadata when no task could be identified and no plan was available", () => {
+    const response = { outcome: "blocked", blocker_text: "Provide a task plan", task_id: null, task_plan_file: null };
+    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual(response);
+  });
+
+  it("accepts a blocked response when a plan was available but no task could be selected", () => {
+    const response = {
+      outcome: "blocked",
+      blocker_text: "Resolve task dependencies so a task can be selected",
+      task_id: null,
+      task_plan_file: "specs/feature.plan.json",
+    };
+    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual(response);
+  });
+
+  it.each(["repeat", "complete", "fail"])("rejects a null task_id for %s", (outcome) => {
+    const response = {
+      outcome,
+      task_id: null,
+      task_plan_file: "specs/feature.plan.json",
+      ...(outcome === "fail" ? { failure_summary: "Validation found a defect" } : {}),
+    };
+    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toHaveProperty("violation");
+  });
+
+  it.each(["task_id", "task_plan_file"])("rejects invalid %s values", (field) => {
+    for (const value of ["", "   ", 42, false, [], {}]) {
+      expect(parseFinalResponse(block(JSON.stringify({ outcome: "repeat", [field]: value })), NONCE)).toHaveProperty(
+        "violation",
+      );
+    }
+  });
+
   const invalid: Array<[string, string | undefined]> = [
     ["no block", '{"outcome":"complete"}'],
     ["block with another nonce", block('{"outcome":"complete"}', "deadbeef")],
