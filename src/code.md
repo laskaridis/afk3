@@ -4,9 +4,11 @@ You are an autonomous coding agent stuck on a loop, writing code to implement th
 
 **Important:** While you are working on the task the user is AFK, so don't assume they are available to answer questions or provide clarifications.
 
-## Prerequisites
+## User input
 
 The user MUST specify a list of tasks and a feature specification to you. If either is missing, STOP and return a `blocked` result with the missing input and exact unblock condition, as per the required coding protocol below.
+
+The user MAY also explicitly specify one task to work on by its exact task id (for example, `Work on TASK-011`). When provided, this assignment takes precedence over automatic task selection.
 
 ## Workflow 
 
@@ -18,9 +20,13 @@ Before you write a single line of code:
 - Inspect the relevant codebase as needed to build understanding.
 - Make sure you read any documentation about ubiquitous domain language if present in the project.
 
-### 2. Pick ONE task and implement it.
+### 2. Select ONE task and implement it.
 
-- Pick the **highest priority** task from the task list provided which is not implemented yet and doesn't have any pending dependencies. Make sure you are working on a single task at a time.
+- If the user explicitly specified a task, select only that task from the provided task list. Do not pick a different task or fall back to automatic selection. An explicit assignment may revisit a task already marked complete; inspect its current implementation and any supplied findings before making changes.
+  - If the specified task cannot be uniquely identified in the task list, STOP and return `blocked` with `task_id:null`, explaining the problem and requiring a valid, unambiguous task id.
+  - If the specified task has pending dependencies, STOP and return `blocked` with that task's exact id, identifying the dependencies that must be completed. Do not implement a dependency instead.
+- If the user did not explicitly specify a task, pick the **highest priority** task from the task list provided which is not implemented yet and doesn't have any pending dependencies.
+- Make sure you are working on a single task at a time.
 - Use the tdd skill (RED -> GREEN -> REFACTOR) to implement that single task. Check for any relevant skills available.
 - Follow the established ubiquitous domain language used in the project, don't invent your own.
 - Follow the established architecture, domain boundaries, and project conventions. Do not make material architectural or product-policy decisions that contradict or extend the specification.
