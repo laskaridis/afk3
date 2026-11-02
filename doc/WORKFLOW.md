@@ -20,10 +20,13 @@ Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), in
 
 ## Implementation notes
 
+- The notes file sits beside the specification: replace `.spec.md` with `.code.md`, or replace the final extension
+  with `.code.md` for other specification filenames. Reuse the same file across iterations and create it if missing.
 - Entry format is defined in `src/code.md`: task id, what was implemented, files changed, verification evidence,
   learnings, scope deviations, follow-ups.
 - A `## Project discovery` section at the top consolidates reusable learnings.
-- Append only; never rewrite past entries.
+- Task entries are append-only; never rewrite past entries. The `## Project discovery` section is updated separately
+  with general, reusable learnings.
 - Archived logs in `specs/_done/` are not guidance. Their "Project discovery" notes can be wrong for today's code
   (e.g. 002 says Codex's final message is on stdout); verify against the code before acting on them.
 
