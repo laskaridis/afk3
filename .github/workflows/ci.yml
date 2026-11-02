@@ -29,7 +29,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - name: Collect coverage
+      - name: Enforce 100% unit test coverage
         if: ${{ !cancelled() && matrix.node-version == '24' }}
         run: pnpm test:coverage
       - name: Summarize coverage
@@ -54,7 +54,7 @@ jobs:
             "| --- | --- | --- |",
             ...rows,
             "",
-            "Reporting only; no minimum coverage thresholds are enforced.",
+            "Required: 100% lines, statements, functions, and branches for every source file.",
             "Coverage includes src/**/*.ts executed inside Vitest. Spawned CLI subprocesses are not captured.",
             "Download the coverage-report artifact and open index.html for the file-level report.",
             "",

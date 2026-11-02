@@ -9,7 +9,13 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       reporter: ["text", "html", "lcov", "json-summary"],
       reportOnFailure: true,
-      // Reporting only: no minimum coverage thresholds yet.
+      thresholds: {
+        perFile: true,
+        lines: 100,
+        statements: 100,
+        functions: 100,
+        branches: 100,
+      },
     },
   },
 });
