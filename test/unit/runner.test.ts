@@ -183,4 +183,93 @@ describe("timed-out session", () => {
     expect(result).toEqual({ kind: "timeout", seconds: 7 });
     expect(launches).toBe(1);
   });
+
+  it("uses zero seconds when no timeout was configured", async () => {
+    expect(
+      await runAfk({ adapter: codexAdapter, launchPrompt: "p", maxIterations: 1 }, async () => ({ kind: "timed-out" })),
+    ).toEqual({ kind: "timeout", seconds: 0 });
+  });
+});
+
+describe("runAfk error classification", () => {
+  const config = { adapter: codexAdapter, launchPrompt: "p", maxIterations: 2 };
+
+  it("reports each error with the exited session's stderr tail", async () => {
+    const errors: Array<[string, string[]]> = [];
+    const exited: SessionResult = {
+      kind: "exited",
+      exitCode: 1,
+      signal: null,
+      stdout: "",
+      stderrTail: ["last line"],
+    };
+    await runAfk(config, scripted(exited, { kind: "launch-failed", error: new Error("ENOENT") }).runner, {
+      executionError: (detail, tail) => errors.push([detail, tail]),
+    });
+    expect(errors).toEqual([
+      ["agent exited unsuccessfully with exit code 1", ["last line"]],
+      ["failed to launch agent: ENOENT", []],
+    ]);
+  });
+
+  it("classifies a signal before examining the final message", async () => {
+    const session: SessionResult = {
+      kind: "exited",
+      exitCode: null,
+      signal: "SIGKILL",
+      stdout: "",
+      stderrTail: [],
+    };
+    expect(await runAfk({ ...config, maxIterations: 1 }, scripted(session).runner)).toEqual({
+      kind: "iteration-limit",
+      limit: 1,
+    });
+    expect(await runAfk(config, scripted(session).runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: "agent exited unsuccessfully with signal SIGKILL",
+    });
+  });
+
+  it("classifies adapter errors with both zero and nonzero exit statuses", async () => {
+    const adapter = {
+      ...codexAdapter,
+      extractFinalMessage: () => ({ agentError: true as const, detail: "rate limit" }),
+    };
+    const exited = (exitCode: number): SessionResult => ({
+      kind: "exited",
+      exitCode,
+      signal: null,
+      stdout: "",
+      stderrTail: [],
+    });
+    expect(await runAfk({ ...config, adapter }, scripted(exited(0)).runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: "agent exited unsuccessfully (agent reported an error: rate limit)",
+    });
+    expect(await runAfk({ ...config, adapter }, scripted(exited(7)).runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "exit-status",
+      detail: "agent exited unsuccessfully with exit code 7 (agent reported an error: rate limit)",
+    });
+  });
+
+  it("classifies an invalid extraction and a missing final response", async () => {
+    const session: SessionResult = { kind: "exited", exitCode: 0, signal: null, stdout: "", stderrTail: [] };
+    const invalidAdapter = {
+      ...codexAdapter,
+      extractFinalMessage: () => ({ invalid: true as const, reason: "bad JSON" }),
+    };
+    expect(await runAfk({ ...config, adapter: invalidAdapter }, scripted(session).runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "invalid-response",
+      detail: "agent final response is invalid: bad JSON",
+    });
+    expect(await runAfk(config, scripted(session).runner)).toEqual({
+      kind: "execution-error",
+      errorKind: "missing-response",
+      detail: "agent exited without a final response",
+    });
+  });
 });
