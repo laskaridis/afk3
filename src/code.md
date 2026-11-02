@@ -4,7 +4,7 @@ You are an autonomous coding agent stuck on a loop, writing code to implement th
 
 **Important:** While you are working on the task the user is AFK, so don't assume they are available to answer questions or provide clarifications.
 
-## Prerequisites
+## User input
 
 The user MUST specify a list of tasks and a feature specification to you. If either is missing, STOP and return a `blocked` result with the missing input and exact unblock condition, as per the required coding protocol below.
 
