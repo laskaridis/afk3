@@ -1,0 +1,26 @@
+{
+  "task_id": "TASK-001..TASK-008 (PR #24, b0547f0..9765ccc)",
+  "outcome": "fail",
+  "findings": [
+    {
+      "id": "V-001",
+      "severity": "high",
+      "category": "constraints",
+      "requirement": "AC-001; plan constraint 'Do not modify anything under test/integration/' (TASK-001..TASK-007); TASK-008 completion criterion 'git diff 3f42e29 -- test/integration ... print nothing'",
+      "location": "test/integration/support/helpers.ts:130",
+      "issue": "The frozen integration suite was modified. snapshotTree was rewritten to use Dirent entries and to read files through a single descriptor (open/fstat/read).",
+      "evidence": "`git diff 3f42e29 -- test/integration` prints a 27-line diff (+19/-8) introduced by commit 3bff4fd ('Stat and read snapshot files through a single descriptor'), which comes after TASK-008 (4facd66/e5864ab) was marked complete. specs/refactor-architecture.code.md:133 still records 'git diff 3f42e29 -- test/integration src/code.md prints nothing', and the PR body says 'test/integration/ ... untouched versus 3f42e29'. Both are now false. Mitigating fact (observed): with helpers.ts restored to its 3f42e29 content, the integration suite run against a fresh build of HEAD passes (17 files, 274 tests). The refactoring itself therefore preserves behavior.",
+      "impact": "AC-001 is the spec's stated proof that the refactoring kept every user-visible behavior, and it is violated as written. The recorded verification evidence and the PR description are inaccurate. Resolving this is a scope decision: either revert the helper change from this PR (or move it to a separate PR), or amend AC-001 to allow it."
+    },
+    {
+      "id": "V-002",
+      "severity": "low",
+      "category": "behavior",
+      "requirement": "AC-018 (each event is an immutable value)",
+      "location": "src/workflow/workflow-executor.ts:100-108,129-131",
+      "issue": "Events are frozen only one level deep. The stderrTail arrays of SessionExecutionErrorOccurred and WorkflowFailed stay mutable at runtime and are the same array object as the step result's stderrTail.",
+      "evidence": "Static inspection: publish() calls Object.freeze(event) once and does not freeze nested values. stderrTail is passed through as result.stderrTail; only `task` is frozen, via taskOf(). The test 'publishes immutable events' (test/unit/workflow/workflow-executor.test.ts:225) checks only Object.isFrozen on the top-level event. An observer that casts away `readonly` and pushes to SessionExecutionErrorOccurred.stderrTail changes the stderrTail of the later WorkflowFailed event, which run() returns. Not reproduced at runtime.",
+      "impact": "Control flow and exit codes are unaffected. The immutability guarantee in AC-018 holds only at type level for nested arrays, so a misbehaving observer could change data that later observers see and that run() returns."
+    }
+  ]
+}
