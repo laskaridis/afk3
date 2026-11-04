@@ -2,28 +2,44 @@ import { describe, expect, it } from "vitest";
 import type { AgentAdapter } from "../../../src/agents/adapter.js";
 import type { SessionExecutorFactory } from "../../../src/session/session-executor-factory.js";
 import type { SessionExecutor } from "../../../src/session/session-executor.js";
-import { CodingStep } from "../../../src/workflow/coding-step.js";
+import type { SessionResult } from "../../../src/session/session-result.js";
 import type { WorkflowEvent } from "../../../src/workflow/workflow-event.js";
 import { WorkflowExecutor } from "../../../src/workflow/workflow-executor.js";
 import type { WorkflowOptions } from "../../../src/workflow/workflow-options.js";
-import type { WorkflowStepOptions } from "../../../src/workflow/workflow-step.js";
-import type { WorkflowStepResult } from "../../../src/workflow/workflow-step-result.js";
 
 const ADAPTER = { name: "fake" } as unknown as AgentAdapter;
-const CONTINUE: WorkflowStepResult = { type: "Continue", task_id: "T-1", task_plan_file: "p.json" };
-const FINISHED: WorkflowStepResult = { type: "Finished", task_id: "T-9", task_plan_file: "p.json" };
-const BLOCKED: WorkflowStepResult = { type: "Blocked", blockerText: "need key", task_id: "T-2" };
-const FAILED: WorkflowStepResult = { type: "StepFailed", failureSummary: "tests broke" };
-const ERROR: WorkflowStepResult = { type: "SessionFailed", detail: "exit 1", stderrTail: ["tail"] };
 
-function setup(results: WorkflowStepResult[], overrides: Partial<WorkflowOptions> = {}) {
-  const calls: Array<{ prompt: string; options: WorkflowStepOptions }> = [];
+/** A scripted session: a raw session result, or the agent's result block (the nonce is read from the prompt). */
+type Script = SessionResult | { block: Record<string, unknown> };
+
+const CONTINUE: Script = { block: { outcome: "repeat", task_id: "T-1", task_plan_file: "p.json" } };
+const FINISHED: Script = { block: { outcome: "complete", task_id: "T-9", task_plan_file: "p.json" } };
+const BLOCKED: Script = { block: { outcome: "blocked", blocker_text: "need key", task_id: "T-2" } };
+const FAILED: Script = { block: { outcome: "fail", failure_summary: "tests broke" } };
+const ERROR: Script = { kind: "exited-unsuccessfully", detail: "exit 1", stderrTail: ["tail"] };
+const TIMED_OUT: Script = { kind: "timed-out" };
+const INTERRUPTED: Script = { kind: "interrupted" };
+
+function toSessionResult(script: Script, prompt: string): SessionResult {
+  if ("kind" in script) return script;
+  const nonce = /nonce="([^"]+)"/.exec(prompt)![1];
+  const finalMessage = `<afk-harness-result nonce="${nonce}">${JSON.stringify(script.block)}</afk-harness-result>`;
+  return { kind: "success", finalMessage, stderrTail: [] };
+}
+
+function setup(scripts: Script[], overrides: Partial<WorkflowOptions> = {}) {
+  const calls: Array<{ prompt: string; cwd: string; model?: string; effort?: string }> = [];
   const created: unknown[] = [];
   const executors: SessionExecutor[] = [];
   const sessions = {
     create: (adapter: unknown) => {
       created.push(adapter);
-      const executor = {} as SessionExecutor;
+      const executor = {
+        execute: async (request: (typeof calls)[number]) => {
+          calls.push(request);
+          return toSessionResult(scripts[Math.min(calls.length, scripts.length) - 1]!, request.prompt);
+        },
+      } as unknown as SessionExecutor;
       executors.push(executor);
       return executor;
     },
@@ -32,13 +48,6 @@ function setup(results: WorkflowStepResult[], overrides: Partial<WorkflowOptions
     { adapter: ADAPTER, model: "m", effort: "high", maxIterations: 10, cwd: "/work", ...overrides },
     { text: "launch" },
     sessions,
-    () => ({
-      name: "stub",
-      execute: async (prompt, options) => {
-        calls.push({ prompt, options });
-        return results[Math.min(calls.length, results.length) - 1]!;
-      },
-    }),
   );
   const events: WorkflowEvent[] = [];
   workflow.subscribe({ onEvent: (event) => void events.push(event) });
@@ -53,18 +62,11 @@ describe("WorkflowExecutor policy and events", () => {
     await workflow.run();
     expect(created).toEqual([ADAPTER, ADAPTER]);
     expect(executors[0]).not.toBe(executors[1]);
-    expect(calls).toEqual([
-      { prompt: "launch", options: { cwd: "/work", model: "m", effort: "high" } },
-      { prompt: "launch", options: { cwd: "/work", model: "m", effort: "high" } },
+    expect(calls.map(({ cwd, model, effort }) => ({ cwd, model, effort }))).toEqual([
+      { cwd: "/work", model: "m", effort: "high" },
+      { cwd: "/work", model: "m", effort: "high" },
     ]);
-  });
-
-  it("runs a CodingStep by default", async () => {
-    const executor = { execute: async () => ({ kind: "interrupted" }) } as unknown as SessionExecutor;
-    const sessions = { create: () => executor } as unknown as SessionExecutorFactory;
-    const workflow = new WorkflowExecutor({ adapter: ADAPTER, maxIterations: 2, cwd: "/w" }, { text: "p" }, sessions);
-    expect(await workflow.run()).toEqual({ type: "WorkflowInterrupted" });
-    expect(new CodingStep(executor).name).toBe("coding");
+    expect(calls.every((call) => call.prompt.startsWith("launch"))).toBe(true);
   });
 
   it("complete: repeat then complete", async () => {
@@ -86,7 +88,7 @@ describe("WorkflowExecutor policy and events", () => {
     ]);
     expect(events[0]).toEqual({ type: "WorkflowStarted", maxIterations: 10 });
     expect(events[1]).toEqual({ type: "IterationStarted", iteration: 1, limit: 10, retry: false });
-    expect(events[2]).toEqual({ type: "StepExecutionStarted", iteration: 1, stepName: "stub" });
+    expect(events[2]).toEqual({ type: "StepExecutionStarted", iteration: 1, stepName: "coding" });
     expect(events[3]).toEqual({
       type: "StepExecutionFinished",
       iteration: 1,
@@ -153,7 +155,7 @@ describe("WorkflowExecutor policy and events", () => {
   });
 
   it("two consecutive session failures end with WorkflowFailed carrying the second detail and tail", async () => {
-    const second: WorkflowStepResult = { type: "SessionFailed", detail: "second", stderrTail: ["t2"] };
+    const second: Script = { kind: "exited-unsuccessfully", detail: "second", stderrTail: ["t2"] };
     const { workflow, events, calls } = setup([ERROR, second]);
     const result = await workflow.run();
     expect(result).toEqual({ type: "WorkflowFailed", detail: "second", stderrTail: ["t2"] });
@@ -186,7 +188,7 @@ describe("WorkflowExecutor policy and events", () => {
   });
 
   it("timeout: stops at once with the configured seconds and no step-level event", async () => {
-    const { workflow, events, calls } = setup([{ type: "Timeout" }, FINISHED], { sessionTimeoutSeconds: 7 });
+    const { workflow, events, calls } = setup([TIMED_OUT, FINISHED], { sessionTimeoutSeconds: 7 });
     expect(await workflow.run()).toEqual({ type: "WorkflowTimedOut", seconds: 7 });
     expect(calls).toHaveLength(1);
     expect(types(events)).toEqual([
@@ -199,11 +201,11 @@ describe("WorkflowExecutor policy and events", () => {
   });
 
   it("timeout without a configured timeout reports zero seconds", async () => {
-    expect(await setup([{ type: "Timeout" }]).workflow.run()).toEqual({ type: "WorkflowTimedOut", seconds: 0 });
+    expect(await setup([TIMED_OUT]).workflow.run()).toEqual({ type: "WorkflowTimedOut", seconds: 0 });
   });
 
   it("interruption: stops at once without retrying", async () => {
-    const { workflow, events, calls } = setup([{ type: "Interrupted" }, FINISHED]);
+    const { workflow, events, calls } = setup([INTERRUPTED, FINISHED]);
     expect(await workflow.run()).toEqual({ type: "WorkflowInterrupted" });
     expect(calls).toHaveLength(1);
     expect(types(events).slice(-3)).toEqual(["StepExecutionStarted", "IterationFinished", "WorkflowInterrupted"]);

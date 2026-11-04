@@ -16,8 +16,13 @@
 - Errors that are expected are returned as values (`{ ok: false, message }`, `{ violation }`), not thrown. Option
   parsers throw commander's `InvalidArgumentError` (→ exit 2).
 - Use `!` only where the index is guaranteed (`agents[agent]!` after validation).
-- Comments are sparse and explain _why_ (a constraint, an external CLI quirk), as one-line `//` or a short `/** */` on
-  exported items. Don't narrate the code.
+- Always document public API with a `/** */` doc comment: every exported class, interface, type, function and constant,
+  and every public method, constructor and property of an exported class or interface, and anything else a module
+  exposes to other modules. State what it is for and the contract callers rely on (what it returns, when, what it
+  guarantees or does not, ordering, mutation, errors), and use `@param` where a parameter is not self-explanatory.
+  Private members and module-local helpers need a doc comment only when their purpose isn't obvious.
+- Inline comments are sparse and explain _why_ (a constraint, an external CLI quirk) as one-line `//`. Don't narrate the
+  code.
 - Constants in `UPPER_SNAKE_CASE` (`DEFAULT_MAX_ITERATIONS`, `EXIT_CODES`); camelCase elsewhere. Protocol JSON fields
   keep their wire names (`blocker_text`, `failure_summary`).
 - Status lines go to stderr as `[afk] <Label>: <detail>`, where the detail is a lowercase, agent-neutral fragment
