@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   runAfk: vi.fn(),
   execute: vi.fn(),
   factory: vi.fn(),
-  buildSessionPrompt: vi.fn((prompt: string, nonce: string) => `${prompt} :: ${nonce}`),
 }));
 
 vi.mock("../../src/runner.js", async (original) => ({
@@ -25,10 +24,6 @@ vi.mock("../../src/session/session-executor-factory.js", () => ({
     }
   },
 }));
-vi.mock("../../src/protocol.js", async (original) => ({
-  ...(await original<typeof import("../../src/protocol.js")>()),
-  buildSessionPrompt: mocks.buildSessionPrompt,
-}));
 
 let originalArgv: string[];
 let originalGrace: string | undefined;
@@ -42,7 +37,6 @@ beforeEach(() => {
   mocks.runAfk.mockReset();
   mocks.execute.mockReset();
   mocks.factory.mockReset();
-  mocks.buildSessionPrompt.mockClear();
   originalArgv = process.argv;
   originalGrace = process.env.AFK_TERMINATION_GRACE_MS;
   listeners = {
@@ -115,7 +109,7 @@ describe("CLI entrypoint", () => {
       reporter.retryStarted(2, 3, "reason");
       reporter.failureSurfaced("test failed");
       reporter.executionError("bad exit", ["tail"]);
-      expect(await runSession("prompt", "nonce")).toEqual({ kind: "interrupted" });
+      expect(await runSession("prompt")).toEqual({ type: "Interrupted" });
       return { kind: "blocked", blockerText: "need key" };
     });
     mocks.execute.mockResolvedValue({ kind: "interrupted" } satisfies SessionResult);
@@ -137,7 +131,7 @@ describe("CLI entrypoint", () => {
       ]),
     ).toBe(1);
     expect(mocks.execute).toHaveBeenCalledWith({
-      prompt: "prompt :: nonce",
+      prompt: expect.stringMatching(/^prompt\n\n---\n/),
       cwd: process.cwd(),
       model: "my-model",
       effort: "high",
@@ -162,7 +156,7 @@ describe("CLI entrypoint", () => {
       process.emit("SIGINT");
       process.emit("SIGTERM");
       process.emit("SIGHUP");
-      await runSession("prompt", "nonce");
+      await runSession("prompt");
       return { kind: "interrupted" };
     });
     mocks.execute.mockResolvedValue({ kind: "interrupted" });
@@ -179,7 +173,7 @@ describe("CLI entrypoint", () => {
 
   it.each([
     [{ kind: "complete" }, 0, "Run complete"],
-    [{ kind: "execution-error", errorKind: "exit-status", detail: "bad" }, 3, ""],
+    [{ kind: "execution-error", detail: "bad" }, 3, ""],
     [{ kind: "iteration-limit", limit: 1 }, 4, "Run stopped: iteration limit"],
     [{ kind: "timeout", seconds: 2 }, 5, "Run stopped: agent session timed out"],
   ] as Array<[RunResult, number, string]>)("maps a %j result to exit %i", async (result, code, status) => {

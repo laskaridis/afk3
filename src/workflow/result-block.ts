@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs";
-
-type TaskMetadata = {
+export type TaskMetadata = {
   task_id?: string | null;
   task_plan_file?: string | null;
 };
 
-export type AgentOutcome = TaskMetadata &
+export type ResultBlock = TaskMetadata &
   (
     | { outcome: "repeat" }
     | { outcome: "complete" }
@@ -14,15 +12,6 @@ export type AgentOutcome = TaskMetadata &
   );
 
 export type ContractViolation = { violation: string };
-
-// Copied next to the compiled module by the build script.
-const HARNESS = readFileSync(new URL("./code.md", import.meta.url), "utf8");
-
-const NONCE_PLACEHOLDER = "{{NONCE}}";
-
-export function buildSessionPrompt(launchPrompt: string, nonce: string): string {
-  return `${launchPrompt}\n\n---\n${HARNESS.replaceAll(NONCE_PLACEHOLDER, nonce)}\n`;
-}
 
 /** The body of the last complete result block carrying this session's nonce, so echoed examples and noise are ignored. */
 function extractResultBody(text: string, nonce: string): string | undefined {
@@ -42,7 +31,7 @@ const TEXT_FIELD_BY_OUTCOME = {
   fail: "failure_summary",
 } as const;
 
-export function parseFinalResponse(text: string | undefined, nonce: string): AgentOutcome | ContractViolation {
+export function parseResultBlock(text: string | undefined, nonce: string): ResultBlock | ContractViolation {
   if (text === undefined || text.trim() === "") {
     return { violation: "the final message is missing or empty" };
   }

@@ -4,6 +4,7 @@
 - No python in this environment; use node scripts for scripted edits. `sed -i` needs `''` on macOS.
 - Sessions live in `src/session/`: `session-result.ts` (7-kind union), `session-executor.ts` (`SessionExecutor`, `STDERR_TAIL_LINES`, `DEFAULT_TERMINATION_GRACE_MS`), `session-executor-factory.ts`. Failure kinds carry `detail`; all but launch-failed/timed-out/interrupted carry `stderrTail`. Runner only maps kinds to error kinds and parses result blocks.
 - Verify each task with `pnpm check`, `pnpm test:coverage` and `git diff 3f42e29 -- test/integration src/code.md` (must be empty).
+- Workflow lives in `src/workflow/`: `workflow-step.ts` (WorkflowStep, WorkflowStepOptions), `workflow-step-result.ts` (type discriminator: Continue/Finished/StepFailed/Blocked/SessionFailed/Timeout/Interrupted; task_id/task_plan_file carried as parsed), `coding-step.ts` (nonce, prompt, `../code.md`), `result-block.ts` (parser). `runner.ts` takes a `StepRunner` and maps step results to `RunResult` (no errorKind any more).
 ---
 
 ## 2026-11-04
@@ -40,5 +41,21 @@
   - Plan statuses: TASK-001 (completed in previous commit but left "pending") and TASK-002 set to completed.
 - Learnings for future iterations: `runner.ts` still holds the result-block half of classification until TASK-003; mapped via `classify` on `session.kind`.
 - Scope deviations: cli.test.ts mocks the factory class instead of `runSession`; plan.json TASK-001 status corrected.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-003)
+- Task id: TASK-003
+- What was implemented:
+  - `src/workflow/`: WorkflowStep interface, WorkflowStepOptions, WorkflowStepResult, CodingStep (fresh nonce per execute, byte-identical session prompt, maps every SessionResult/parsed block), result-block parser (moved from protocol.ts).
+  - `src/protocol.ts` and `test/unit/protocol.test.ts` removed (moved via git mv). `runner.ts` runs one step per iteration via `StepRunner`; `cli.ts` builds a CodingStep from the executor and no longer builds prompts. `errorKind` dropped from RunResult execution-error (unused outside tests).
+- Files changed: src/workflow/{workflow-step,workflow-step-result,coding-step,result-block}.ts, src/{runner,cli}.ts, src/protocol.ts (deleted), test/unit/workflow/{coding-step,result-block}.test.ts, test/unit/{runner,cli,reporter}.test.ts, test/unit/protocol.test.ts (deleted), plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0; `pnpm test:coverage` exit 0 (445 tests), 100% on src/.
+  - `git diff 3f42e29 -- test/integration src/code.md` empty; `cmp src/code.md dist/code.md` identical after build.
+  - Mapping of old tests: protocol.test.ts parse cases -> test/unit/workflow/result-block.test.ts; buildSessionPrompt cases + runner nonce/classification cases (fresh nonce, other-nonce block, violation with stderr tail, empty message, each SessionResult kind) -> test/unit/workflow/coding-step.test.ts (details verbatim); runner policy cases stay in test/unit/runner.test.ts (until TASK-004).
+  - src/workflow imports only session/session-executor(.js, type) and its own modules; no agents import.
+- Learnings for future iterations: runner tests now script WorkflowStepResult values instead of session results.
+- Scope deviations: removed `errorKind`/ExecutionErrorKind from runner RunResult and edited reporter.test.ts/cli.test.ts accordingly. No subagent review run.
 - Follow up needed: none.
 ---

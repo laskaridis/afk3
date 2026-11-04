@@ -56,7 +56,7 @@
     {
       "id": "TASK-003",
       "objective": "Introduce the WorkflowStep interface, the CodingStep implementation and WorkflowStepResult in src/workflow/, so that nonce generation, session prompt assembly and result-block parsing sit in one place and every SessionResult or parsed block maps to a step outcome, replacing src/protocol.ts.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-004", "US-001"],
       "acceptance_criteria_addressed": ["AC-013", "AC-014", "AC-015", "AC-016", "AC-001", "AC-002", "AC-003", "AC-004", "AC-005"],
       "completion_criteria": [

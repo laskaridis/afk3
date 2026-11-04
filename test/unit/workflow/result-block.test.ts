@@ -1,32 +1,10 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildSessionPrompt, parseFinalResponse } from "../../src/protocol.js";
+import { parseResultBlock } from "../../../src/workflow/result-block.js";
 
 const NONCE = "7f3a9c21";
 const block = (body: string, nonce = NONCE) => `<afk-harness-result nonce="${nonce}">\n${body}\n</afk-harness-result>`;
 
-describe("buildSessionPrompt", () => {
-  it("starts with the launch prompt verbatim", () => {
-    const launchPrompt = "  build feature X\nwith details  ";
-    expect(buildSessionPrompt(launchPrompt, NONCE).startsWith(launchPrompt)).toBe(true);
-  });
-
-  it("appends the harness instructions for one task and a result block carrying the nonce", () => {
-    const prompt = buildSessionPrompt("build feature X", NONCE);
-    const harness = readFileSync(new URL("../../src/code.md", import.meta.url), "utf8");
-    expect(prompt).toBe(`build feature X\n\n---\n${harness.replaceAll("{{NONCE}}", NONCE)}\n`);
-    expect(prompt).toMatch(/one task/i);
-    expect(prompt).toContain(`<afk-harness-result nonce="${NONCE}">`);
-    expect(prompt).not.toContain("{{NONCE}}");
-  });
-
-  it("is identical for the same launch prompt and nonce, and differs by nonce", () => {
-    expect(buildSessionPrompt("build feature X", NONCE)).toBe(buildSessionPrompt("build feature X", NONCE));
-    expect(buildSessionPrompt("build feature X", NONCE)).not.toBe(buildSessionPrompt("build feature X", "other"));
-  });
-});
-
-describe("parseFinalResponse", () => {
+describe("parseResultBlock", () => {
   const valid: Array<[string, unknown]> = [
     ['{"outcome":"repeat"}', { outcome: "repeat" }],
     ['{"outcome":"complete"}', { outcome: "complete" }],
@@ -36,11 +14,11 @@ describe("parseFinalResponse", () => {
 
   for (const [body, expected] of valid) {
     it(`accepts ${body}, with and without surrounding whitespace and noise`, () => {
-      expect(parseFinalResponse(block(body), NONCE)).toEqual(expected);
+      expect(parseResultBlock(block(body), NONCE)).toEqual(expected);
       expect(
-        parseFinalResponse(`<afk-harness-result nonce="${NONCE}">\n  ${body}\t\n</afk-harness-result>`, NONCE),
+        parseResultBlock(`<afk-harness-result nonce="${NONCE}">\n  ${body}\t\n</afk-harness-result>`, NONCE),
       ).toEqual(expected);
-      expect(parseFinalResponse(`banner\nDone.\n${block(body)}\ntrailing noise\n`, NONCE)).toEqual(expected);
+      expect(parseResultBlock(`banner\nDone.\n${block(body)}\ntrailing noise\n`, NONCE)).toEqual(expected);
     });
   }
 
@@ -51,13 +29,13 @@ describe("parseFinalResponse", () => {
       block('{"outcome":"complete"}'),
       block('{"outcome":"blocked","blocker_text":"echo"}', "deadbeef"),
     ].join("\n");
-    expect(parseFinalResponse(text, NONCE)).toEqual({ outcome: "complete" });
+    expect(parseResultBlock(text, NONCE)).toEqual({ outcome: "complete" });
   });
 
   it.each(valid)("preserves task metadata for %s", (body, expected) => {
     const metadata = { task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" };
     const response = { ...JSON.parse(body), ...metadata };
-    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual({
+    expect(parseResultBlock(block(JSON.stringify(response)), NONCE)).toEqual({
       ...(expected as object),
       ...metadata,
     });
@@ -65,7 +43,7 @@ describe("parseFinalResponse", () => {
 
   it("accepts null metadata when no task could be identified and no plan was available", () => {
     const response = { outcome: "blocked", blocker_text: "Provide a task plan", task_id: null, task_plan_file: null };
-    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual(response);
+    expect(parseResultBlock(block(JSON.stringify(response)), NONCE)).toEqual(response);
   });
 
   it("accepts a blocked response when a plan was available but no task could be selected", () => {
@@ -75,7 +53,7 @@ describe("parseFinalResponse", () => {
       task_id: null,
       task_plan_file: "specs/feature.plan.json",
     };
-    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toEqual(response);
+    expect(parseResultBlock(block(JSON.stringify(response)), NONCE)).toEqual(response);
   });
 
   it.each(["repeat", "complete", "fail"])("rejects a null task_id for %s", (outcome) => {
@@ -85,12 +63,12 @@ describe("parseFinalResponse", () => {
       task_plan_file: "specs/feature.plan.json",
       ...(outcome === "fail" ? { failure_summary: "Validation found a defect" } : {}),
     };
-    expect(parseFinalResponse(block(JSON.stringify(response)), NONCE)).toHaveProperty("violation");
+    expect(parseResultBlock(block(JSON.stringify(response)), NONCE)).toHaveProperty("violation");
   });
 
   it.each(["task_id", "task_plan_file"])("rejects invalid %s values", (field) => {
     for (const value of ["", "   ", 42, false, [], {}]) {
-      expect(parseFinalResponse(block(JSON.stringify({ outcome: "repeat", [field]: value })), NONCE)).toHaveProperty(
+      expect(parseResultBlock(block(JSON.stringify({ outcome: "repeat", [field]: value })), NONCE)).toHaveProperty(
         "violation",
       );
     }
@@ -127,7 +105,7 @@ describe("parseFinalResponse", () => {
 
   for (const [name, text] of invalid) {
     it(`rejects ${name} with a readable reason`, () => {
-      const result = parseFinalResponse(text, NONCE);
+      const result = parseResultBlock(text, NONCE);
       expect(result).toHaveProperty("violation");
       expect((result as { violation: string }).violation.length).toBeGreaterThan(10);
     });

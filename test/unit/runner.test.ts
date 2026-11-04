@@ -1,34 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { runAfk, type SessionRunner } from "../../src/runner.js";
-import type { SessionResult } from "../../src/session/session-result.js";
+import { runAfk, type StepRunner } from "../../src/runner.js";
+import type { WorkflowStepResult } from "../../src/workflow/workflow-step-result.js";
 
-/** A scripted session result; replies are built from the nonce the runner passes in. */
-type Scripted = SessionResult | ((nonce: string) => SessionResult);
-
-const reply =
-  (message: object): Scripted =>
-  (nonce) => ({
-    kind: "success",
-    finalMessage: `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(message)}\n</afk-harness-result>`,
-    stderrTail: [],
-  });
-
-function scripted(...results: Scripted[]) {
+function scripted(...results: WorkflowStepResult[]) {
   const prompts: string[] = [];
-  const nonces: string[] = [];
-  const runner: SessionRunner = async (prompt, nonce) => {
+  const runner: StepRunner = async (prompt) => {
     prompts.push(prompt);
-    nonces.push(nonce);
-    const result = results[Math.min(prompts.length, results.length) - 1]!;
-    return typeof result === "function" ? result(nonce) : result;
+    return results[Math.min(prompts.length, results.length) - 1]!;
   };
-  return { runner, prompts, nonces };
+  return { runner, prompts };
 }
 
-const REPEAT = reply({ outcome: "repeat" });
-const COMPLETE = reply({ outcome: "complete" });
-const BLOCKED = reply({ outcome: "blocked", blocker_text: "need API key" });
-const FAIL = reply({ outcome: "fail", failure_summary: "tests broke" });
+const REPEAT: WorkflowStepResult = { type: "Continue" };
+const COMPLETE: WorkflowStepResult = { type: "Finished" };
+const BLOCKED: WorkflowStepResult = { type: "Blocked", blockerText: "need API key" };
+const FAIL: WorkflowStepResult = { type: "StepFailed", failureSummary: "tests broke" };
 
 describe("runAfk", () => {
   it("starts another session after repeat and ends successfully on complete", async () => {
@@ -84,8 +70,8 @@ describe("runAfk", () => {
 });
 
 describe("runAfk execution-error retry", () => {
-  const ERROR: SessionResult = {
-    kind: "exited-unsuccessfully",
+  const ERROR: WorkflowStepResult = {
+    type: "SessionFailed",
     detail: "agent exited unsuccessfully with exit code 1",
     stderrTail: [],
   };
@@ -101,15 +87,18 @@ describe("runAfk execution-error retry", () => {
     const { runner, prompts } = scripted(ERROR, FAIL, ERROR, ERROR);
     expect(await runAfk(cfg, runner)).toEqual({
       kind: "execution-error",
-      errorKind: "exit-status",
       detail: "agent exited unsuccessfully with exit code 1",
     });
     expect(prompts).toHaveLength(4);
   });
 
   it("two consecutive errors stop after two launches, identifying the last error kind", async () => {
-    const { runner, prompts } = scripted(ERROR, { kind: "launch-failed", detail: "failed to launch agent: ENOENT" });
-    expect(await runAfk(cfg, runner)).toMatchObject({ kind: "execution-error", errorKind: "launch-failed" });
+    const { runner, prompts } = scripted(ERROR, {
+      type: "SessionFailed",
+      detail: "failed to launch agent: ENOENT",
+      stderrTail: [],
+    });
+    expect(await runAfk(cfg, runner)).toEqual({ kind: "execution-error", detail: "failed to launch agent: ENOENT" });
     expect(prompts).toHaveLength(2);
   });
 
@@ -132,39 +121,12 @@ describe("runAfk execution-error retry", () => {
   });
 });
 
-describe("runAfk result block nonce", () => {
-  it("passes a fresh nonce to every session, including retries", async () => {
-    const ERROR: SessionResult = {
-      kind: "exited-unsuccessfully",
-      detail: "agent exited unsuccessfully with exit code 1",
-      stderrTail: [],
-    };
-    const { runner, nonces } = scripted(REPEAT, ERROR, COMPLETE);
-    await runAfk({ launchPrompt: "p", maxIterations: 5 }, runner);
-    expect(nonces).toHaveLength(3);
-    expect(new Set(nonces).size).toBe(3);
-  });
-
-  it("treats a block carrying another nonce as an invalid response", async () => {
-    const stale: SessionResult = {
-      kind: "success",
-      finalMessage: '<afk-harness-result nonce="cafebabe">\n{"outcome":"complete"}\n</afk-harness-result>',
-      stderrTail: [],
-    };
-    const { runner } = scripted(stale);
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 2 }, runner)).toMatchObject({
-      kind: "execution-error",
-      errorKind: "invalid-response",
-    });
-  });
-});
-
 describe("runAfk interruption", () => {
   it("stops with interrupted without retrying or iterating", async () => {
     const calls: string[] = [];
     const result = await runAfk({ launchPrompt: "p", maxIterations: 5 }, async () => {
       calls.push("x");
-      return { kind: "interrupted" };
+      return { type: "Interrupted" };
     });
     expect(result).toEqual({ kind: "interrupted" });
     expect(calls).toHaveLength(1);
@@ -176,70 +138,31 @@ describe("timed-out session", () => {
     let launches = 0;
     const result = await runAfk({ launchPrompt: "p", maxIterations: 5, sessionTimeoutSeconds: 7 }, async () => {
       launches++;
-      return { kind: "timed-out" };
+      return { type: "Timeout" };
     });
     expect(result).toEqual({ kind: "timeout", seconds: 7 });
     expect(launches).toBe(1);
   });
 
   it("uses zero seconds when no timeout was configured", async () => {
-    expect(await runAfk({ launchPrompt: "p", maxIterations: 1 }, async () => ({ kind: "timed-out" }))).toEqual({
+    expect(await runAfk({ launchPrompt: "p", maxIterations: 1 }, async () => ({ type: "Timeout" as const }))).toEqual({
       kind: "timeout",
       seconds: 0,
     });
   });
 });
 
-describe("runAfk error classification", () => {
-  const config = { launchPrompt: "p", maxIterations: 1 };
-  const failures: Array<[SessionResult, string, string]> = [
-    [
-      { kind: "launch-failed", detail: "failed to launch agent: ENOENT" },
-      "launch-failed",
-      "failed to launch agent: ENOENT",
-    ],
-    [{ kind: "exited-unsuccessfully", detail: "bad exit", stderrTail: ["t"] }, "exit-status", "bad exit"],
-    [{ kind: "missing-final-message", detail: "no message", stderrTail: ["t"] }, "missing-response", "no message"],
-    [{ kind: "invalid-final-message", detail: "invalid", stderrTail: ["t"] }, "invalid-response", "invalid"],
-  ];
-
-  it.each(failures)(
-    "maps %j to an execution error and reports it with the stderr tail",
-    async (session, errorKind, detail) => {
-      const errors: Array<[string, string[]]> = [];
-      const twice = scripted(session);
-      const result = await runAfk({ ...config, maxIterations: 2 }, twice.runner, {
-        executionError: (d, tail) => errors.push([d, tail]),
-      });
-      expect(result).toEqual({ kind: "execution-error", errorKind, detail });
-      const tail = "stderrTail" in session ? session.stderrTail : [];
-      expect(errors).toEqual([
-        [detail, tail],
-        [detail, tail],
-      ]);
-    },
-  );
-
-  it("turns a result block violation into an invalid response with the session's stderr tail", async () => {
-    const session: SessionResult = { kind: "success", finalMessage: "no block here", stderrTail: ["last"] };
+describe("runAfk error reporting", () => {
+  it("reports every session failure with its stderr tail, including the one that leads to a retry", async () => {
+    const failed: WorkflowStepResult = { type: "SessionFailed", detail: "bad", stderrTail: ["t"] };
     const errors: Array<[string, string[]]> = [];
-    const result = await runAfk({ ...config, maxIterations: 2 }, scripted(session).runner, {
+    const result = await runAfk({ launchPrompt: "p", maxIterations: 2 }, scripted(failed).runner, {
       executionError: (d, tail) => errors.push([d, tail]),
     });
-    expect(result).toMatchObject({ kind: "execution-error", errorKind: "invalid-response" });
-    expect(errors[0]?.[1]).toEqual(["last"]);
-    expect(errors[0]?.[0]).toMatch(
-      /^agent final response is invalid: the final message has no <afk-harness-result nonce="[0-9a-f]+"> block$/,
-    );
-  });
-
-  it("treats an empty final message as invalid", async () => {
-    const session: SessionResult = { kind: "success", finalMessage: " ", stderrTail: [] };
-    expect(await runAfk(config, scripted(session).runner)).toEqual({ kind: "iteration-limit", limit: 1 });
-    expect(await runAfk({ ...config, maxIterations: 2 }, scripted(session).runner)).toEqual({
-      kind: "execution-error",
-      errorKind: "invalid-response",
-      detail: "agent final response is invalid: the final message is missing or empty",
-    });
+    expect(result).toEqual({ kind: "execution-error", detail: "bad" });
+    expect(errors).toEqual([
+      ["bad", ["t"]],
+      ["bad", ["t"]],
+    ]);
   });
 });

@@ -12,7 +12,7 @@ describe("reporter", () => {
   const results: Array<[RunResult, number, string | undefined]> = [
     [{ kind: "complete" }, EXIT_CODES.complete, "Run complete: feature complete"],
     [{ kind: "blocked", blockerText: "need key" }, EXIT_CODES.blocked, "Run blocked: need key"],
-    [{ kind: "execution-error", errorKind: "launch-failed", detail: "failed" }, EXIT_CODES.executionError, undefined],
+    [{ kind: "execution-error", detail: "failed" }, EXIT_CODES.executionError, undefined],
     [
       { kind: "iteration-limit", limit: 3 },
       EXIT_CODES.iterationLimit,

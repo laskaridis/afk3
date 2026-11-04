@@ -5,10 +5,10 @@ import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { AgentRegistry } from "./agents/registry.js";
 import { resolvePrompt } from "./prompt.js";
-import { buildSessionPrompt } from "./protocol.js";
 import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
 import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
 import { SessionExecutorFactory } from "./session/session-executor-factory.js";
+import { CodingStep } from "./workflow/coding-step.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -152,11 +152,11 @@ async function main(argv: string[]): Promise<number> {
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
   const executor = new SessionExecutorFactory(interruption.signal, sessionTimeout, graceMs).create(adapter);
+  const step = new CodingStep(executor);
   const result = await runAfk(
     { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt, nonce) =>
-      executor.execute({
-        prompt: buildSessionPrompt(launchPrompt, nonce),
+    (launchPrompt) =>
+      step.execute(launchPrompt, {
         cwd,
         model,
         effort: reasoningEffort,
