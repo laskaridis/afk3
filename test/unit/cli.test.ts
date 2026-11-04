@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunResult } from "../../src/runner.js";
-import type { SessionResult } from "../../src/session.js";
+import type { SessionResult } from "../../src/session/session-result.js";
 import { Command } from "commander";
 
 const mocks = vi.hoisted(() => ({
   runAfk: vi.fn(),
-  runSession: vi.fn(),
+  execute: vi.fn(),
+  factory: vi.fn(),
   buildSessionPrompt: vi.fn((prompt: string, nonce: string) => `${prompt} :: ${nonce}`),
 }));
 
@@ -13,9 +14,16 @@ vi.mock("../../src/runner.js", async (original) => ({
   ...(await original<typeof import("../../src/runner.js")>()),
   runAfk: mocks.runAfk,
 }));
-vi.mock("../../src/session.js", async (original) => ({
-  ...(await original<typeof import("../../src/session.js")>()),
-  runSession: mocks.runSession,
+vi.mock("../../src/session/session-executor-factory.js", () => ({
+  SessionExecutorFactory: class {
+    constructor(...args: unknown[]) {
+      mocks.factory(...args);
+    }
+    create(adapter: unknown) {
+      mocks.factory.mock.calls.at(-1)?.push(adapter);
+      return { execute: mocks.execute };
+    }
+  },
 }));
 vi.mock("../../src/protocol.js", async (original) => ({
   ...(await original<typeof import("../../src/protocol.js")>()),
@@ -32,7 +40,8 @@ let stdout: string;
 beforeEach(() => {
   vi.resetModules();
   mocks.runAfk.mockReset();
-  mocks.runSession.mockReset();
+  mocks.execute.mockReset();
+  mocks.factory.mockReset();
   mocks.buildSessionPrompt.mockClear();
   originalArgv = process.argv;
   originalGrace = process.env.AFK_TERMINATION_GRACE_MS;
@@ -106,10 +115,10 @@ describe("CLI entrypoint", () => {
       reporter.retryStarted(2, 3, "reason");
       reporter.failureSurfaced("test failed");
       reporter.executionError("bad exit", ["tail"]);
-      expect(await runSession("prompt", "nonce")).toEqual({ kind: "exited", exitCode: 0 });
+      expect(await runSession("prompt", "nonce")).toEqual({ kind: "interrupted" });
       return { kind: "blocked", blockerText: "need key" };
     });
-    mocks.runSession.mockResolvedValue({ kind: "exited", exitCode: 0 } satisfies Partial<SessionResult>);
+    mocks.execute.mockResolvedValue({ kind: "interrupted" } satisfies SessionResult);
     expect(
       await launch([
         "--agent",
@@ -127,15 +136,17 @@ describe("CLI entrypoint", () => {
         "prompt",
       ]),
     ).toBe(1);
-    expect(mocks.runSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: "prompt :: nonce",
-        cwd: process.cwd(),
-        model: "my-model",
-        effort: "high",
-        graceMs: 25,
-        timeoutSeconds: 2.5,
-      }),
+    expect(mocks.execute).toHaveBeenCalledWith({
+      prompt: "prompt :: nonce",
+      cwd: process.cwd(),
+      model: "my-model",
+      effort: "high",
+    });
+    expect(mocks.factory).toHaveBeenCalledWith(
+      expect.objectContaining({ aborted: false }),
+      2.5,
+      25,
+      expect.objectContaining({ name: "claude" }),
     );
     expect(stderr).toContain("[afk] Iteration 1/3: starting agent session\n");
     expect(stderr).toContain("[afk] Iteration 2/3: retrying agent session after execution error\n");
@@ -148,21 +159,21 @@ describe("CLI entrypoint", () => {
   it("uses defaults and forwards a signal to the session", async () => {
     mocks.runAfk.mockImplementation(async (config, runSession) => {
       expect(config.maxIterations).toBe(10);
-      expect(config.adapter.name).toBe("codex");
       process.emit("SIGINT");
       process.emit("SIGTERM");
       process.emit("SIGHUP");
       await runSession("prompt", "nonce");
       return { kind: "interrupted" };
     });
-    mocks.runSession.mockResolvedValue({ kind: "interrupted" });
+    mocks.execute.mockResolvedValue({ kind: "interrupted" });
     expect(await launch(["prompt"])).toBe(130);
-    expect(mocks.runSession.mock.calls[0]?.[0]).toMatchObject({
-      cwd: process.cwd(),
-      graceMs: undefined,
-      timeoutSeconds: undefined,
-      signal: expect.objectContaining({ aborted: true }),
-    });
+    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({ cwd: process.cwd() }));
+    expect(mocks.factory).toHaveBeenCalledWith(
+      expect.objectContaining({ aborted: true }),
+      undefined,
+      undefined,
+      expect.objectContaining({ name: "codex" }),
+    );
     expect(stderr).toContain("[afk] Run interrupted by user\n");
   });
 

@@ -8,7 +8,7 @@ import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
 import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
 import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
-import { runSession } from "./session.js";
+import { SessionExecutorFactory } from "./session/session-executor-factory.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -151,16 +151,13 @@ async function main(argv: string[]): Promise<number> {
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => interruption.abort());
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
+  const executor = new SessionExecutorFactory(interruption.signal, sessionTimeout, graceMs).create(adapter);
   const result = await runAfk(
-    { adapter, launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
+    { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
     (launchPrompt, nonce) =>
-      runSession({
-        adapter,
+      executor.execute({
         prompt: buildSessionPrompt(launchPrompt, nonce),
         cwd,
-        signal: interruption.signal,
-        graceMs,
-        timeoutSeconds: sessionTimeout,
         model,
         effort: reasoningEffort,
       }),

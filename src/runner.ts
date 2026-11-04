@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
-import type { AgentAdapter } from "./agents/adapter.js";
 import { parseFinalResponse, type AgentOutcome } from "./protocol.js";
-import type { SessionResult } from "./session.js";
+import type { SessionResult } from "./session/session-result.js";
 
 export const DEFAULT_MAX_ITERATIONS = 10;
 
@@ -27,7 +26,6 @@ export interface RunReporter {
 }
 
 export interface RunConfig {
-  adapter: AgentAdapter;
   launchPrompt: string;
   maxIterations: number;
   /** Per-session timeout; only used to report a timeout. */
@@ -50,10 +48,10 @@ export async function runAfk(
     if (session.kind === "interrupted") return { kind: "interrupted" };
     if (session.kind === "timed-out") return { kind: "timeout", seconds: config.sessionTimeoutSeconds ?? 0 };
 
-    const classified = classify(session, config.adapter, nonce);
+    const classified = classify(session, nonce);
     if ("kind" in classified) {
       const error = classified;
-      reporter.executionError?.(error.detail, session.kind === "exited" ? session.stderrTail : []);
+      reporter.executionError?.(error.detail, "stderrTail" in session ? session.stderrTail : []);
       // One retry per consecutive error; a second consecutive error stops the run.
       if (previousError !== undefined) return error;
       if (iteration === config.maxIterations) break;
@@ -83,61 +81,27 @@ type ExecutionError = Extract<RunResult, { kind: "execution-error" }>;
 /** Classify a session as an execution error or the valid outcome it reported. */
 function classify(
   session: Exclude<SessionResult, { kind: "interrupted" | "timed-out" }>,
-  adapter: AgentAdapter,
   nonce: string,
 ): ExecutionError | AgentOutcome {
-  if (session.kind === "launch-failed") {
-    return {
-      kind: "execution-error",
-      errorKind: "launch-failed",
-      detail: `failed to launch agent: ${session.error.message}`,
-    };
-  }
-  if (session.signal) {
-    return {
-      kind: "execution-error",
-      errorKind: "exit-status",
-      detail: `agent exited unsuccessfully with signal ${session.signal}`,
-    };
-  }
-  const extracted = adapter.extractFinalMessage(session.stdout, session.outputFile);
-  if ("agentError" in extracted) {
-    const detail =
-      session.exitCode === 0
-        ? `agent exited unsuccessfully (agent reported an error: ${extracted.detail})`
-        : `agent exited unsuccessfully with exit code ${session.exitCode} (agent reported an error: ${extracted.detail})`;
-    return { kind: "execution-error", errorKind: "exit-status", detail };
-  }
-  // A message from a failed process is never trusted.
-  if (session.exitCode !== 0) {
-    return {
-      kind: "execution-error",
-      errorKind: "exit-status",
-      detail: `agent exited unsuccessfully with exit code ${session.exitCode}`,
-    };
-  }
-  if ("invalid" in extracted) {
-    return {
-      kind: "execution-error",
-      errorKind: "invalid-response",
-      detail: `agent final response is invalid: ${extracted.reason}`,
-    };
-  }
-  const finalMessage = "message" in extracted ? extracted.message : undefined;
-  const response = parseFinalResponse(finalMessage, nonce);
-  if ("violation" in response) {
-    if (finalMessage === undefined) {
-      return {
-        kind: "execution-error",
-        errorKind: "missing-response",
-        detail: "agent exited without a final response",
-      };
+  switch (session.kind) {
+    case "launch-failed":
+      return { kind: "execution-error", errorKind: "launch-failed", detail: session.detail };
+    case "exited-unsuccessfully":
+      return { kind: "execution-error", errorKind: "exit-status", detail: session.detail };
+    case "missing-final-message":
+      return { kind: "execution-error", errorKind: "missing-response", detail: session.detail };
+    case "invalid-final-message":
+      return { kind: "execution-error", errorKind: "invalid-response", detail: session.detail };
+    case "success": {
+      const response = parseFinalResponse(session.finalMessage, nonce);
+      if ("violation" in response) {
+        return {
+          kind: "execution-error",
+          errorKind: "invalid-response",
+          detail: `agent final response is invalid: ${response.violation}`,
+        };
+      }
+      return response;
     }
-    return {
-      kind: "execution-error",
-      errorKind: "invalid-response",
-      detail: `agent final response is invalid: ${response.violation}`,
-    };
   }
-  return response;
 }

@@ -4,9 +4,13 @@ import { dirname } from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AgentAdapter } from "../../src/agents/adapter.js";
-import { CodexAdapter } from "../../src/agents/codex.js";
-import { DEFAULT_TERMINATION_GRACE_MS, runSession, STDERR_TAIL_LINES } from "../../src/session.js";
+import type { AgentAdapter } from "../../../src/agents/adapter.js";
+import { CodexAdapter } from "../../../src/agents/codex.js";
+import {
+  DEFAULT_TERMINATION_GRACE_MS,
+  SessionExecutor,
+  STDERR_TAIL_LINES,
+} from "../../../src/session/session-executor.js";
 
 vi.mock("node:child_process", () => ({ spawn: vi.fn() }));
 import { spawn } from "node:child_process";
@@ -33,11 +37,26 @@ function child() {
 
 const options = { adapter: codexAdapter, prompt: "do work", cwd: process.cwd() };
 
+interface RunOptions {
+  adapter: AgentAdapter;
+  prompt: string;
+  cwd: string;
+  signal?: AbortSignal;
+  model?: string;
+  effort?: string;
+  timeoutSeconds?: number;
+  graceMs?: number;
+}
+
+function runSession({ adapter, signal, timeoutSeconds, graceMs, ...input }: RunOptions) {
+  return new SessionExecutor(adapter, signal ?? new AbortController().signal, timeoutSeconds, graceMs).execute(input);
+}
+
 afterEach(() => {
   mockedSpawn.mockReset();
 });
 
-describe("runSession", () => {
+describe("SessionExecutor", () => {
   it("does not spawn when already interrupted", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -70,18 +89,15 @@ describe("runSession", () => {
     });
     expect(input.join("")).toBe("do work");
     expect(result).toEqual({
-      kind: "exited",
-      exitCode: 0,
-      signal: null,
-      stdout: "one two",
-      outputFile: "final answer",
+      kind: "success",
+      finalMessage: "final answer",
       stderrTail: [...Array.from({ length: STDERR_TAIL_LINES - 1 }, (_, i) => `line ${i + 3}`), "partial end"],
     });
     await expect(access(outputPath)).rejects.toThrow();
     await expect(access(dirname(outputPath))).rejects.toThrow();
   });
 
-  it("returns an exited result when no output file was written and ignores stdin errors", async () => {
+  it("ignores stdin errors and classifies a non-zero exit with the stderr tail", async () => {
     const fake = child();
     mockedSpawn.mockImplementation(() => {
       queueMicrotask(() => {
@@ -92,12 +108,9 @@ describe("runSession", () => {
       return fake.process;
     });
     expect(await runSession(options)).toEqual({
-      kind: "exited",
-      exitCode: 2,
-      signal: null,
-      stdout: "",
+      kind: "exited-unsuccessfully",
+      detail: "agent exited unsuccessfully with exit code 2",
       stderrTail: ["first", "second"],
-      outputFile: undefined,
     });
   });
 
@@ -108,7 +121,7 @@ describe("runSession", () => {
       queueMicrotask(() => fake.process.emit("error", error));
       return fake.process;
     });
-    expect(await runSession(options)).toEqual({ kind: "launch-failed", error });
+    expect(await runSession(options)).toEqual({ kind: "launch-failed", detail: "failed to launch agent: ENOENT" });
   });
 
   it("interrupts and escalates signals until the child closes", async () => {
@@ -206,6 +219,101 @@ describe("runSession", () => {
       });
       return fake.process;
     });
-    expect(await runSession(options)).toMatchObject({ kind: "exited", stderrTail: [] });
+    expect(await runSession(options)).toMatchObject({ kind: "missing-final-message", stderrTail: [] });
+  });
+});
+
+describe("SessionExecutor result classification", () => {
+  /** Runs a session whose process exits as given and whose adapter extracts `extracted`. */
+  async function classify(
+    extracted: ReturnType<AgentAdapter["extractFinalMessage"]>,
+    exitCode: number | null,
+    signal: NodeJS.Signals | null = null,
+  ) {
+    const fake = child();
+    const adapter: AgentAdapter = { ...codexAdapter, extractFinalMessage: () => extracted };
+    mockedSpawn.mockImplementation(() => {
+      queueMicrotask(() => {
+        fake.stderr.write("tail line\n");
+        fake.process.emit("close", exitCode, signal);
+      });
+      return fake.process;
+    });
+    return runSession({ ...options, adapter });
+  }
+
+  const tail = ["tail line"];
+
+  it("reports a signal-terminated process, before consulting the adapter", async () => {
+    expect(await classify({ message: "ignored" }, null, "SIGKILL")).toEqual({
+      kind: "exited-unsuccessfully",
+      detail: "agent exited unsuccessfully with signal SIGKILL",
+      stderrTail: tail,
+    });
+  });
+
+  it("reports an agent error with a zero exit code", async () => {
+    expect(await classify({ agentError: true, detail: "rate limit" }, 0)).toEqual({
+      kind: "exited-unsuccessfully",
+      detail: "agent exited unsuccessfully (agent reported an error: rate limit)",
+      stderrTail: tail,
+    });
+  });
+
+  it("reports an agent error with a non-zero exit code, before the plain exit code", async () => {
+    expect(await classify({ agentError: true, detail: "rate limit" }, 7)).toEqual({
+      kind: "exited-unsuccessfully",
+      detail: "agent exited unsuccessfully with exit code 7 (agent reported an error: rate limit)",
+      stderrTail: tail,
+    });
+  });
+
+  it("reports a non-zero exit code before an invalid, missing or valid message", async () => {
+    for (const extracted of [{ invalid: true as const, reason: "bad" }, { missing: true as const }, { message: "m" }]) {
+      expect(await classify(extracted, 3)).toEqual({
+        kind: "exited-unsuccessfully",
+        detail: "agent exited unsuccessfully with exit code 3",
+        stderrTail: tail,
+      });
+    }
+  });
+
+  it("reports an invalid final message", async () => {
+    expect(await classify({ invalid: true, reason: "bad JSON" }, 0)).toEqual({
+      kind: "invalid-final-message",
+      detail: "agent final response is invalid: bad JSON",
+      stderrTail: tail,
+    });
+  });
+
+  it("reports a missing final message", async () => {
+    expect(await classify({ missing: true }, 0)).toEqual({
+      kind: "missing-final-message",
+      detail: "agent exited without a final response",
+      stderrTail: tail,
+    });
+  });
+
+  it("reports success with the final message and the stderr tail", async () => {
+    expect(await classify({ message: "all done" }, 0)).toEqual({
+      kind: "success",
+      finalMessage: "all done",
+      stderrTail: tail,
+    });
+  });
+
+  it("gives the adapter the captured stdout and a fresh output file path", async () => {
+    const fake = child();
+    const extract = vi.fn(() => ({ message: "m" }));
+    const adapter: AgentAdapter = { ...codexAdapter, extractFinalMessage: extract };
+    mockedSpawn.mockImplementation(() => {
+      queueMicrotask(() => {
+        fake.stdout.write("captured");
+        fake.process.emit("close", 0, null);
+      });
+      return fake.process;
+    });
+    await runSession({ ...options, adapter });
+    expect(extract).toHaveBeenCalledWith("captured", undefined);
   });
 });

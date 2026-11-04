@@ -11,7 +11,7 @@
     {
       "id": "TASK-001",
       "objective": "Reshape src/agents/ into an AgentAdapter interface, CodexAdapter, ClaudeAdapter and an AgentRegistry that returns the adapter for a name, lists supported names and names the default agent, with every caller moved to the new API and agents/types.ts removed.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-002", "US-001"],
       "acceptance_criteria_addressed": ["AC-006", "AC-007", "AC-008", "AC-001", "AC-002", "AC-003", "AC-005"],
       "completion_criteria": [
@@ -32,7 +32,7 @@
     {
       "id": "TASK-002",
       "objective": "Move process handling into src/session/ as a SessionExecutorFactory that creates SessionExecutors which run one agent process and return a SessionResult classifying process- and adapter-level outcomes, replacing src/session.ts and the process/adapter half of runner.ts's classification.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-003", "US-001"],
       "acceptance_criteria_addressed": ["AC-009", "AC-010", "AC-011", "AC-012", "AC-007", "AC-001", "AC-002", "AC-003", "AC-005"],
       "completion_criteria": [
