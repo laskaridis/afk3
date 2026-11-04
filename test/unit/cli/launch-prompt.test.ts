@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { resolvePrompt } from "../../src/prompt.js";
+import { resolvePrompt } from "../../../src/cli/launch-prompt.js";
 
 const fileFailure = vi.hoisted(() => ({ nonError: false }));
 vi.mock("node:fs/promises", async (original) => {

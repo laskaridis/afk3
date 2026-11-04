@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { TerminalWorkflowEvent } from "../../src/workflow/workflow-event.js";
+import type { TerminalWorkflowEvent } from "../../../src/workflow/workflow-event.js";
 import { Command } from "commander";
 
 const mocks = vi.hoisted(() => ({
@@ -9,8 +9,8 @@ const mocks = vi.hoisted(() => ({
   factory: vi.fn(),
 }));
 
-vi.mock("../../src/workflow/workflow-executor.js", async (original) => ({
-  ...(await original<typeof import("../../src/workflow/workflow-executor.js")>()),
+vi.mock("../../../src/workflow/workflow-executor.js", async (original) => ({
+  ...(await original<typeof import("../../../src/workflow/workflow-executor.js")>()),
   WorkflowExecutor: class {
     constructor(...args: unknown[]) {
       mocks.construct(...args);
@@ -23,7 +23,7 @@ vi.mock("../../src/workflow/workflow-executor.js", async (original) => ({
     }
   },
 }));
-vi.mock("../../src/session/session-executor-factory.js", () => ({
+vi.mock("../../../src/session/session-executor-factory.js", () => ({
   SessionExecutorFactory: class {
     constructor(...args: unknown[]) {
       mocks.factory(...args);
@@ -85,7 +85,7 @@ afterEach(() => {
 
 async function launch(args: string[]) {
   process.argv = ["node", "afk", ...args];
-  await import("../../src/cli.js");
+  await import("../../../src/cli.js");
   await vi.waitFor(() => expect(exitCodes).toHaveLength(1));
   return exitCodes[0];
 }

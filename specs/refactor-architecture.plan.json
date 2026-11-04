@@ -107,7 +107,7 @@
     {
       "id": "TASK-005",
       "objective": "Move option parsing, launch-prompt resolution, wiring, signal handling and exit-code selection into a CLI component in src/cli/, leaving src/cli.ts as a thin entry point that imports only src/cli/, replacing src/prompt.ts and the old cli.ts body.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-007", "US-001"],
       "acceptance_criteria_addressed": ["AC-024", "AC-025", "AC-026", "AC-004", "AC-001", "AC-002", "AC-003", "AC-005"],
       "completion_criteria": [

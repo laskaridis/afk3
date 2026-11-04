@@ -5,6 +5,7 @@
 - Sessions live in `src/session/`: `session-result.ts` (7-kind union), `session-executor.ts` (`SessionExecutor`, `STDERR_TAIL_LINES`, `DEFAULT_TERMINATION_GRACE_MS`), `session-executor-factory.ts`. Failure kinds carry `detail`; all but launch-failed/timed-out/interrupted carry `stderrTail`. Runner only maps kinds to error kinds and parses result blocks.
 - Verify each task with `pnpm check`, `pnpm test:coverage` and `git diff 3f42e29 -- test/integration src/code.md` (must be empty).
 - Workflow lives in `src/workflow/`: `workflow-step.ts` (WorkflowStep, WorkflowStepOptions), `workflow-step-result.ts` (type discriminator: Continue/Finished/StepFailed/Blocked/SessionFailed/Timeout/Interrupted; task_id/task_plan_file carried as parsed), `coding-step.ts` (nonce, prompt, `../code.md`), `result-block.ts` (parser). `runner.ts` takes a `StepRunner` and maps step results to `RunResult` (no errorKind any more).- Executor/events: `src/workflow/` has `workflow-executor.ts` (`WorkflowExecutor`, `DEFAULT_MAX_ITERATIONS`; optional 4th ctor arg `createStep` for tests), `workflow-event.ts` (`WorkflowEvent`, `TerminalWorkflowEvent`), `workflow-observer.ts` (`onEvent`), `workflow-options.ts` (`WorkflowOptions`, `LaunchPrompt`). `src/reporter/` = `ConsoleReporter` with injected sink; `src/cli/exit-codes.ts` = `EXIT_CODES`, `exitCodeFor(terminal event)`.
+- CLI lives in `src/cli/`: `cli.ts` (`CLI.run(argv)` → exit code), `options.ts` (`parseOptions` → run|exit), `launch-prompt.ts` (`resolvePrompt`), `exit-codes.ts`. `src/cli.ts` is the thin entry. Version is read via `../../package.json` (valid from src/cli and dist/cli).
 ---
 
 ## 2026-11-04
@@ -75,5 +76,20 @@
   - Reporter imports only workflow event/observer types; no node writing module.
 - Learnings for future iterations: `cli.test.ts` mocks `WorkflowExecutor` (constructor args in `mocks.construct`) so reporter output is not produced there; reporter output is covered in its own test and integration tests.
 - Scope deviations: events carry `task: {task_id, task_plan_file}` (as parsed); `LaunchPrompt` is `{ text }`. No subagent review run.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-005)
+- Task id: TASK-005
+- What was implemented:
+  - `src/cli/cli.ts` (CLI class: wiring, signals, grace env, exit code), `src/cli/options.ts` (commander parsing, help-wins, version), `src/cli/launch-prompt.ts` (moved from src/prompt.ts); `src/cli.ts` now a thin entry importing only src/cli/.
+  - Tests: test/unit/cli/{cli,entry,launch-prompt}.test.ts (moved/adapted from cli.test.ts and prompt.test.ts, plus new thin-entry test).
+- Files changed: src/cli.ts, src/cli/{cli,options,launch-prompt}.ts, test/unit/cli/*.test.ts, removed src/prompt.ts, test/unit/prompt.test.ts, test/unit/cli.test.ts, plan.json, this file.
+- Verification:
+  - pnpm check exit 0 (467 tests); pnpm test:coverage exit 0, 100% all files.
+  - git diff 3f42e29 -- test/integration src/code.md empty; dist/cli.js is -rwxr-xr-x; `node dist/cli.js --version` prints 0.1.0 (= package.json); cmp dist/code.md src/code.md identical.
+  - Criteria: option errors/exit codes pinned in cli.test.ts; prompt cases in launch-prompt.test.ts; terminal-result mapping in exit-codes.test.ts and cli.test.ts; signals in cli.test.ts; entry in entry.test.ts.
+- Learnings for future iterations: see Project discovery.
+- Scope deviations: none.
 - Follow up needed: none.
 ---
