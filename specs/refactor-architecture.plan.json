@@ -129,7 +129,7 @@
     {
       "id": "TASK-006",
       "objective": "Guard the architecture automatically: unit tests that fail pnpm check on any upward import, any agent-specific knowledge outside src/agents/, or any leftover flat module from the old layout.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-008", "US-002"],
       "acceptance_criteria_addressed": ["AC-027", "AC-028", "AC-007", "AC-002", "AC-003"],
       "completion_criteria": [

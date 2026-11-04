@@ -93,3 +93,17 @@
 - Scope deviations: none.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-006)
+- Task id: TASK-006
+- What was implemented:
+  - `test/unit/architecture.test.ts`: reads every relative import in `src/**/*.ts` and enforces layer order (cli > reporter > workflow > session > agents; no upward imports), reporter imports only workflow event/observer types, `src/cli.ts` imports only `src/cli/`, and outside `src/agents/` only `adapter.js` and `registry.js` are imported. Scans non-agent sources for agent names, flags (`--output-last-message`, `--approve-for-me`, `--permission-mode`, `--output-format`) and output-format fields (`is_error`, `subtype`). Asserts old flat modules and `agents/types.ts` are gone and no unit test imports them. Detectors are also tested on synthetic inputs.
+- Files changed: test/unit/architecture.test.ts, specs/refactor-architecture.plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0; `pnpm test:coverage` exit 0 (480 tests), 100% on src/.
+  - `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - Experiment: temporarily added `import ... from "../workflow/workflow-step.js"` to src/session/session-executor.ts and `"--output-format"` to src/workflow/result-block.ts; the import-direction and agent-knowledge tests failed on the real tree (3 failures). Both edits reverted (`git status` clean apart from new files).
+- Learnings for future iterations: the guard resolves imports to repo-relative `.js` paths; `src/cli.ts` counts as the cli layer. Reporter sits between cli and workflow.
+- Scope deviations: none. No subagent review run (test-only change).
+- Follow up needed: none.
+---
