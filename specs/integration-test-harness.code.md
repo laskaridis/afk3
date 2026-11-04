@@ -36,3 +36,21 @@
 - Scope deviations: none. Review subagent skipped: test-only change verified by mutation experiments.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-003)
+- Task id: TASK-003
+- What was implemented:
+  - agent-parity.test.ts: 8 new shared scenarios (run for codex and claude, and in the cross-agent identical comparison), each with an exact literal stderr transcript, empty stdout, exit code and session count:
+    - retry allowance resets after a valid repeat (4 sessions, exit 0);
+    - a valid fail is not an execution error (4 sessions, exit 0);
+    - `--max-iterations 1` with execution error / repeat / fail (exit 4), complete (exit 0), blocked (exit 1), one session each;
+    - default iteration limit: always repeat -> 10 sessions, exit 4, iteration lines 1/10..10/10.
+  - Transcripts were captured from the current build with a temporary dump test (deleted); they match the spec's AC-008..AC-011 expectations, so no findings.
+- Files changed: test/integration/agent-parity.test.ts, specs/integration-test-harness.plan.json, this file.
+- Verification:
+  - `pnpm check` passed (24 files, 301 tests, typecheck, lint, prettier); `git diff --stat src/` empty.
+  - Criteria: every bullet maps to a scenario above; all assert full stderr via `asStderr`.
+- Learnings: an execution error on the last allowed iteration prints the execution-error line (plus tail) then the iteration-limit line; no retry line.
+- Scope deviations: none. Review subagent skipped: test-only data additions verified against current build output.
+- Follow up needed: none.
+---

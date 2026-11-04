@@ -31,6 +31,8 @@ interface Scenario {
 
 const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
 const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
+const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting agent session";
+const LIMIT_1 = "[afk] Run stopped: iteration limit of 1 reached without reported completion";
 const COMPLETE_LINE = "[afk] Run complete: feature complete";
 const MISSING = "[afk] Execution error: agent exited without a final response";
 const INVALID =
@@ -160,6 +162,87 @@ const scenarios: Scenario[] = [
     exitCode: 5,
     invocations: 1,
     transcript: [ITERATION_1, "[afk] Run stopped: agent session timed out after 1 seconds"],
+  },
+  {
+    name: "retry allowance resets after a valid repeat",
+    sessions: [[{ exit: 7 }], say({ outcome: "repeat" }), [{ exit: 7 }], COMPLETE],
+    exitCode: 0,
+    invocations: 4,
+    transcript: [
+      ITERATION_1,
+      EXIT_7,
+      RETRY_2,
+      "[afk] Iteration 3/10: starting agent session",
+      EXIT_7,
+      "[afk] Iteration 4/10: retrying agent session after execution error",
+      COMPLETE_LINE,
+    ],
+  },
+  {
+    name: "a valid fail is not an execution error",
+    sessions: [[{ exit: 7 }], say({ outcome: "fail", failure_summary: "tests broke" }), [{ exit: 7 }], COMPLETE],
+    exitCode: 0,
+    invocations: 4,
+    transcript: [
+      ITERATION_1,
+      EXIT_7,
+      RETRY_2,
+      "[afk] Task failure: tests broke",
+      "[afk] Iteration 3/10: starting agent session",
+      EXIT_7,
+      "[afk] Iteration 4/10: retrying agent session after execution error",
+      COMPLETE_LINE,
+    ],
+  },
+  {
+    name: "last iteration: execution error",
+    sessions: [[{ exit: 7 }]],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, EXIT_7, LIMIT_1],
+  },
+  {
+    name: "last iteration: repeat",
+    sessions: [say({ outcome: "repeat" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, LIMIT_1],
+  },
+  {
+    name: "last iteration: fail",
+    sessions: [say({ outcome: "fail", failure_summary: "tests broke" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, "[afk] Task failure: tests broke", LIMIT_1],
+  },
+  {
+    name: "last iteration: complete",
+    sessions: [COMPLETE],
+    args: ["--max-iterations", "1"],
+    exitCode: 0,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, COMPLETE_LINE],
+  },
+  {
+    name: "last iteration: blocked",
+    sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 1,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, "[afk] Run blocked: need key"],
+  },
+  {
+    name: "default iteration limit of 10",
+    sessions: [say({ outcome: "repeat" })],
+    exitCode: 4,
+    invocations: 10,
+    transcript: [
+      ...Array.from({ length: 10 }, (_, i) => `[afk] Iteration ${i + 1}/10: starting agent session`),
+      "[afk] Run stopped: iteration limit of 10 reached without reported completion",
+    ],
   },
   {
     name: "interruption",

@@ -62,7 +62,7 @@
     {
       "id": "TASK-003",
       "objective": "Pin the retry-allowance reset, fail-is-not-an-error, last-iteration, and default-limit run-loop policies end to end for every agent.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-003"
       ],
