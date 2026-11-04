@@ -17,6 +17,6 @@
   - `grep -rn "src/" test/integration | grep import` -> none.
   - `pnpm check` passed (24 files, 275 tests, typecheck, lint, prettier); `git diff --stat src/` empty.
 - Learnings: see Project discovery.
-- Scope deviations: none.
+- Scope deviations: doc/ARCHITECTURE.md was already failing prettier --check at HEAD (blocking pnpm check); formatted it only (separate commit).
 - Follow up needed: none.
 ---
