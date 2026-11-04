@@ -10,7 +10,10 @@
 //     | { "json": value }  (a raw JSON line on stdout)
 //     | { "writeFile": "name" }  (created in the working directory)
 //     | { "ignoreSignals": true }  (SIGINT/SIGTERM are recorded but no longer end the process)
+//     | { "killSelf": "SIGKILL" }  (ends this process with the given signal, as if killed from outside)
 //     | { "exit": code }
+//   In "stdout", "finalMessage" and "rawFinalMessage" text the literal {{NONCE}} is replaced by the session nonce, so a
+//   test can write blocks carrying the session nonce next to blocks carrying another one.
 // SIGINT/SIGTERM are appended to FAKE_CODEX_RECORD + ".signals"; by default SIGINT exits 130.
 // Alternatively { "sessions": [[steps], ...] } scripts one step list per invocation
 // (by invocation order; the last list repeats once exhausted).
@@ -42,6 +45,7 @@ appendFileSync(
 
 // The harness prompt shows the session nonce in its example result block.
 const nonce = /<afk-harness-result nonce="([^"]+)">/.exec(stdin)?.[1];
+const subst = (text) => text.replaceAll("{{NONCE}}", nonce ?? "");
 const wrap = (text) =>
   nonce === undefined ? text : `<afk-harness-result nonce="${nonce}">\n${text}\n</afk-harness-result>`;
 const outputFileFlag = argv.indexOf("--output-last-message");
@@ -65,12 +69,16 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 
 for (const step of steps) {
   if (step.ignoreSignals) ignoreSignals = true;
-  if (step.stdout !== undefined) process.stdout.write(step.stdout);
+  if (step.stdout !== undefined) process.stdout.write(subst(step.stdout));
   if (step.stderr !== undefined) process.stderr.write(step.stderr);
   if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
   if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
-  if (step.finalMessage !== undefined) emitFinal(wrap(step.finalMessage));
-  if (step.rawFinalMessage !== undefined) emitFinal(step.rawFinalMessage);
+  if (step.finalMessage !== undefined) emitFinal(wrap(subst(step.finalMessage)));
+  if (step.rawFinalMessage !== undefined) emitFinal(subst(step.rawFinalMessage));
   if (step.json !== undefined) process.stdout.write(JSON.stringify(step.json) + "\n");
+  if (step.killSelf !== undefined) {
+    process.kill(process.pid, step.killSelf);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
   if (step.exit !== undefined) process.exit(step.exit);
 }

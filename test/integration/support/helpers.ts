@@ -15,6 +15,7 @@ export type Step =
   | { rawFinalMessage: string }
   | { json: unknown }
   | { writeFile: string }
+  | { killSelf: NodeJS.Signals }
   | { ignoreSignals: true }
   | { exit: number };
 

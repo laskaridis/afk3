@@ -90,7 +90,7 @@
     {
       "id": "TASK-004",
       "objective": "Pin how every kind of final response and agent exit is classified end to end for every agent, extending the shared fake agent where needed.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-004"
       ],

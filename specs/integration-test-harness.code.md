@@ -54,3 +54,15 @@
 - Scope deviations: none. Review subagent skipped: test-only data additions verified against current build output.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-004)
+- Task id: TASK-004
+- What was implemented:
+  - Shared fake agent (fake-codex.mjs, used by fake-claude.mjs) gained: `{{NONCE}}` substitution in `stdout`/`finalMessage`/`rawFinalMessage` text, and a `killSelf: <signal>` step. Both documented in the fixture header; `killSelf` added to the `Step` type in helpers.ts.
+  - New test/integration/final-response.test.ts, per agent: 25 invalid-response cases (AC-012, exact reason text, 2 sessions, exit 3, full stderr; nonce in the "no block" reason read from each session's prompt); 10 valid-response cases (AC-013 surrounding text, other-nonce blocks before/after, last-of-two wins in both orders; AC-014 with/without task_id/task_plan_file, blocked with both null); Codex-only stdout-only block -> missing final response (AC-015); SIGKILL/SIGABRT self-kill -> signal execution error + retry, and recovery (AC-016).
+- Files changed: test/integration/fixtures/fake-codex.mjs, test/integration/support/helpers.ts, test/integration/final-response.test.ts, specs/integration-test-harness.plan.json, this file.
+- Verification: `pnpm check` passed (25 files, 378 tests, typecheck, lint, prettier); `git diff --stat src/` empty. Reason texts confirmed against the current build's runs.
+- Learnings: the nonce differs per session (also per retry), so expected "no block" reasons must use each invocation's own nonce. Perl multi-line header edits via regex are error-prone; rewrite headers wholesale.
+- Scope deviations: none. Review subagent skipped: test-only change.
+- Follow up needed: none.
+---
