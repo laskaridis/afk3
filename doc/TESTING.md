@@ -67,7 +67,7 @@ codes are literal values. If a refactoring changes one of these, update the suit
 - Behavior that must be identical across agents goes in `agent-parity.test.ts`, which runs every scenario for each
   name in its literal `AGENT_NAMES` list and also asserts byte-identical stderr/exit codes across agents.
 - Assert on exact `[afk]` wording, exit codes, and that `run.stdout` is `""`.
-- Help text and README content are asserted (`help.test.ts`, `agent-neutral-docs.test.ts`); update them together.
+- Help text and README content are asserted (`help.test.ts`); update them together.
 - Test files are named after the behavior (`session-timeout`, `stderr-tail`), not the module, except unit tests.
 - Write the test first (the AFK loop uses the `tdd` skill: red → green → refactor).
 
