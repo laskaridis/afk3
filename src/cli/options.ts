@@ -8,13 +8,21 @@ import { EXIT_CODES, formatExitCodeHelp } from "./exit-codes.js";
 
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
+/** The validated command-line options of a run. */
 export interface CliOptions {
+  /** Name of the agent to run, one of the registry's names. */
   agent: string;
+  /** Maximum number of agent sessions to launch; a positive integer. */
   maxIterations: number;
+  /** Per-session timeout in seconds; no timeout when omitted. */
   sessionTimeout?: number;
+  /** Path of a file holding the prompt. */
   promptFile?: string;
+  /** Absolute path of an existing directory; the current directory when not given. */
   cwd: string;
+  /** Model passed to the agent unchanged. */
   model?: string;
+  /** Reasoning effort passed to the agent unchanged. */
   reasoningEffort?: string;
   /** Positional prompt arguments. */
   positional: string[];
@@ -64,7 +72,15 @@ function readVersion(): string {
   return (require("../../package.json") as { version: string }).version;
 }
 
-/** Parse and validate argv. Help wins over every other option. */
+/**
+ * Parse and validate argv. Help wins over every other option.
+ *
+ * Help, version and invalid input are not thrown: they are returned as `{ kind: "exit" }` with code 0 for help and
+ * version and `EXIT_CODES.inputError` otherwise, after commander has printed its output.
+ *
+ * @param argv The full process argument vector, including the node and script entries.
+ * @param registry Supplies the valid `--agent` names and the default.
+ */
 export function parseOptions(argv: string[], registry: AgentRegistry): ParsedOptions {
   const parseAgent = (value: string): string => {
     if (!registry.names().includes(value)) {

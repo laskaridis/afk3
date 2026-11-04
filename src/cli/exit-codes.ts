@@ -1,5 +1,6 @@
 import type { TerminalWorkflowEvent } from "../workflow/workflow-event.js";
 
+/** Process exit codes of the CLI, by the outcome that produces them. */
 export const EXIT_CODES = {
   complete: 0,
   blocked: 1,
@@ -20,6 +21,7 @@ const EXIT_CODE_MEANINGS: Record<keyof typeof EXIT_CODES, string> = {
   interrupted: "interrupted by the user (Ctrl+C)",
 };
 
+/** The "Exit codes" section appended to `--help`, one line per code with its meaning. */
 export function formatExitCodeHelp(): string {
   const lines = (Object.keys(EXIT_CODES) as (keyof typeof EXIT_CODES)[]).map(
     (name) => `  ${String(EXIT_CODES[name]).padEnd(4)}${EXIT_CODE_MEANINGS[name]}`,
@@ -27,6 +29,7 @@ export function formatExitCodeHelp(): string {
   return `\nExit codes:\n${lines.join("\n")}\n`;
 }
 
+/** Maps the terminal event of a run to the process exit code. */
 export function exitCodeFor(result: TerminalWorkflowEvent): number {
   switch (result.type) {
     case "WorkflowFinished":

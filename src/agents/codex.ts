@@ -1,9 +1,14 @@
 import type { AgentAdapter, AgentInput, FinalMessageResult } from "./adapter.js";
 
+/** Adapter for Codex, run through `codex exec` with the final message written to a file. */
 export class CodexAdapter implements AgentAdapter {
   readonly name = "codex";
   readonly executable = "codex";
 
+  /**
+   * Builds `codex exec` arguments: the working directory, `--output-last-message` when an output file is given,
+   * `--model` and the reasoning-effort config if given, and `-` so the prompt is read from stdin.
+   */
   buildArgs({ cwd, outputFile, model, effort }: AgentInput): string[] {
     const args = ["exec", "--approve-for-me", "-C", cwd];
     // Stdout is a progress log; the final message is only reliable in the output file.

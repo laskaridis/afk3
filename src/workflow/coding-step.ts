@@ -34,8 +34,13 @@ function toStepResult(block: ResultBlock): WorkflowStepResult {
 export class CodingStep implements WorkflowStep {
   readonly name = "coding";
 
+  /** @param sessions Runs the agent process for this step. */
   constructor(private readonly sessions: SessionExecutor) {}
 
+  /**
+   * Appends the harness instructions to `launchPrompt`, runs one session and reads the agent's result block.
+   * Session problems and contract violations come back as `SessionFailed`, not as exceptions.
+   */
   async execute(launchPrompt: string, options: WorkflowStepOptions): Promise<WorkflowStepResult> {
     const nonce = randomBytes(4).toString("hex");
     const session = await this.sessions.execute({

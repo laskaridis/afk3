@@ -6,6 +6,7 @@ import { CodexAdapter } from "./codex.js";
 export class AgentRegistry {
   private readonly adapters: ReadonlyMap<string, AgentAdapter>;
 
+  /** @param adapters The supported agents; defaults to all built-in adapters. Names must be unique. */
   constructor(adapters: readonly AgentAdapter[] = [new CodexAdapter(), new ClaudeAdapter()]) {
     this.adapters = new Map(adapters.map((adapter) => [adapter.name, adapter]));
   }
@@ -20,6 +21,7 @@ export class AgentRegistry {
     return [...this.adapters.keys()];
   }
 
+  /** The adapter registered under `name`, or `undefined` if there is none. */
   get(name: string): AgentAdapter | undefined {
     return this.adapters.get(name);
   }

@@ -5,11 +5,16 @@ import { join } from "node:path";
 import type { AgentAdapter } from "../agents/adapter.js";
 import type { SessionResult } from "./session-result.js";
 
+/** Default wait between termination escalation steps (SIGINT, SIGTERM, SIGKILL). */
 export const DEFAULT_TERMINATION_GRACE_MS = 5000;
+/** How many trailing stderr lines are kept for reporting a failed session. */
 export const STDERR_TAIL_LINES = 20;
 
+/** What one session is asked to do. */
 export interface SessionInput {
+  /** The full prompt, written to the agent's stdin. */
   prompt: string;
+  /** Working directory of the agent process. */
   cwd: string;
   /** Overrides the model for this session; otherwise the agent's own configuration applies. */
   model?: string;
@@ -32,6 +37,12 @@ export class SessionExecutor {
     private readonly graceMs: number = DEFAULT_TERMINATION_GRACE_MS,
   ) {}
 
+  /**
+   * Runs one agent process to the end and classifies how it ended.
+   *
+   * Resolves with a `SessionResult` for every outcome, including launch failure, timeout and interruption; it is not
+   * expected to reject. If the signal is already aborted no process is started.
+   */
   async execute(input: SessionInput): Promise<SessionResult> {
     if (this.signal.aborted) return { kind: "interrupted" };
     const outputDir = await mkdtemp(join(tmpdir(), "afk-session-"));

@@ -17,6 +17,12 @@ async function readAllStdin(): Promise<string> {
 export class CLI {
   private readonly registry = new AgentRegistry();
 
+  /**
+   * Runs the CLI.
+   *
+   * @param argv The full process argument vector, including the node and script entries.
+   * @returns The exit code for the process; input problems are reported on stderr and returned, not thrown.
+   */
   async run(argv: string[]): Promise<number> {
     const parsed = parseOptions(argv, this.registry);
     if (parsed.kind === "exit") return parsed.code;

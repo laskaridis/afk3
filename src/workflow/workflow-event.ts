@@ -1,10 +1,12 @@
 import type { TaskMetadata } from "./result-block.js";
 
+/** The run began. `maxIterations` is the iteration limit. */
 export type WorkflowStarted = {
   readonly type: "WorkflowStarted";
   readonly maxIterations: number;
 };
 
+/** An iteration began (`iteration` of `limit`, counting from 1). `retry` is true when it repeats the previous iteration after a session failure. */
 export type IterationStarted = {
   readonly type: "IterationStarted";
   readonly iteration: number;
@@ -12,18 +14,21 @@ export type IterationStarted = {
   readonly retry: boolean;
 };
 
+/** The step named `stepName` began in `iteration`. */
 export type StepExecutionStarted = {
   readonly type: "StepExecutionStarted";
   readonly iteration: number;
   readonly stepName: string;
 };
 
+/** The step reported the feature complete; `task` is the task it worked on. */
 export type StepExecutionFinished = {
   readonly type: "StepExecutionFinished";
   readonly iteration: number;
   readonly task: Readonly<TaskMetadata>;
 };
 
+/** The step reported a task failure, summarised in `failureSummary`; the run goes on. */
 export type StepExecutionFailed = {
   readonly type: "StepExecutionFailed";
   readonly iteration: number;
@@ -31,6 +36,7 @@ export type StepExecutionFailed = {
   readonly task: Readonly<TaskMetadata>;
 };
 
+/** The step reported a blocker, described in `blockerText`. */
 export type StepExecutionBlocked = {
   readonly type: "StepExecutionBlocked";
   readonly iteration: number;
@@ -38,6 +44,7 @@ export type StepExecutionBlocked = {
   readonly task: Readonly<TaskMetadata>;
 };
 
+/** The session failed and `iteration` retries it; `previousError` is the earlier failure's detail. */
 export type StepExecutionRetried = {
   readonly type: "StepExecutionRetried";
   readonly iteration: number;
@@ -45,6 +52,7 @@ export type StepExecutionRetried = {
   readonly previousError: string;
 };
 
+/** A session failed; `detail` says how and `stderrTail` holds its last stderr lines, if any. */
 export type SessionExecutionErrorOccurred = {
   readonly type: "SessionExecutionErrorOccurred";
   readonly iteration: number;
@@ -52,38 +60,45 @@ export type SessionExecutionErrorOccurred = {
   readonly stderrTail: readonly string[];
 };
 
+/** An iteration ended; `outcome` names how. */
 export type IterationFinished = {
   readonly type: "IterationFinished";
   readonly iteration: number;
   readonly outcome: string;
 };
 
+/** Terminal: the feature was reported complete. */
 export type WorkflowFinished = {
   readonly type: "WorkflowFinished";
   readonly task: Readonly<TaskMetadata>;
 };
 
+/** Terminal: the agent reported a blocker, described in `blockerText`. */
 export type WorkflowBlocked = {
   readonly type: "WorkflowBlocked";
   readonly blockerText: string;
   readonly task: Readonly<TaskMetadata>;
 };
 
+/** Terminal: the session failed twice in a row; `detail` and `stderrTail` describe the last failure. */
 export type WorkflowFailed = {
   readonly type: "WorkflowFailed";
   readonly detail: string;
   readonly stderrTail: readonly string[];
 };
 
+/** Terminal: a session exceeded its time limit of `seconds` (0 when unknown). */
 export type WorkflowTimedOut = {
   readonly type: "WorkflowTimedOut";
   readonly seconds: number;
 };
 
+/** Terminal: the user interrupted the run. */
 export type WorkflowInterrupted = {
   readonly type: "WorkflowInterrupted";
 };
 
+/** Terminal: `limit` iterations ran without a reported completion. */
 export type MaxIterationsReached = {
   readonly type: "MaxIterationsReached";
   readonly limit: number;

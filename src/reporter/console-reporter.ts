@@ -1,14 +1,18 @@
 import type { WorkflowEvent } from "../workflow/workflow-event.js";
 import type { Reporter } from "./reporter.js";
 
+/** Destination for reporter output, such as `process.stderr`. */
 export interface OutputSink {
+  /** Writes `text` as-is. The return value is ignored. */
   write(text: string): unknown;
 }
 
 /** Writes today's `[afk]` status lines for workflow events to its sink. WorkflowFailed has no final line. */
 export class ConsoleReporter implements Reporter {
+  /** @param sink Where the status lines are written. */
   constructor(private readonly sink: OutputSink) {}
 
+  /** Writes the status line for `event`, if it has one; other events are ignored. */
   onEvent(event: WorkflowEvent): void {
     switch (event.type) {
       case "IterationStarted":
