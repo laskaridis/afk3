@@ -124,3 +124,26 @@
 - Scope deviations: none (docs only).
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-008)
+- Task id: TASK-008
+- What was implemented: read-only validation of the finished refactoring; no source changes.
+- Files changed: specs/refactor-architecture.plan.json, this file.
+- Verification (evidence per acceptance criterion):
+  - AC-001, AC-005: `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - AC-002: after `rm -rf dist`, `pnpm check` exit 0 (build, 480 unit tests, typecheck, lint, prettier).
+  - AC-003: `pnpm test:coverage` exit 0; 100% statements/branches/functions/lines, "No files with missing coverage".
+  - AC-004: `dist/cli.js` is `-rwxr-xr-x`, package.json `bin.afk` = `dist/cli.js`; `cmp dist/code.md src/code.md` identical.
+  - AC-006, AC-008: src/agents/ = adapter.ts, claude.ts, codex.ts, registry.ts; test/unit/agents/{claude,codex,registry}.test.ts.
+  - AC-007, AC-027, AC-028: test/unit/architecture.test.ts (passes; also mutation-checked in TASK-006); flat modules and agents/types.ts absent from `ls`.
+  - AC-009..AC-012: src/session/ + test/unit/session/{session-executor-factory,session-executor}.test.ts pass.
+  - AC-013..AC-016: src/workflow/coding-step.ts, result-block.ts; test/unit/workflow/{coding-step,result-block}.test.ts pass.
+  - AC-017..AC-020, AC-018a: workflow-executor.test.ts passes; workflow-event.ts defines all 15 event types (IterationFinished, IterationStarted, MaxIterationsReached, SessionExecutionErrorOccurred, StepExecution{Blocked,Failed,Finished,Retried,Started}, Workflow{Blocked,Failed,Finished,Interrupted,Started,TimedOut}), spelled correctly.
+  - AC-021..AC-023: console-reporter.test.ts passes; reporter imports only workflow event/observer types and ./reporter.js.
+  - AC-024..AC-026: src/cli/ grep shows no retry/iteration policy (only option definitions and exit-code mapping); only stderr write is `[afk] input error:`; test/unit/cli/ passes.
+  - AC-029..AC-031: verified in TASK-007 (typo grep empty, path-existence script); unchanged since.
+  - `pnpm test:integration` run three consecutive times: 17 files / 274 tests passed each time.
+- Learnings for future iterations: none new.
+- Scope deviations: none.
+- Follow up needed: none; no defects found.
+---
