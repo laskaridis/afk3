@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
 import {
+  closeSync,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
   readlinkSync,
@@ -11,6 +14,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import type { Dirent } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
@@ -126,17 +130,24 @@ function spawnSyncMkdir(dir: string) {
 export function snapshotTree(dir: string): Record<string, string> {
   const entries: Record<string, string> = {};
   const walk = (current: string, prefix: string) => {
-    for (const name of readdirSync(current).sort()) {
-      const path = join(current, name);
-      const key = `${prefix}${name}`;
-      const stat = lstatSync(path);
-      if (stat.isDirectory()) {
-        entries[key] = `dir mtime=${stat.mtimeMs}`;
+    const byName = (a: Dirent, b: Dirent) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    for (const entry of readdirSync(current, { withFileTypes: true }).sort(byName)) {
+      const path = join(current, entry.name);
+      const key = `${prefix}${entry.name}`;
+      if (entry.isDirectory()) {
+        entries[key] = `dir mtime=${lstatSync(path).mtimeMs}`;
         walk(path, `${key}/`);
-      } else if (stat.isSymbolicLink()) {
+      } else if (entry.isSymbolicLink()) {
         entries[key] = `link ${readlinkSync(path)}`;
       } else {
-        entries[key] = `file size=${stat.size} mtime=${stat.mtimeMs} ${readFileSync(path, "utf8")}`;
+        // Stat and read through one descriptor so the file cannot be swapped between the two calls (js/file-system-race).
+        const fd = openSync(path, "r");
+        try {
+          const stat = fstatSync(fd);
+          entries[key] = `file size=${stat.size} mtime=${stat.mtimeMs} ${readFileSync(fd, "utf8")}`;
+        } finally {
+          closeSync(fd);
+        }
       }
     }
   };
