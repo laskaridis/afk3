@@ -43,8 +43,7 @@ export class SessionExecutor {
   }
 
   private async run(input: SessionInput, outputPath: string): Promise<SessionResult> {
-    const { adapter, signal, timeoutSeconds, graceMs } = this;
-    const args = adapter.buildArgs({
+    const args = this.adapter.buildArgs({
       cwd: input.cwd,
       outputFile: outputPath,
       model: input.model,
@@ -54,7 +53,7 @@ export class SessionExecutor {
     let interrupted = false;
     let timedOut = false;
     const outcome = await new Promise<ProcessOutcome>((resolve) => {
-      const child = spawn(adapter.executable, args, { cwd: input.cwd, stdio: ["pipe", "pipe", "pipe"] });
+      const child = spawn(this.adapter.executable, args, { cwd: input.cwd, stdio: ["pipe", "pipe", "pipe"] });
       const cleanups: (() => void)[] = [];
       const settle = (result: ProcessOutcome) => {
         cleanups.forEach((cleanup) => cleanup());
@@ -86,21 +85,21 @@ export class SessionExecutor {
       };
       const terminate = () => {
         child.kill("SIGINT");
-        escalation.push(setTimeout(() => child.kill("SIGTERM"), graceMs));
-        escalation.push(setTimeout(() => child.kill("SIGKILL"), graceMs * 2));
+        escalation.push(setTimeout(() => child.kill("SIGTERM"), this.graceMs));
+        escalation.push(setTimeout(() => child.kill("SIGKILL"), this.graceMs * 2));
       };
-      if (timeoutSeconds !== undefined) {
+      if (this.timeoutSeconds !== undefined) {
         const timer = setTimeout(() => {
           if (interrupted) return;
           timedOut = true;
           terminate();
-        }, timeoutSeconds * 1000);
+        }, this.timeoutSeconds * 1000);
         cleanups.push(() => clearTimeout(timer));
       }
-      if (signal.aborted) interrupt();
-      else signal.addEventListener("abort", interrupt, { once: true });
+      if (this.signal.aborted) interrupt();
+      else this.signal.addEventListener("abort", interrupt, { once: true });
       cleanups.push(() => {
-        signal.removeEventListener("abort", interrupt);
+        this.signal.removeEventListener("abort", interrupt);
         escalation.forEach(clearTimeout);
       });
     });
