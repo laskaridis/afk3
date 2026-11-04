@@ -4,11 +4,11 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { AgentRegistry } from "./agents/registry.js";
+import { EXIT_CODES, exitCodeFor, formatExitCodeHelp } from "./cli/exit-codes.js";
 import { resolvePrompt } from "./prompt.js";
-import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
-import { DEFAULT_MAX_ITERATIONS, runAfk } from "./runner.js";
+import { ConsoleReporter } from "./reporter/console-reporter.js";
 import { SessionExecutorFactory } from "./session/session-executor-factory.js";
-import { CodingStep } from "./workflow/coding-step.js";
+import { DEFAULT_MAX_ITERATIONS, WorkflowExecutor } from "./workflow/workflow-executor.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -151,29 +151,14 @@ async function main(argv: string[]): Promise<number> {
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => interruption.abort());
 
   const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
-  const executor = new SessionExecutorFactory(interruption.signal, sessionTimeout, graceMs).create(adapter);
-  const step = new CodingStep(executor);
-  const result = await runAfk(
-    { launchPrompt: prompt, maxIterations, sessionTimeoutSeconds: sessionTimeout },
-    (launchPrompt) =>
-      step.execute(launchPrompt, {
-        cwd,
-        model,
-        effort: reasoningEffort,
-      }),
-    {
-      iterationStarted: (iteration, limit) =>
-        process.stderr.write(`[afk] Iteration ${iteration}/${limit}: starting agent session\n`),
-      retryStarted: (iteration) =>
-        process.stderr.write(
-          `[afk] Iteration ${iteration}/${maxIterations}: retrying agent session after execution error\n`,
-        ),
-      failureSurfaced: (summary) => process.stderr.write(`[afk] Task failure: ${summary}\n`),
-      executionError: (detail, stderrTail) => process.stderr.write(formatExecutionError(detail, stderrTail)),
-    },
+  const factory = new SessionExecutorFactory(interruption.signal, sessionTimeout, graceMs);
+  const workflow = new WorkflowExecutor(
+    { adapter, model, effort: reasoningEffort, maxIterations, sessionTimeoutSeconds: sessionTimeout, cwd },
+    { text: prompt },
+    factory,
   );
-  const finalStatus = formatFinalStatus(result);
-  if (finalStatus !== undefined) process.stderr.write(`[afk] ${finalStatus}\n`);
+  workflow.subscribe(new ConsoleReporter(process.stderr));
+  const result = await workflow.run();
   return exitCodeFor(result);
 }
 
