@@ -150,7 +150,7 @@
     {
       "id": "TASK-006",
       "objective": "Pin prompt-source conflicts with stdin, Claude launch-argument limits, and the absence of harness-created files for every agent and stop reason.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-006"
       ],

@@ -77,3 +77,19 @@
 - Scope deviations: none. Review subagent skipped: test-only change.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-006)
+- Task id: TASK-006
+- What was implemented:
+  - New test/integration/launch-boundaries.test.ts:
+    - per agent, positional prompt and `--prompt-file` with non-blank piped stdin: session prompt equals `expectedSessionPrompt(launch prompt)` and never contains the stdin data (AC-021);
+    - per agent, same sources with a stdin pipe that is never closed still launch and complete (AC-021);
+    - Claude: no `--model`/`--effort` without overrides (AC-022); no bypassPermissions, `--dangerously-skip-permissions`, `--resume`, `--continue`, `--fork-session` (or `-r`/`-c`) on first session and retry (AC-023);
+    - per agent and stop reason (complete, blocked, execution error, iteration limit, timeout, interruption): workspace, HOME and TMPDIR snapshots (kind, size, mtime, content) unchanged, with pre-existing progress.txt and specs/ content (AC-024).
+  - helpers.ts: `snapshotTree(dir)` and `keepStdinOpen` option on `startAfk`.
+- Files changed: test/integration/launch-boundaries.test.ts, test/integration/support/helpers.ts, specs/integration-test-harness.plan.json, this file.
+- Verification: `pnpm check` passed (27 files, 414 tests, typecheck, lint, prettier); `git diff --stat src/` empty. No mutation experiment was run for the snapshot assertion.
+- Learnings: TMPDIR/HOME are redirected to sandbox dirs via env so the per-session temp dir (created under os.tmpdir()) is observed. `python3` is not usable in this repo (asdf, no version) — use perl/Edit.
+- Scope deviations: none. Review subagent skipped: test-only change.
+- Follow up needed: none.
+---

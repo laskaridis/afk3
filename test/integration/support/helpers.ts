@@ -1,5 +1,16 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, existsSync, symlinkSync, writeFileSync, realpathSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
@@ -108,12 +119,39 @@ function spawnSyncMkdir(dir: string) {
   mkdirSync(dir, { recursive: true });
 }
 
+/**
+ * Every entry under `dir` (recursively) mapped to its kind, size, modification time and content, so two snapshots are
+ * equal only when nothing was added, removed or changed.
+ */
+export function snapshotTree(dir: string): Record<string, string> {
+  const entries: Record<string, string> = {};
+  const walk = (current: string, prefix: string) => {
+    for (const name of readdirSync(current).sort()) {
+      const path = join(current, name);
+      const key = `${prefix}${name}`;
+      const stat = lstatSync(path);
+      if (stat.isDirectory()) {
+        entries[key] = `dir mtime=${stat.mtimeMs}`;
+        walk(path, `${key}/`);
+      } else if (stat.isSymbolicLink()) {
+        entries[key] = `link ${readlinkSync(path)}`;
+      } else {
+        entries[key] = `file size=${stat.size} mtime=${stat.mtimeMs} ${readFileSync(path, "utf8")}`;
+      }
+    }
+  };
+  walk(dir, "");
+  return entries;
+}
+
 /** Spawn the built afk CLI. `onStdout` observes output as it is streamed. */
 export function startAfk(options: {
   args: string[];
   cwd: string;
   env: NodeJS.ProcessEnv;
   stdin?: string;
+  /** Leave stdin open (never ended) instead of ending it after `stdin`; afk must not wait for it. */
+  keepStdinOpen?: boolean;
   onStdout?: (chunk: string, run: { stdout: string }) => void;
 }) {
   const child = spawn(process.execPath, [cliPath, ...options.args], {
@@ -130,8 +168,12 @@ export function startAfk(options: {
     options.onStdout?.(chunk, run);
   });
   child.stderr.on("data", (chunk: string) => (run.stderr += chunk));
-  // afk reads non-TTY stdin to EOF, so stdin is always ended.
-  child.stdin.end(options.stdin ?? "");
+  // afk reads non-TTY stdin to EOF when it needs it, so stdin is ended unless a test asks to keep it open.
+  if (options.keepStdinOpen) {
+    if (options.stdin) child.stdin.write(options.stdin);
+  } else {
+    child.stdin.end(options.stdin ?? "");
+  }
 
   const done = new Promise<AfkRun>((resolveDone) => {
     child.on("close", (code) => {
