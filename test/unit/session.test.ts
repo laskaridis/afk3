@@ -4,11 +4,21 @@ import { dirname } from "node:path";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { codexAdapter } from "../../src/agents/codex.js";
+import type { AgentAdapter } from "../../src/agents/adapter.js";
+import { CodexAdapter } from "../../src/agents/codex.js";
 import { DEFAULT_TERMINATION_GRACE_MS, runSession, STDERR_TAIL_LINES } from "../../src/session.js";
 
 vi.mock("node:child_process", () => ({ spawn: vi.fn() }));
 import { spawn } from "node:child_process";
+
+// A plain-object view of the real adapter, so tests can spread and override single members.
+const codex = new CodexAdapter();
+const codexAdapter: AgentAdapter = {
+  name: codex.name,
+  executable: codex.executable,
+  buildArgs: (input) => codex.buildArgs(input),
+  extractFinalMessage: (stdout, outputFile) => codex.extractFinalMessage(stdout, outputFile),
+};
 
 const mockedSpawn = vi.mocked(spawn);
 

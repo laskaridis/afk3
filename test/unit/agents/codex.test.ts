@@ -1,18 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { codexAdapter } from "../../../src/agents/codex.js";
-import { DEFAULT_AGENT, agentNames, agents } from "../../../src/agents/registry.js";
+import { CodexAdapter } from "../../../src/agents/codex.js";
 
-describe("codex adapter", () => {
-  it("is registered as the default agent", () => {
-    expect(agents.codex).toBe(codexAdapter);
-    expect(DEFAULT_AGENT).toBe("codex");
-    expect(agentNames()).toContain("codex");
+describe("CodexAdapter", () => {
+  const codexAdapter = new CodexAdapter();
+
+  it("identifies itself as codex and launches the codex executable", () => {
+    expect(codexAdapter.name).toBe("codex");
     expect(codexAdapter.executable).toBe("codex");
   });
 
   describe("buildArgs", () => {
     it("runs exec with automatic approval review, the workspace, and the prompt from stdin", () => {
       expect(codexAdapter.buildArgs({ cwd: "/w" })).toEqual(["exec", "--approve-for-me", "-C", "/w", "-"]);
+    });
+
+    it.each([
+      [{}, ["exec", "--approve-for-me", "-C", "/w", "-"]],
+      [{ model: "m" }, ["exec", "--approve-for-me", "-C", "/w", "--model", "m", "-"]],
+      [{ effort: "high" }, ["exec", "--approve-for-me", "-C", "/w", "--config", 'model_reasoning_effort="high"', "-"]],
+      [
+        { model: "m", effort: "high" },
+        ["exec", "--approve-for-me", "-C", "/w", "--model", "m", "--config", 'model_reasoning_effort="high"', "-"],
+      ],
+      [
+        { outputFile: "/t/o", model: "m", effort: "low" },
+        [
+          "exec",
+          "--approve-for-me",
+          "-C",
+          "/w",
+          "--output-last-message",
+          "/t/o",
+          "--model",
+          "m",
+          "--config",
+          'model_reasoning_effort="low"',
+          "-",
+        ],
+      ],
+    ])("builds the exact arguments for %j", (input, expected) => {
+      expect(codexAdapter.buildArgs({ cwd: "/w", ...input })).toEqual(expected);
     });
 
     it("adds model and reasoning-effort overrides only when supplied", () => {

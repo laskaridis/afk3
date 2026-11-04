@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { codexAdapter } from "../../src/agents/codex.js";
+import type { AgentAdapter } from "../../src/agents/adapter.js";
+import { CodexAdapter } from "../../src/agents/codex.js";
 import { runAfk, type SessionRunner } from "../../src/runner.js";
 import type { SessionResult } from "../../src/session.js";
+
+// A plain-object view of the real adapter, so tests can spread and override single members.
+const codex = new CodexAdapter();
+const codexAdapter: AgentAdapter = {
+  name: codex.name,
+  executable: codex.executable,
+  buildArgs: (input) => codex.buildArgs(input),
+  extractFinalMessage: (stdout, outputFile) => codex.extractFinalMessage(stdout, outputFile),
+};
 
 /** A scripted session result; replies are built from the nonce the runner passes in. */
 type Scripted = SessionResult | ((nonce: string) => SessionResult);

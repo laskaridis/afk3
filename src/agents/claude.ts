@@ -1,16 +1,18 @@
-import type { AgentAdapter } from "./types.js";
+import type { AgentAdapter, AgentInput, FinalMessageResult } from "./adapter.js";
 
-export const claudeAdapter: AgentAdapter = {
-  name: "claude",
-  executable: "claude",
-  buildArgs({ model, effort }) {
+export class ClaudeAdapter implements AgentAdapter {
+  readonly name = "claude";
+  readonly executable = "claude";
+
+  buildArgs({ model, effort }: AgentInput): string[] {
     // The prompt arrives on stdin in print mode; the workspace is the process's working directory.
     const args = ["-p", "--output-format", "json", "--permission-mode", "auto"];
     if (model !== undefined) args.push("--model", model);
     if (effort !== undefined) args.push("--effort", effort);
     return args;
-  },
-  extractFinalMessage(stdout) {
+  }
+
+  extractFinalMessage(stdout: string): FinalMessageResult {
     if (stdout.trim() === "") return { missing: true };
     let parsed: unknown;
     try {
@@ -26,5 +28,5 @@ export const claudeAdapter: AgentAdapter = {
       return { agentError: true, detail: typeof subtype === "string" && subtype !== "" ? subtype : "unknown" };
     }
     return typeof result === "string" && result.trim() !== "" ? { message: result } : { missing: true };
-  },
-};
+  }
+}

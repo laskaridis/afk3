@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentAdapter } from "./agents/types.js";
+import type { AgentAdapter } from "./agents/adapter.js";
 
 export const DEFAULT_TERMINATION_GRACE_MS = 5000;
 export const STDERR_TAIL_LINES = 20;

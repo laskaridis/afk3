@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { claudeAdapter } from "../../../src/agents/claude.js";
-import { agentNames, agents } from "../../../src/agents/registry.js";
+import { ClaudeAdapter } from "../../../src/agents/claude.js";
 
-describe("claude adapter", () => {
-  it("is registered", () => {
-    expect(agents.claude).toBe(claudeAdapter);
-    expect(agentNames()).toContain("claude");
+describe("ClaudeAdapter", () => {
+  const claudeAdapter = new ClaudeAdapter();
+
+  it("identifies itself as claude and launches the claude executable", () => {
+    expect(claudeAdapter.name).toBe("claude");
     expect(claudeAdapter.executable).toBe("claude");
   });
 
@@ -13,6 +13,22 @@ describe("claude adapter", () => {
     it("selects print mode, JSON output, and the auto permission mode", () => {
       const args = claudeAdapter.buildArgs({ cwd: "/w" });
       expect(args).toEqual(["-p", "--output-format", "json", "--permission-mode", "auto"]);
+    });
+
+    it.each([
+      [{}, []],
+      [{ model: "m" }, ["--model", "m"]],
+      [{ effort: "high" }, ["--effort", "high"]],
+      [{ model: "m", effort: "high" }, ["--model", "m", "--effort", "high"]],
+    ])("builds the exact arguments for %j", (input, extra) => {
+      expect(claudeAdapter.buildArgs({ cwd: "/w", ...input })).toEqual([
+        "-p",
+        "--output-format",
+        "json",
+        "--permission-mode",
+        "auto",
+        ...extra,
+      ]);
     });
 
     it("adds --model and --effort only when supplied", () => {

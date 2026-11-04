@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { AgentAdapter } from "./agents/types.js";
+import type { AgentAdapter } from "./agents/adapter.js";
 import { parseFinalResponse, type AgentOutcome } from "./protocol.js";
 import type { SessionResult } from "./session.js";
 

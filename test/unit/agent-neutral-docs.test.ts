@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { agentNames } from "../../src/agents/registry.js";
+import { AgentRegistry } from "../../src/agents/registry.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -9,7 +9,7 @@ describe("agent-neutral documentation", () => {
     const readme = read("../../README.md");
     expect(readme).toContain("--agent");
     expect(readme).toContain("## Supported agents");
-    for (const name of agentNames()) expect(readme.toLowerCase()).toContain(name);
+    for (const name of new AgentRegistry().names()) expect(readme.toLowerCase()).toContain(name);
     expect(readme).toContain("--approve-for-me");
     expect(readme).toContain("auto");
     expect(readme).toContain(".claude/skills");

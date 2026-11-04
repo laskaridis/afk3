@@ -3,7 +3,7 @@ import { statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
-import { agentNames, agents, DEFAULT_AGENT } from "./agents/registry.js";
+import { AgentRegistry } from "./agents/registry.js";
 import { resolvePrompt } from "./prompt.js";
 import { buildSessionPrompt } from "./protocol.js";
 import { EXIT_CODES, exitCodeFor, formatExecutionError, formatExitCodeHelp, formatFinalStatus } from "./reporter.js";
@@ -12,6 +12,8 @@ import { runSession } from "./session.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
+
+const registry = new AgentRegistry();
 
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
@@ -39,8 +41,8 @@ function parseNonEmpty(value: string): string {
 }
 
 function parseAgent(value: string): string {
-  if (!agentNames().includes(value)) {
-    throw new InvalidArgumentError(`must be one of: ${agentNames().join(", ")}.`);
+  if (!registry.names().includes(value)) {
+    throw new InvalidArgumentError(`must be one of: ${registry.names().join(", ")}.`);
   }
   return value;
 }
@@ -72,9 +74,9 @@ async function main(argv: string[]): Promise<number> {
     .argument("[prompt...]", "feature instructions (or use --prompt-file, or pipe on stdin)")
     .option(
       "--agent <name>",
-      `coding agent for every session (supported: ${agentNames().join(", ")}; default: ${DEFAULT_AGENT})`,
+      `coding agent for every session (supported: ${registry.names().join(", ")}; default: ${registry.defaultName})`,
       parseAgent,
-      DEFAULT_AGENT,
+      registry.defaultName,
     )
     .option("--prompt-file <path>", "read the feature instructions from a file")
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
@@ -131,7 +133,7 @@ async function main(argv: string[]): Promise<number> {
     model?: string;
     reasoningEffort?: string;
   }>();
-  const adapter = agents[agent]!;
+  const adapter = registry.get(agent)!;
   const resolved = await resolvePrompt({
     positional: program.args,
     promptFile,
