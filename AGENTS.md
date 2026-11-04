@@ -10,8 +10,9 @@ launches sessions and interprets each session's final response; the agent's `cod
 pnpm install --frozen-lockfile
 pnpm test:unit # unit tests, no build required
 pnpm test:integration # build, then CLI integration tests
+pnpm depcheck # architecture rules (layering, cycles)
 pnpm test     # builds dist/ first, then vitest (integration tests run dist/cli.js)
-pnpm check    # test + typecheck + lint + prettier --check — what CI runs; must pass before committing
+pnpm check    # test + typecheck + lint + prettier --check + depcheck — what CI runs; must pass before committing
 pnpm format   # prettier --write .
 pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebuild first or you test a stale dist/
 ```
@@ -50,5 +51,5 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 - `src/code.md` is copied to `dist/` by the build script and is excluded from prettier. Its example block
   `<afk-harness-result nonce="{{NONCE}}">` is load-bearing: the fake agents read the session nonce from it, so changing
   or removing it breaks every integration test.
-- Keep `src/workflow/`, `src/session/`, `src/reporter/` and `src/cli/` agent-neutral (enforced by `test/unit/architecture.test.ts`): agent-specific knowledge belongs only in `src/agents/<name>.ts`.
+- Keep `src/workflow/`, `src/session/`, `src/reporter/` and `src/cli/` agent-neutral (enforced by `pnpm depcheck`, see `.dependency-cruiser.cjs`): agent-specific knowledge belongs only in `src/agents/<name>.ts`.
 - Never add a full-access / permission-bypass mode for any agent.

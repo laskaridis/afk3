@@ -8,6 +8,7 @@ tests spawn `dist/cli.js` — running `vitest` directly against stale `dist/` gi
 - `pnpm test:unit`: run unit tests without building the CLI.
 - `pnpm test:integration`: build the CLI, then run integration tests.
 - `pnpm test`: build once, then run both suites; CI runs this through `pnpm check`.
+- `pnpm depcheck`: dependency-cruiser architecture rules (layering, cycles, agent internals; rules in `.dependency-cruiser.cjs`), not vitest; part of `pnpm check`.
 
 Integration helpers live in `test/integration/support/`; fake-agent fixtures live in `test/integration/fixtures/`.
 These support files are used only by integration tests and are not test suites.
@@ -23,7 +24,6 @@ or `pnpm build && pnpm vitest run test/integration/<file>.test.ts`.
 - `test/unit/workflow/coding-step.test.ts`: drives `CodingStep` with a stubbed `SessionExecutor`; `reply(message)` builds a result block from the nonce the step passes in the session prompt.
 - `test/unit/workflow/result-block.test.ts`, `test/unit/cli/launch-prompt.test.ts`, `test/unit/agents/<name>.test.ts`: pure functions, table-driven with `it.each`.
 - `test/unit/session/`, `test/unit/reporter/console-reporter.test.ts`, `test/unit/cli/`: session executor and factory, console output, option parsing, exit codes and entry point.
-- `test/unit/architecture.test.ts`: guards layering, agent-specific knowledge outside `src/agents/` and removed modules.
 
 **Integration** (`test/integration/`) — run the built CLI against a fake agent on `PATH`, no real agent needed:
 

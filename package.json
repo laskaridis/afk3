@@ -20,11 +20,12 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm format:check",
+    "check": "pnpm test && pnpm typecheck && pnpm lint && pnpm format:check && pnpm depcheck",
     "test": "pnpm run build && vitest run",
     "test:coverage": "pnpm run build && vitest run --coverage",
     "test:unit": "vitest run test/unit",
-    "test:integration": "pnpm run build && vitest run test/integration"
+    "test:integration": "pnpm run build && vitest run test/integration",
+    "depcheck": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "commander": "^15.0.0"
@@ -33,6 +34,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "5.0.5",
+    "dependency-cruiser": "^18.7.2",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
