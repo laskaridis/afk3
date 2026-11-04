@@ -122,7 +122,7 @@
     {
       "id": "TASK-005",
       "objective": "Pin timeout escalation, interruption by SIGINT, SIGTERM, or SIGHUP, and stderr-tail visibility end to end for every agent.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-005"
       ],

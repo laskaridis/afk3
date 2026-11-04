@@ -66,3 +66,14 @@
 - Scope deviations: none. Review subagent skipped: test-only change.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-005)
+- Task id: TASK-005
+- What was implemented:
+  - New test/integration/termination.test.ts, per agent (codex, claude): timeout with a signal-ignoring agent (signals exactly SIGINT,SIGTERM; pid gone; exit 5; one session; exact stderr "Run stopped: agent session timed out after 1 seconds"); agent stderr absent after SIGINT interruption; stderr tail follows the execution-error line for non-zero exit, missing final response and invalid final response; SIGTERM and SIGHUP sent to afk -> interrupted line, exit 130, one session, agent pid gone.
+- Files changed: test/integration/termination.test.ts, specs/integration-test-harness.plan.json, this file.
+- Verification: `pnpm check` passed; `git diff --stat src/` empty. Timeout wording taken from the build's actual output after a first failing run.
+- Learnings: a timeout prints "[afk] Run stopped: ..." (not an execution error line) and no retry.
+- Scope deviations: none. Review subagent skipped: test-only change.
+- Follow up needed: none.
+---
