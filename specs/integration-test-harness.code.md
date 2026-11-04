@@ -20,3 +20,19 @@
 - Scope deviations: doc/ARCHITECTURE.md was already failing prettier --check at HEAD (blocking pnpm check); formatted it only (separate commit).
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-002)
+- Task id: TASK-002
+- What was implemented:
+  - agent-parity.test.ts: each shared scenario now asserts `stderr` equals a literal transcript (`asStderr(lines)`) and `stdout` is empty, for codex and claude. Transcripts were captured from the current build's output (temporary dump test, deleted), including full protocol-violation reason, stderr-tail lines, retry lines and task-failure line.
+  - Added "launch failure" scenario per agent (empty PATH): asserts exit 3, zero invocations, 4 lines: iteration line, execution-error prefix, retry line, execution-error prefix; OS error text not asserted. Excluded from the cross-agent byte-identical comparison (it is its own describe; error text names the executable).
+- Files changed: test/integration/agent-parity.test.ts, specs/integration-test-harness.plan.json, this file.
+- Verification:
+  - `pnpm check` passed (tests, typecheck, lint, prettier); `git diff --stat src/` empty.
+  - Mutation experiments (uncommitted, reverted with git checkout src, dist rebuilt): "Task failure"->"Task failed" in src/cli.ts: 2 parity tests failed; retry line reworded: 10 failed; "Run complete: feature complete!" in reporter.ts: 8 failed. Exact string equality on the whole transcript also pins order and line count. Parity back to 35 passed after revert.
+- Learnings for future iterations:
+  - Launch failure: run with PATH set to an empty dir (afk is spawned via process.execPath so node still works).
+  - All 11 shared scenarios print byte-identical stderr for codex and claude.
+- Scope deviations: none. Review subagent skipped: test-only change verified by mutation experiments.
+- Follow up needed: none.
+---

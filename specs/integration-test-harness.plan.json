@@ -34,7 +34,7 @@
     {
       "id": "TASK-002",
       "objective": "Pin the complete [afk] stderr transcript of every existing shared harness scenario, for every agent, as literal expected output.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-002"
       ],
