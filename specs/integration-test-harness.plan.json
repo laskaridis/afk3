@@ -178,7 +178,7 @@
     {
       "id": "TASK-007",
       "objective": "Validate that the integration suite covers every acceptance criterion of the specification and works as a black-box behavior-preservation harness.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-001",
         "US-002",

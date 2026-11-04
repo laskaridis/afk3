@@ -93,3 +93,27 @@
 - Scope deviations: none. Review subagent skipped: test-only change.
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-007)
+- Task id: TASK-007
+- What was implemented: read-only validation; no test or source changes.
+- Files changed: specs/integration-test-harness.plan.json, this file.
+- Verification:
+  - `git diff <merge-base main> -- src` empty; `pnpm check` passed (27 files, 414 tests, typecheck, lint, prettier).
+  - `pnpm test:integration` run 3 times consecutively: 17 files / 274 tests passed each time, no flaky failure.
+  - Rename experiment (uncommitted, reverted): src/agents/registry.ts -> agent-registry.ts and src/reporter.ts -> status-reporter.ts with imports in src/cli.ts updated; `pnpm test:integration` stayed green (274 passed). Reverted, rebuilt, git status clean.
+  - AC -> tests (all in test/integration/):
+    - AC-001: no src imports (grep); literals in agent-option, help, agent-parity tests.
+    - AC-002: tracer-bullet "sends the launch prompt verbatim followed by the harness instructions"; execution-error (first session + retry exact prompts).
+    - AC-003: tracer-bullet "nonce masking".
+    - AC-004: doc/TESTING.md contracts section (static; checked at TASK-001).
+    - AC-005, AC-006: agent-parity "shared harness behavior: %s" and "identical behavior across agents" (all scenarios, exact stderr, empty stdout).
+    - AC-007: agent-parity "launch failure: %s".
+    - AC-008..AC-011: agent-parity scenarios (retry reset, fail not an error, --max-iterations 1 x5, default limit 10).
+    - AC-012: final-response "invalid final responses: %s". AC-013/AC-014: "valid final responses: %s". AC-015: "streamed output is never the final response (codex)". AC-016: "agent ended by a signal it did not receive from afk: %s".
+    - AC-017: termination "timeout escalation: %s". AC-018/AC-019: "agent stderr visibility: %s". AC-020: "termination signals sent to afk: %s".
+    - AC-021..AC-024: launch-boundaries "explicit prompt sources ignore stdin", "claude launch arguments" (two tests), "no files created or changed: %s".
+- Learnings: none new.
+- Scope deviations: none.
+- Follow up needed: none found.
+---
