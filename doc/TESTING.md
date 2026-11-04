@@ -19,9 +19,11 @@ or `pnpm build && pnpm vitest run test/integration/<file>.test.ts`.
 
 **Unit** (`test/unit/`) — call source functions directly, without launching the CLI. Static documentation checks also live here.
 
-- `runner.test.ts`: drives `runAfk` with a scripted `SessionRunner`; `reply(message)` builds a result block from the
-  nonce the runner passes in.
-- `protocol.test.ts`, `prompt.test.ts`, `test/unit/agents/<name>.test.ts`: pure functions, table-driven with `it.each`.
+- `test/unit/workflow/workflow-executor.test.ts`: drives `WorkflowExecutor` with scripted steps and a recording observer; covers the run policy and the event sequence.
+- `test/unit/workflow/coding-step.test.ts`: drives `CodingStep` with a stubbed `SessionExecutor`; `reply(message)` builds a result block from the nonce the step passes in the session prompt.
+- `test/unit/workflow/result-block.test.ts`, `test/unit/cli/launch-prompt.test.ts`, `test/unit/agents/<name>.test.ts`: pure functions, table-driven with `it.each`.
+- `test/unit/session/`, `test/unit/reporter/console-reporter.test.ts`, `test/unit/cli/`: session executor and factory, console output, option parsing, exit codes and entry point.
+- `test/unit/architecture.test.ts`: guards layering, agent-specific knowledge outside `src/agents/` and removed modules.
 
 **Integration** (`test/integration/`) — run the built CLI against a fake agent on `PATH`, no real agent needed:
 
@@ -63,7 +65,7 @@ codes are literal values. If a refactoring changes one of these, update the suit
 ## Conventions
 
 - Behavior that must be identical across agents goes in `agent-parity.test.ts`, which runs every scenario for each
-  name in `agentNames()` and also asserts byte-identical stderr/exit codes across agents.
+  name in its literal `AGENT_NAMES` list and also asserts byte-identical stderr/exit codes across agents.
 - Assert on exact `[afk]` wording, exit codes, and that `run.stdout` is `""`.
 - Help text and README content are asserted (`help.test.ts`, `agent-neutral-docs.test.ts`); update them together.
 - Test files are named after the behavior (`session-timeout`, `stderr-tail`), not the module, except unit tests.

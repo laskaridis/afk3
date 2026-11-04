@@ -13,7 +13,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 | session prompt     | Launch prompt + `---` + `src/code.md` with `{{NONCE}}` replaced                                |
 | session            | One fresh, non-interactive agent process. Never resumed or forked                              |
 | iteration          | One session launch, retries included; bounded by `--max-iterations` (`DEFAULT_MAX_ITERATIONS`) |
-| nonce              | Random per session (`runner.ts`); the result block must carry it                               |
+| nonce              | Random per session (`src/workflow/coding-step.ts`); the result block must carry it             |
 | result block       | `<afk-harness-result nonce="…">{json}</afk-harness-result>`; the last one with the nonce wins  |
 | outcome            | `repeat` \| `complete` \| `blocked` (+`blocker_text`) \| `fail` (+`failure_summary`)           |
 | execution error    | `launch-failed` \| `exit-status` \| `missing-response` \| `invalid-response`                   |
@@ -40,7 +40,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 - stdout is empty during a run (help and `--version` only). All status goes to stderr as `[afk] …` lines.
 - Agent stdout/stderr are captured, never streamed. No heartbeat lines.
 - Wording is agent-neutral ("agent session", "the coding agent") and identical across agents; tests assert it.
-- Exit codes and their meanings are defined once in `src/reporter.ts` (`EXIT_CODES`, shown by `afk --help`). They are
+- Exit codes and their meanings are defined once in `src/cli/exit-codes.ts` (`EXIT_CODES`, shown by `afk --help`). They are
   part of the user contract: don't renumber them.
 - `--help` / `-h` wins over every other option and over prompt input.
 

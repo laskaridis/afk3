@@ -1,6 +1,6 @@
 # Architecture
 
-This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflow Execution] -> [Step Execution] -> [SessionExecution] -> [Coding Agent]`. Dependencies are stricly from upper to lower layers, the inverse is not allowed. Workflow Execution layer publishes events to notify external observers (i.e. CLI and Reporter).
+This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflow Execution] -> [Step Execution] -> [SessionExecution] -> [Coding Agent]`. Dependencies are strictly from upper to lower layers, the inverse is not allowed. Workflow Execution layer publishes events to notify external observers (i.e. the Reporter). `WorkflowExecutor.run()` also returns the terminal event, which the CLI maps to the exit code.
 
 ## Tech stack
 
@@ -16,23 +16,22 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Responsibilities:**
 
 - Acts as the main user interface and trigger point for the workflow.
-- Uses `agent/AgentRegistry` to retrieve the concrete `agent/AgentAdapter` for the agent specified by the user.
-- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporting/Reporter`.
-- Instantiates `workflow/WorfklowExecutor` and wires all its dependencies.
-- Observes `workflow/WorfklowExecutor`.
-- Instantiates a concrete `reporting/Reporter` that observes `workflow/WorkflowExecutor`.
-- Executes the workflow lifecycle.
+- Uses `agents/AgentRegistry` to retrieve the concrete `agents/AgentAdapter` for the agent specified by the user.
+- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporter/Reporter`.
+- Instantiates `workflow/WorkflowExecutor` and wires all its dependencies.
+- Instantiates a concrete `reporter/Reporter` and subscribes it to `workflow/WorkflowExecutor`.
+- Runs the workflow with `WorkflowExecutor.run()` and maps the terminal result it returns (a terminal `workflow/WorkflowEvent`) to the process exit code. The CLI is not a `workflow/WorkflowObserver`.
 
 **Collaborators:**
 
 - Creates `workflow/WorkflowOptions`
-- Creates concrete `reporting/Reporter`
+- Creates concrete `reporter/Reporter`
 - Creates `workflow/LaunchPrompt`
 - Creates `session/SessionExecutorFactory`
-- Retrieves concrete `agent/AgentAdapter` from `agent/AgentRegistry`
-- Creates, executes and observes `workflow/WorfklowExecutor`
+- Retrieves concrete `agents/AgentAdapter` from `agents/AgentRegistry`
+- Creates and runs `workflow/WorkflowExecutor`, and uses the terminal result returned by `run()`
 
-### `workflow/LaunchPrompt` (concerete class)
+### `workflow/LaunchPrompt` (concrete class)
 
 **Responsibilities:**
 
@@ -41,21 +40,21 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Collaborators:**
 
 - Created by `cli/CLI`
-- Used by `workflow/WorfklowExecutor`
+- Used by `workflow/WorkflowExecutor`
 
 ### `workflow/WorkflowOptions` (value class)
 
-**Responsibiltiies:**
+**Responsibilities:**
 
-- Encapsulates the condiguration of a specific run as indicated by the user command line, such as: concrete `adapter/AgentAdapter` and model selected, max number of iterations, reasoning effort, current working directory.
+- Encapsulates the configuration of a specific run as indicated by the user command line, such as: concrete `agents/AgentAdapter` and model selected, max number of iterations, reasoning effort, current working directory.
 
 **Collaborators:**
 
 - Created by `cli/CLI`
-- Uses `adapter/AgentAdapter`
-- Used by `workflow/WorfklowExecutor`
+- Uses `agents/AgentAdapter`
+- Used by `workflow/WorkflowExecutor`
 
-### `workflow/WorfklowExecutor` (concrete class)
+### `workflow/WorkflowExecutor` (concrete class)
 
 **Responsibilities:**
 
@@ -70,20 +69,20 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
   - `StepExecutionFailed`
   - `StepExecutionBlocked`
   - `StepExecutionRetried`
-  - `SessionExecutionErrorOccured`
+  - `SessionExecutionErrorOccurred`
   - `IterationFinished`
   - `WorkflowFinished`
   - `WorkflowInterrupted`
   - `WorkflowBlocked`
-  - `WorfklowFailed`
+  - `WorkflowFailed`
   - `WorkflowTimedOut`
   - `MaxIterationsReached`
 
-**Collaboarators:**
+**Collaborators:**
 
 - Creates `workflow/WorkflowStep`s.
-- Creates `session/SessionExecutor`s with the appropriate `agent/AgentAdapter` and uses them to execute `workflow/WorkflowStep`s.
-- Uses `workflow/WorkflowStepResult`s to decides control.
+- Creates `session/SessionExecutor`s with the appropriate `agents/AgentAdapter` and uses them to execute `workflow/WorkflowStep`s.
+- Uses `workflow/WorkflowStepResult`s to decide control.
 - Uses `workflow/WorkflowOptions`
 
 ### `workflow/WorkflowStep` (interface)
@@ -93,14 +92,14 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 - Controls the execution of a single step in the workflow, including prompt markdown, the `<afk-harness-result>`
   block format and nonce generation.
 - Builds the agent prompt for the specific step.
-- Executes the step using the specified `session/SessionExecutor` providing the neccessary prompt.
+- Executes the step using the specified `session/SessionExecutor` providing the necessary prompt.
 - Parsing the final result of the `session/SessionExecutor` into a `workflow/WorkflowStepResult`
 
 **Collaborators:**
 
-- Created by `workflow/WorfklowExecutor`
+- Created by `workflow/WorkflowExecutor`
 - Uses `session/SessionExecutor`
-- Creates `workflow/WorkflowStepResult` and passes it back to `workflow/WorfklowExecutor`
+- Creates `workflow/WorkflowStepResult` and passes it back to `workflow/WorkflowExecutor`
 
 **Concrete implementations:**
 
@@ -116,30 +115,30 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
     - Continue - successful execution of the step and workflow should proceed.
     - Finished - successful execution of the step and the workflow should terminate.
     - StepFailed - unsuccessful execution of the step but progress may be possible.
-    - SessionFailed - unsuccessful execution of the steb because of an underlying session execution failure.
-    - Blocked - unuccessful execution of the step and progress is not possible.
+    - SessionFailed - unsuccessful execution of the step because of an underlying session execution failure.
+    - Blocked - unsuccessful execution of the step and progress is not possible.
     - Timeout - undefined execution of the step as process timed out.
     - Interrupted - undefined execution of the step because of a user interruption.
-  - Failure details - if Failed
-  - Unblocking condintion - if Blocked.
-  - Task ID
-  - Task list plan file path.
+  - Failure summary - if StepFailed
+  - Failure detail and stderr tail - if SessionFailed
+  - Blocker text (the unblocking condition) - if Blocked.
+  - Task ID and task list plan file path, carried as parsed from the result block (Continue, Finished, StepFailed, Blocked).
+- The specification file path and the verification findings file path are intentionally left out: adding them would change the `<afk-harness-result>` block contract in `src/code.md`.
 
-**Colaborators:**
+**Collaborators:**
 
-- Created by concrete `workflow/WorkflowExecutionStep`
-- Used by `workflow/WorfklowExecutor`
+- Created by concrete `workflow/WorkflowStep`
+- Used by `workflow/WorkflowExecutor`
 
 ### `workflow/WorkflowObserver` (interface)
 
-**Responsibiities:**
+**Responsibilities:**
 
 - Interface implemented from all classes observing workflows for events.
 
 **Collaborators:**
 
-- Implemented by `cli/CLI`
-- Implemented by `reporting/Reporter`
+- Implemented by `reporter/Reporter`
 - Used by `workflow/WorkflowExecutor` to notify observers about `workflow/WorkflowEvent`s.
 
 ### `workflow/WorkflowEvent` (value class)
@@ -147,20 +146,20 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Responsibilities:**
 
 - Immutable notification that something happened during a workflow execution. It carries data only and has no behavior.
-- Identified by a discriminating `type`, one per event listed under `workflow/WorfklowExecutor`
+- Identified by a discriminating `type`, one per event listed under `workflow/WorkflowExecutor`
   (e.g. `WorkflowStarted`, `IterationStarted`, `StepExecutionFinished`, `WorkflowBlocked`, `MaxIterationsReached`).
 - Carries everything observers need to react without calling back into the executor, as relevant to the event type:
   - Iteration number and the configured iteration limit.
   - Name of the step being executed.
   - Step outcome details from the `workflow/WorkflowStepResult`: task ID, failure details, unblocking condition,
     and the task list plan file path.
-  - Session failure details, for `SessionExecutionErrorOccured`.
+  - Session failure details, for `SessionExecutionErrorOccurred`.
   - Timeout and interruption details, for `WorkflowTimedOut` and `WorkflowInterrupted`.
 - Is a one-way notification: observers cannot change workflow control flow through an event.
 
 **Collaborators:**
 
-- Created and published by `workflow/WorfklowExecutor`
+- Created and published by `workflow/WorkflowExecutor`
 - Delivered to `workflow/WorkflowObserver`s
 - Carries data taken from `workflow/WorkflowStepResult`
 
@@ -168,47 +167,49 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 **Responsibilities:**
 
-- Creates `sesison/SessionExecutor` instances
-- Ensures correct propagation of the `AbortSignal` from `cli/CLI` to created `cli/SessionExecutor`s.
-- Ensures timeout is correctly and consistently configured to `cli/SessionExecutor`s.
+- Creates `session/SessionExecutor` instances
+- Ensures correct propagation of the `AbortSignal` from `cli/CLI` to created `session/SessionExecutor`s.
+- Ensures timeout is correctly and consistently configured to `session/SessionExecutor`s.
 
 **Collaborators:**
 
 - Created by `cli/CLI`
-- Used by `workflow/WorfklowExecutor` to create `session/SessionExecutor` instances.
+- Used by `workflow/WorkflowExecutor` to create `session/SessionExecutor` instances.
 
 ### `session/SessionExecutor` (concrete class)
 
 **Responsibilities:**
 
-- Abstracts the execution of a `workflow/WorfklowStep`s prompt aganst a physical coding agent
-- Encapsulates all the implmentation details surrounding the agent's execution, such as forking the system process, running the appropriate coding agent based on the selected `agent/AgentAdapter` with the correct arguments, managing stdio streams including any buffering, temp files used by agents, handling timeouts, SIGTERM and SIGKILL.
+- Abstracts the execution of a `workflow/WorkflowStep`s prompt against a physical coding agent
+- Encapsulates all the implementation details surrounding the agent's execution, such as forking the system process, running the appropriate coding agent based on the selected `agents/AgentAdapter` with the correct arguments, managing stdio streams including any buffering, temp files used by agents, handling timeouts, SIGTERM and SIGKILL.
 
 **Collaborators:**
 
-- Created by `workflow/WorfklowExecutor` via `session/SessionExecutorFactory`
-- Used by `workflow/WorkflowExecutionStep`
-- Uses `agent/AgentAdapter` to understand which agent to invoke and retrieve the final message.
+- Created by `workflow/WorkflowExecutor` via `session/SessionExecutorFactory`
+- Used by `workflow/WorkflowStep`
+- Uses `agents/AgentAdapter` to understand which agent to invoke and retrieve the final message.
 
 ### `session/SessionResult` (value class)
 
-**Responsibilties:**
+**Responsibilities:**
 
 - Communicate back to the caller the result of a session's execution:
-  - `LaunchFailed`
-  - `TimedOut`
-  - `Interrupted`
-  - `ExecutionFailed`
-  - `Success`
-- `ExecutionFailed` covers every case where the session ran but produced no trustworthy final message: terminated by a signal, an agent-reported error, a non-zero exit code, or a missing or invalid final message. It carries the failure detail and the stderr tail.
-- Encapsulates all neccessary state that the call needs to interpret correctly the result of an execution.
+  - launch failed (`launch-failed`)
+  - timed out (`timed-out`)
+  - interrupted (`interrupted`)
+  - exited unsuccessfully (`exited-unsuccessfully`): terminated by a signal, an agent-reported error or a non-zero exit code
+  - missing final message (`missing-final-message`)
+  - invalid final message (`invalid-final-message`)
+  - success (`success`)
+- Every kind except launch failed, timed out and interrupted carries the stderr tail; the failure kinds carry the failure detail.
+- Encapsulates all necessary state that the call needs to interpret correctly the result of an execution.
 
 **Collaborators:**
 
 - Created by `session/SessionExecutor`
-- Used by concrete `workflow/WorkflowExecutionStep`
+- Used by concrete `workflow/WorkflowStep`
 
-### `adapter/AgentAdapter` (interface)
+### `agents/AgentAdapter` (interface)
 
 **Responsibilities:**
 
@@ -219,24 +220,24 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Collaborators:**
 
 - Retrieved by `cli/CLI`
-- Concrete instance used by `session/SessionExecutor` to launche the specific coding agent and retrieve
+- Concrete instance used by `session/SessionExecutor` to launch the specific coding agent and retrieve its final message
 
 **Concrete implementations:**
 
-- `adapter/CodexAdapter`
-- `adapter/ClaudeAdapter`
+- `agents/CodexAdapter`
+- `agents/ClaudeAdapter`
 
-### `agent/AgentRegistry` (concrete class)
+### `agents/AgentRegistry` (concrete class)
 
 **Responsibilities**:
 
-- Placeholder of all supported concrete `agent/AgentRegistry` adapter implementations.
+- Holds all supported concrete `agents/AgentAdapter` implementations, lists their names and names the default agent.
 
 **Collaborators:**
 
-- Used by `CLI` to retrieve the concrete `agent/AgentAdapter` specified from the user by name
+- Used by `CLI` to retrieve the concrete `agents/AgentAdapter` specified from the user by name
 
-## `reporting/Reporter` (interface)
+## `reporter/Reporter` (interface)
 
 **Responsibilities:**
 
@@ -245,22 +246,22 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Collaborators:**
 
 - Concrete instance created by `cli/CLI`
-- Subscribes to events published by `workflow/WorfklowExecutor` to report back to the user.
+- Subscribes to events published by `workflow/WorkflowExecutor` to report back to the user.
 
 **Concrete implementations**:
 
-- `reporting/ConsoleReporter` to report harness progrees in the console.
+- `reporter/ConsoleReporter` to report harness progress in the console.
 
 ## Top-level module packages
 
-- `cli` includes code related to CLI layer.
-- `agents` includes code related to concrete `agent/AgentAdapter`s and `agent/AgentRegistry`.
-- `worfklow` includes code related to worklfow execution layer, including concrete `workflow/WorkflowExecutionStep`s and their prompts.
+- `cli` includes code related to the CLI layer: option parsing, launch-prompt resolution, wiring, signal handling and exit codes (`src/cli.ts` is the thin entry point that imports only `src/cli/`).
+- `agents` includes code related to concrete `agents/AgentAdapter`s and `agents/AgentRegistry`.
+- `workflow` includes code related to workflow execution layer, including concrete `workflow/WorkflowStep`s and their prompts.
 - `session` includes code related to session execution layer.
-- `reporting` includes code related to progress reporting layer.
+- `reporter` includes code related to progress reporting layer.
 
 ## Out of scope
 
 ### Modelling the `WorkflowDefinition` independently of the `WorkflowExecutor`
 
-`workflow/WorfklowExecutor` currently specifies both what the workflow is and how it should be executed. We could separate further this responsibilities by introducing a `workflow/WorfklowDefinition` abstraction to define the workflow structure (i.e. which task comes first, which comes next) and inject that into the `workflow/WorfklowExecutor`. Althought his may be a point to refactor in the future as the workflow becomes more complicated, for now we will intentionally keep it as is.
+`workflow/WorkflowExecutor` currently specifies both what the workflow is and how it should be executed. We could separate further this responsibilities by introducing a `workflow/WorkflowDefinition` abstraction to define the workflow structure (i.e. which task comes first, which comes next) and inject that into the `workflow/WorkflowExecutor`. Although this may be a point to refactor in the future as the workflow becomes more complicated, for now we will intentionally keep it as is.

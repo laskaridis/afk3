@@ -12,8 +12,19 @@
       "id": "TASK-001",
       "objective": "Reshape src/agents/ into an AgentAdapter interface, CodexAdapter, ClaudeAdapter and an AgentRegistry that returns the adapter for a name, lists supported names and names the default agent, with every caller moved to the new API and agents/types.ts removed.",
       "status": "completed",
-      "stories_enabled": ["US-002", "US-001"],
-      "acceptance_criteria_addressed": ["AC-006", "AC-007", "AC-008", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "stories_enabled": [
+        "US-002",
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-006",
+        "AC-007",
+        "AC-008",
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-005"
+      ],
       "completion_criteria": [
         "src/agents/ contains the AgentAdapter interface (with its input and final-message result types declared in the same module), CodexAdapter, ClaudeAdapter and AgentRegistry; src/agents/types.ts no longer exists.",
         "AgentRegistry, given 'codex' or 'claude', returns the matching adapter. It lists supported names in today's order (codex, claude) and reports 'codex' as the default. Unit tests in test/unit/agents/ pin this.",
@@ -33,8 +44,21 @@
       "id": "TASK-002",
       "objective": "Move process handling into src/session/ as a SessionExecutorFactory that creates SessionExecutors which run one agent process and return a SessionResult classifying process- and adapter-level outcomes, replacing src/session.ts and the process/adapter half of runner.ts's classification.",
       "status": "completed",
-      "stories_enabled": ["US-003", "US-001"],
-      "acceptance_criteria_addressed": ["AC-009", "AC-010", "AC-011", "AC-012", "AC-007", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "stories_enabled": [
+        "US-003",
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-009",
+        "AC-010",
+        "AC-011",
+        "AC-012",
+        "AC-007",
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-005"
+      ],
       "completion_criteria": [
         "A SessionExecutorFactory created with an AbortSignal, an optional timeout in seconds and an optional termination grace period produces SessionExecutors that all use that same signal, timeout and grace period. A unit test shows this for at least two executors created from one factory.",
         "SessionExecutor.execute, given a prompt, a cwd and an optional model and effort: spawns the adapter's executable with the adapter's arguments in that cwd; writes the prompt to stdin; captures stdout; keeps the last 20 stderr lines, including an unterminated final line; gives the adapter a fresh temp output-file path and removes the temp directory afterwards; escalates SIGINT, SIGTERM, SIGKILL at the grace interval on timeout or abort; does not spawn when the signal is already aborted; and gets the final message from the adapter.",
@@ -51,14 +75,29 @@
         "The child process is never detached, and afk's own stdin is never forwarded to the agent (doc/SECURITY.md).",
         "Do not modify anything under test/integration/ or src/code.md."
       ],
-      "dependencies": ["TASK-001"]
+      "dependencies": [
+        "TASK-001"
+      ]
     },
     {
       "id": "TASK-003",
       "objective": "Introduce the WorkflowStep interface, the CodingStep implementation and WorkflowStepResult in src/workflow/, so that nonce generation, session prompt assembly and result-block parsing sit in one place and every SessionResult or parsed block maps to a step outcome, replacing src/protocol.ts.",
       "status": "completed",
-      "stories_enabled": ["US-004", "US-001"],
-      "acceptance_criteria_addressed": ["AC-013", "AC-014", "AC-015", "AC-016", "AC-001", "AC-002", "AC-003", "AC-004", "AC-005"],
+      "stories_enabled": [
+        "US-004",
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-016",
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004",
+        "AC-005"
+      ],
       "completion_criteria": [
         "Each time CodingStep executes, it generates a fresh nonce. It passes the SessionExecutor a session prompt equal to the launch prompt, a blank line, '---', then code.md with every {{NONCE}} replaced by that nonce, then a trailing newline, byte-identical to today's buildSessionPrompt.",
         "CodingStep parses only the last complete <afk-harness-result> block carrying its own nonce. Blocks with another nonce and echoed examples are ignored.",
@@ -75,14 +114,33 @@
         "src/workflow/ may import from src/session/ and from src/agents/ only the AgentAdapter module and AgentRegistry; it must not import from reporter/ or cli/.",
         "Do not modify anything under test/integration/."
       ],
-      "dependencies": ["TASK-002"]
+      "dependencies": [
+        "TASK-002"
+      ]
     },
     {
       "id": "TASK-004",
       "objective": "Replace runner.ts and the formatting in reporter.ts with a WorkflowExecutor that applies today's run policy, publishes every WorkflowEvent from doc/ARCHITECTURE.md to WorkflowObservers and returns the terminal result, plus a ConsoleReporter in src/reporter/ that turns those events into today's exact [afk] stderr lines.",
       "status": "completed",
-      "stories_enabled": ["US-005", "US-006", "US-001"],
-      "acceptance_criteria_addressed": ["AC-017", "AC-018", "AC-018a", "AC-019", "AC-020", "AC-021", "AC-022", "AC-023", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "stories_enabled": [
+        "US-005",
+        "US-006",
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-017",
+        "AC-018",
+        "AC-018a",
+        "AC-019",
+        "AC-020",
+        "AC-021",
+        "AC-022",
+        "AC-023",
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-005"
+      ],
       "completion_criteria": [
         "WorkflowExecutor is created with WorkflowOptions (adapter, model, reasoning effort, max iterations, session timeout, cwd), a LaunchPrompt and a SessionExecutorFactory. It creates one SessionExecutor and one CodingStep per iteration.",
         "Policy: Continue and StepFailed start the next iteration. Finished, Blocked, Timeout and Interrupted stop immediately. After a SessionFailed one retry is allowed; a second consecutive SessionFailed ends with WorkflowFailed. Any other outcome resets the allowance. Retries count toward the limit. A SessionFailed on the last iteration with no previous error ends with MaxIterationsReached.",
@@ -102,14 +160,28 @@
         "Do not introduce a WorkflowDefinition separate from WorkflowExecutor.",
         "Do not modify anything under test/integration/ or src/code.md."
       ],
-      "dependencies": ["TASK-003"]
+      "dependencies": [
+        "TASK-003"
+      ]
     },
     {
       "id": "TASK-005",
       "objective": "Move option parsing, launch-prompt resolution, wiring, signal handling and exit-code selection into a CLI component in src/cli/, leaving src/cli.ts as a thin entry point that imports only src/cli/, replacing src/prompt.ts and the old cli.ts body.",
       "status": "completed",
-      "stories_enabled": ["US-007", "US-001"],
-      "acceptance_criteria_addressed": ["AC-024", "AC-025", "AC-026", "AC-004", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "stories_enabled": [
+        "US-007",
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-024",
+        "AC-025",
+        "AC-026",
+        "AC-004",
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-005"
+      ],
       "completion_criteria": [
         "The CLI validates options with today's messages and rules, help winning over everything; resolves the LaunchPrompt with today's rules and messages; gets the adapter from AgentRegistry; builds WorkflowOptions, a SessionExecutorFactory and a ConsoleReporter; subscribes the reporter; runs the WorkflowExecutor; and returns the exit code for the result of run(). The SessionExecutorFactory gets the AbortSignal triggered by SIGINT, SIGTERM or SIGHUP, and the grace period from AFK_TERMINATION_GRACE_MS (unset or invalid means the default).",
         "src/cli/ contains no retry, iteration or outcome policy. The only things it writes are help, version, commander errors and '[afk] input error: …'.",
@@ -124,14 +196,25 @@
         "The version lookup must resolve package.json correctly from the built location under dist/.",
         "Do not modify anything under test/integration/ or src/code.md."
       ],
-      "dependencies": ["TASK-004"]
+      "dependencies": [
+        "TASK-004"
+      ]
     },
     {
       "id": "TASK-006",
       "objective": "Guard the architecture automatically: unit tests that fail pnpm check on any upward import, any agent-specific knowledge outside src/agents/, or any leftover flat module from the old layout.",
       "status": "completed",
-      "stories_enabled": ["US-008", "US-002"],
-      "acceptance_criteria_addressed": ["AC-027", "AC-028", "AC-007", "AC-002", "AC-003"],
+      "stories_enabled": [
+        "US-008",
+        "US-002"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-027",
+        "AC-028",
+        "AC-007",
+        "AC-002",
+        "AC-003"
+      ],
       "completion_criteria": [
         "A unit test reads every relative import in every .ts file under src/. It fails if: a module imports from a higher layer in the order cli, workflow, session, agents; src/reporter/ imports anything other than workflow event and observer types; src/cli.ts imports anything outside src/cli/; or code outside src/agents/ imports anything from src/agents/ other than the AgentAdapter module and AgentRegistry.",
         "A unit test searches every .ts file under src/ outside src/agents/ and fails if it finds an agent name, an agent executable, an agent flag (at least --output-last-message, --approve-for-me, --permission-mode, --output-format) or an agent output-format field.",
@@ -143,14 +226,23 @@
         "Use only the existing toolchain (vitest, node built-ins); do not add dependencies.",
         "Do not modify anything under test/integration/ or src/code.md."
       ],
-      "dependencies": ["TASK-005"]
+      "dependencies": [
+        "TASK-005"
+      ]
     },
     {
       "id": "TASK-007",
       "objective": "Update doc/ARCHITECTURE.md, AGENTS.md, doc/PRODUCT.md, doc/TESTING.md, doc/CONVENTIONS.md and doc/SECURITY.md so every component, package, event, file, constant and test reference matches the refactored code.",
-      "status": "pending",
-      "stories_enabled": ["US-009"],
-      "acceptance_criteria_addressed": ["AC-029", "AC-030", "AC-031", "AC-002"],
+      "status": "completed",
+      "stories_enabled": [
+        "US-009"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-029",
+        "AC-030",
+        "AC-031",
+        "AC-002"
+      ],
       "completion_criteria": [
         "doc/ARCHITECTURE.md has none of the typos listed in AC-029, and its prose has no other spelling errors. It uses WorkflowStep (not WorkflowExecutionStep), agents/ (not agent/ or adapter/) and reporter (not reporting). SessionResult lists the kinds implemented, including exited unsuccessfully. WorkflowStepResult lists only the implemented fields and says the specification and verification-findings paths are left out (A1). The CLI is described as getting the terminal result from WorkflowExecutor.run(), not as a WorkflowObserver. Every event and component name appears in src/ exactly as written.",
         "The AGENTS.md Map table lists src/cli.ts, src/cli/, src/workflow/, src/session/, src/agents/, src/reporter/, src/code.md and the test folders, each with an accurate description. No listed path is missing. The Must-knows no longer refer to the runner or other removed modules.",
@@ -162,14 +254,59 @@
         "Documentation only: do not change behavior, src/, test/integration/ or src/code.md.",
         "Keep the product contract in doc/PRODUCT.md unchanged except for the references to code locations."
       ],
-      "dependencies": ["TASK-006"]
+      "dependencies": [
+        "TASK-006"
+      ]
     },
     {
       "id": "TASK-008",
       "objective": "Validate that the finished refactoring satisfies every acceptance criterion, preserves all observable behavior and leaves the documentation accurate.",
       "status": "pending",
-      "stories_enabled": ["US-001", "US-002", "US-003", "US-004", "US-005", "US-006", "US-007", "US-008", "US-009"],
-      "acceptance_criteria_addressed": ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005", "AC-006", "AC-007", "AC-008", "AC-009", "AC-010", "AC-011", "AC-012", "AC-013", "AC-014", "AC-015", "AC-016", "AC-017", "AC-018", "AC-018a", "AC-019", "AC-020", "AC-021", "AC-022", "AC-023", "AC-024", "AC-025", "AC-026", "AC-027", "AC-028", "AC-029", "AC-030", "AC-031"],
+      "stories_enabled": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006",
+        "US-007",
+        "US-008",
+        "US-009"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "AC-006",
+        "AC-007",
+        "AC-008",
+        "AC-009",
+        "AC-010",
+        "AC-011",
+        "AC-012",
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-016",
+        "AC-017",
+        "AC-018",
+        "AC-018a",
+        "AC-019",
+        "AC-020",
+        "AC-021",
+        "AC-022",
+        "AC-023",
+        "AC-024",
+        "AC-025",
+        "AC-026",
+        "AC-027",
+        "AC-028",
+        "AC-029",
+        "AC-030",
+        "AC-031"
+      ],
       "completion_criteria": [
         "The implementation notes record, for every acceptance criterion from AC-001 to AC-031 (including AC-018a), the evidence that verifies it: a test, a command and its output, or a file inspection.",
         "git diff 3f42e29 -- test/integration and git diff 3f42e29 -- src/code.md both print nothing.",
@@ -180,7 +317,9 @@
       "constraints": [
         "Read-only apart from bookkeeping files (this plan and its implementation notes); temporary experiments must be reverted before finishing."
       ],
-      "dependencies": ["TASK-007"]
+      "dependencies": [
+        "TASK-007"
+      ]
     }
   ]
 }

@@ -107,3 +107,20 @@
 - Scope deviations: none. No subagent review run (test-only change).
 - Follow up needed: none.
 ---
+
+## 2026-11-04 (TASK-007)
+- Task id: TASK-007
+- What was implemented:
+  - doc/ARCHITECTURE.md: all typos fixed (Workflow*, Occurred, session/, prose spelling); `WorkflowStep`, `agents/`, `reporter/` names; SessionResult lists the seven implemented kinds; WorkflowStepResult lists only implemented fields and states spec/verification-findings paths are left out (A1); CLI is described as using the terminal result returned by `WorkflowExecutor.run()`, not as an observer; package list updated.
+  - AGENTS.md Map table now lists src/cli.ts, src/cli/, src/workflow/, src/session/, src/agents/, src/reporter/, src/code.md and test folders; Must-knows refer to the architecture guard instead of the runner.
+  - doc/PRODUCT.md (nonce in `src/workflow/coding-step.ts`, `EXIT_CODES` in `src/cli/exit-codes.ts`), doc/TESTING.md (unit test files for workflow/step/session/reporter/cli/architecture; `AGENT_NAMES` literal).
+- Files changed: doc/ARCHITECTURE.md, AGENTS.md, doc/PRODUCT.md, doc/TESTING.md, plan.json, this file.
+- Verification:
+  - Scripted check of every backticked `src/`/`test/` path in AGENTS.md and doc/*.md (skipping `<name>`/glob placeholders): no missing path.
+  - `grep -nE "Worf|Occured|Interruped|FaileInv|adapter/|agent/|reporting|ExecutionStep" doc/ARCHITECTURE.md` prints nothing.
+  - grep for runner/protocol/prompt.ts/reporter.ts/runAfk/agentNames in docs: nothing left.
+  - `pnpm check` exit 0 (prettier included); README untouched so agent-neutral-docs and help tests unaffected.
+- Learnings for future iterations: none new.
+- Scope deviations: none (docs only).
+- Follow up needed: none.
+---

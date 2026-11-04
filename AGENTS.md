@@ -18,22 +18,21 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 
 ## Map
 
-| Path                         | What lives there                                                                   |
-| ---------------------------- | ---------------------------------------------------------------------------------- |
-| `README.md`                  | User-facing usage, options, supported agents and how each is launched              |
-| `src/cli.ts`                 | Entry point: options (commander), wiring, signals, exit code                       |
-| `src/runner.ts`              | Run loop policy: iterations, retry-once, outcome handling, error classification    |
-| `src/session.ts`             | Spawns one agent process; stdin prompt, stdout capture, stderr tail, timeout/abort |
-| `src/protocol.ts`            | Session prompt assembly and final-response parser (nonce result block)             |
-| `src/code.md`                | Instructions appended to every session prompt — a contract with the agent          |
-| `src/agents/`                | One adapter per agent + `registry.ts`                                              |
-| `src/reporter.ts`            | Exit codes, `[afk]` status wording                                                 |
-| `src/prompt.ts`              | Resolves the single launch prompt (arg / `--prompt-file` / stdin)                  |
-| `test/unit/`                 | Unit tests for source functions and static documentation checks                    |
-| `test/integration/`          | CLI integration tests that spawn `dist/cli.js` against fake agents                 |
-| `test/integration/support/`  | Helpers shared by CLI integration tests                                            |
-| `test/integration/fixtures/` | Fake-agent executables used by integration tests                                   |
-| `specs/`                     | Feature specs, designs, plans, progress logs; finished features in `specs/_done/`  |
+| Path                         | What lives there                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `README.md`                  | User-facing usage, options, supported agents and how each is launched             |
+| `src/cli.ts`                 | Thin entry point: shebang, runs the CLI, exits with its code                      |
+| `src/cli/`                   | CLI: options (commander), launch prompt, wiring, signals, `EXIT_CODES`            |
+| `src/workflow/`              | `WorkflowExecutor` (iteration policy, events), `CodingStep`, result-block parser  |
+| `src/session/`               | `SessionExecutorFactory`, `SessionExecutor` (one agent process), `SessionResult`  |
+| `src/agents/`                | `AgentAdapter`, one adapter per agent, `AgentRegistry`                            |
+| `src/reporter/`              | `ConsoleReporter`: `[afk]` status lines from workflow events                      |
+| `src/code.md`                | Instructions appended to every session prompt — a contract with the agent         |
+| `test/unit/`                 | Unit tests for source functions and static documentation checks                   |
+| `test/integration/`          | CLI integration tests that spawn `dist/cli.js` against fake agents                |
+| `test/integration/support/`  | Helpers shared by CLI integration tests                                           |
+| `test/integration/fixtures/` | Fake-agent executables used by integration tests                                  |
+| `specs/`                     | Feature specs, designs, plans, progress logs; finished features in `specs/_done/` |
 
 ## Read before you change…
 
@@ -51,5 +50,5 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 - `src/code.md` is copied to `dist/` by the build script and is excluded from prettier. Its example block
   `<afk-harness-result nonce="{{NONCE}}">` is load-bearing: the fake agents read the session nonce from it, so changing
   or removing it breaks every integration test.
-- Keep the runner, session, and reporter agent-neutral: agent-specific knowledge belongs only in `src/agents/<name>.ts`.
+- Keep `src/workflow/`, `src/session/`, `src/reporter/` and `src/cli/` agent-neutral (enforced by `test/unit/architecture.test.ts`): agent-specific knowledge belongs only in `src/agents/<name>.ts`.
 - Never add a full-access / permission-bypass mode for any agent.
