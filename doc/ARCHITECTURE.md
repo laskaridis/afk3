@@ -17,16 +17,16 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 - Acts as the main user interface and trigger point for the workflow.
 - Uses `agent/AgentRegistry` to retrieve the concrete `agent/AgentAdapter` for the agent specified by the user.
-- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporter/Reporter`.
+- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporting/Reporter`.
 - Instantiates `workflow/WorfklowExecutor` and wires all its dependencies.
 - Observes `workflow/WorfklowExecutor`.
-- Instantiates a concrete `reporter/Reporter` that observes `workflow/WorkflowExecutor`.
+- Instantiates a concrete `reporting/Reporter` that observes `workflow/WorkflowExecutor`.
 - Executes the workflow lifecycle.
 
 **Collaborators:**
 
 - Creates `workflow/WorkflowOptions`
-- Creates concrete `reporter/Reporter`
+- Creates concrete `reporting/Reporter`
 - Creates `workflow/LaunchPrompt`
 - Creates `session/SessionExecutorFactory`
 - Retrieves concrete `agent/AgentAdapter` from `agent/AgentRegistry`
@@ -123,9 +123,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
   - Failure details - if Failed
   - Unblocking condintion - if Blocked.
   - Task ID
-  - Specification file path.
   - Task list plan file path.
-  - Verification findings file path
 
 **Colaborators:**
 
@@ -141,7 +139,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 **Collaborators:**
 
 - Implemented by `cli/CLI`
-- Implemented by `reporter/Reporter`
+- Implemented by `reporting/Reporter`
 - Used by `workflow/WorkflowExecutor` to notify observers about `workflow/WorkflowEvent`s.
 
 ### `workflow/WorkflowEvent` (value class)
@@ -155,7 +153,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
   - Iteration number and the configured iteration limit.
   - Name of the step being executed.
   - Step outcome details from the `workflow/WorkflowStepResult`: task ID, failure details, unblocking condition,
-    and the specification, task list plan and verification findings file paths.
+    and the task list plan file path.
   - Session failure details, for `SessionExecutionErrorOccured`.
   - Timeout and interruption details, for `WorkflowTimedOut` and `WorkflowInterrupted`.
 - Is a one-way notification: observers cannot change workflow control flow through an event.
@@ -199,10 +197,10 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 - Communicate back to the caller the result of a session's execution:
   - `LaunchFailed`
   - `TimedOut`
-  - `Interruped`
-  - `FailMissingResponse`
-  - `FaileInvalidResponse`
+  - `Interrupted`
+  - `ExecutionFailed`
   - `Success`
+- `ExecutionFailed` covers every case where the session ran but produced no trustworthy final message: terminated by a signal, an agent-reported error, a non-zero exit code, or a missing or invalid final message. It carries the failure detail and the stderr tail.
 - Encapsulates all neccessary state that the call needs to interpret correctly the result of an execution.
 
 **Collaborators:**
@@ -238,7 +236,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 - Used by `CLI` to retrieve the concrete `agent/AgentAdapter` specified from the user by name
 
-## `reporter/Reporter` (interface)
+## `reporting/Reporter` (interface)
 
 **Responsibilities:**
 
@@ -251,7 +249,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 **Concrete implementations**:
 
-- `reporter/ConsoleReporter` to report harness progrees in the console.
+- `reporting/ConsoleReporter` to report harness progrees in the console.
 
 ## Top-level module packages
 

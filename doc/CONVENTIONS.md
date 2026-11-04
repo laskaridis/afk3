@@ -10,7 +10,7 @@
 
 ## Code style
 
-- Small, flat modules with named exports; no classes except tiny private helpers (`TailBuffer`). No default exports.
+- Small, focused modules with named exports. No default exports.
 - Model results as discriminated unions (`kind: "…"`, or shape-discriminated like `{ message } | { missing: true }`)
   and narrow with `"key" in value` / `switch`. Exhaustive `switch` with no `default`.
 - Errors that are expected are returned as values (`{ ok: false, message }`, `{ violation }`), not thrown. Option

@@ -1,0 +1,186 @@
+{
+  "specification_document": "specs/refactor-architecture.spec.md",
+  "design_document": "specs/refactor-architecture.design.md",
+  "context_documents": [
+    {
+      "path": "doc/ARCHITECTURE.md",
+      "purpose": "Defines the target components, packages, responsibilities, collaborators and workflow events that the refactored code must implement and that the documentation task must correct to match the code."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "objective": "Reshape src/agents/ into an AgentAdapter interface, CodexAdapter, ClaudeAdapter and an AgentRegistry that returns the adapter for a name, lists supported names and names the default agent, with every caller moved to the new API and agents/types.ts removed.",
+      "status": "pending",
+      "stories_enabled": ["US-002", "US-001"],
+      "acceptance_criteria_addressed": ["AC-006", "AC-007", "AC-008", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "completion_criteria": [
+        "src/agents/ contains the AgentAdapter interface (with its input and final-message result types declared in the same module), CodexAdapter, ClaudeAdapter and AgentRegistry; src/agents/types.ts no longer exists.",
+        "AgentRegistry, given 'codex' or 'claude', returns the matching adapter. It lists supported names in today's order (codex, claude) and reports 'codex' as the default. Unit tests in test/unit/agents/ pin this.",
+        "Each adapter has its own unit test file in test/unit/agents/ that pins, for every combination of model and effort, the exact executable and argument list, and every final-message extraction case covered today (message, missing, invalid with reason, agent error with detail).",
+        "Every importer of the old registry exports (src/cli.ts, test/unit/agent-neutral-docs.test.ts and other unit tests) uses the AgentRegistry API; src/cli.ts still derives help text, --agent validation and the default from the registry.",
+        "Outside src/agents/, src/ imports only the AgentAdapter module and the AgentRegistry module from src/agents/.",
+        "git diff 3f42e29 -- test/integration src/code.md prints nothing.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "Adapter launch arguments, the permission flags (--approve-for-me, --permission-mode auto) and extraction behavior must stay byte-identical; never add a full-access or permission-bypass mode (doc/SECURITY.md).",
+        "Do not modify anything under test/integration/ or src/code.md."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-002",
+      "objective": "Move process handling into src/session/ as a SessionExecutorFactory that creates SessionExecutors which run one agent process and return a SessionResult classifying process- and adapter-level outcomes, replacing src/session.ts and the process/adapter half of runner.ts's classification.",
+      "status": "pending",
+      "stories_enabled": ["US-003", "US-001"],
+      "acceptance_criteria_addressed": ["AC-009", "AC-010", "AC-011", "AC-012", "AC-007", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "completion_criteria": [
+        "A SessionExecutorFactory created with an AbortSignal, an optional timeout in seconds and an optional termination grace period produces SessionExecutors that all use that same signal, timeout and grace period. A unit test shows this for at least two executors created from one factory.",
+        "SessionExecutor.execute, given a prompt, a cwd and an optional model and effort: spawns the adapter's executable with the adapter's arguments in that cwd; writes the prompt to stdin; captures stdout; keeps the last 20 stderr lines, including an unterminated final line; gives the adapter a fresh temp output-file path and removes the temp directory afterwards; escalates SIGINT, SIGTERM, SIGKILL at the grace interval on timeout or abort; does not spawn when the signal is already aborted; and gets the final message from the adapter.",
+        "SessionResult is a discriminated union with exactly these kinds: launch failed, timed out, interrupted, exited unsuccessfully, missing final message, invalid final message, success. Classification order is signal, then agent-reported error, then non-zero exit, then adapter-invalid, then missing. Unit tests pin each kind and each precedence case.",
+        "Failure kinds carry today's detail text: 'failed to launch agent: <message>'; 'agent exited unsuccessfully with signal <S>'; 'agent exited unsuccessfully (agent reported an error: <d>)' when the exit code is 0, otherwise 'agent exited unsuccessfully with exit code <n> (agent reported an error: <d>)'; 'agent exited unsuccessfully with exit code <n>'; 'agent final response is invalid: <reason>'; 'agent exited without a final response'. Every kind except launch failed, timed out and interrupted (success included) carries the stderr tail. Launch failed carries none.",
+        "Unit tests for SessionExecutorFactory, SessionExecutor and SessionResult classification live in test/unit/session/. src/session.ts and test/unit/session.test.ts are deleted, and none of their cases is lost.",
+        "Callers not migrated yet (runner.ts, src/cli.ts) consume the new SessionResult and factory. Stderr, exit codes and the stderr-tail rule are unchanged.",
+        "No file in src/session/ contains an agent name, executable, agent flag or agent output format.",
+        "git diff 3f42e29 -- test/integration src/code.md prints nothing.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "src/session/ may import from src/agents/ only the AgentAdapter module; it must not import from workflow/, reporter/ or cli/.",
+        "The child process is never detached, and afk's own stdin is never forwarded to the agent (doc/SECURITY.md).",
+        "Do not modify anything under test/integration/ or src/code.md."
+      ],
+      "dependencies": ["TASK-001"]
+    },
+    {
+      "id": "TASK-003",
+      "objective": "Introduce the WorkflowStep interface, the CodingStep implementation and WorkflowStepResult in src/workflow/, so that nonce generation, session prompt assembly and result-block parsing sit in one place and every SessionResult or parsed block maps to a step outcome, replacing src/protocol.ts.",
+      "status": "pending",
+      "stories_enabled": ["US-004", "US-001"],
+      "acceptance_criteria_addressed": ["AC-013", "AC-014", "AC-015", "AC-016", "AC-001", "AC-002", "AC-003", "AC-004", "AC-005"],
+      "completion_criteria": [
+        "Each time CodingStep executes, it generates a fresh nonce. It passes the SessionExecutor a session prompt equal to the launch prompt, a blank line, '---', then code.md with every {{NONCE}} replaced by that nonce, then a trailing newline, byte-identical to today's buildSessionPrompt.",
+        "CodingStep parses only the last complete <afk-harness-result> block carrying its own nonce. Blocks with another nonce and echoed examples are ignored.",
+        "WorkflowStepResult outcomes are Continue (repeat), Finished (complete), StepFailed (fail, failure summary), Blocked (blocked, blocker text), SessionFailed (launch failed, exited unsuccessfully, missing or invalid final message, or contract violation), Timeout and Interrupted. task_id and task_plan_file are carried as parsed. Unit tests in test/unit/workflow/ pin every row of the AC-014 table using a stubbed SessionExecutor.",
+        "A contract violation yields SessionFailed with detail 'agent final response is invalid: <violation>' and the session's stderr tail. SessionFailed from a SessionResult carries that result's detail and stderr tail, with an empty tail for launch failed.",
+        "Every case in test/unit/protocol.test.ts and the classification and nonce cases in test/unit/runner.test.ts at commit 3f42e29 has an equivalent unit test at the step or session layer with identical detail text. The implementation notes record the mapping.",
+        "src/protocol.ts and test/unit/protocol.test.ts are deleted. runner.ts runs one CodingStep per iteration and no longer generates nonces, builds prompts or parses result blocks. src/cli.ts no longer builds the session prompt.",
+        "code.md is read relative to the reading module, so it resolves to src/code.md under unit tests and to dist/code.md in the built CLI. After pnpm build, dist/code.md is byte-identical to src/code.md.",
+        "git diff 3f42e29 -- test/integration src/code.md prints nothing.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "Do not add result-block fields or change the protocol or src/code.md (A1, A2); dist/code.md must stay where the build script copies it.",
+        "src/workflow/ may import from src/session/ and from src/agents/ only the AgentAdapter module and AgentRegistry; it must not import from reporter/ or cli/.",
+        "Do not modify anything under test/integration/."
+      ],
+      "dependencies": ["TASK-002"]
+    },
+    {
+      "id": "TASK-004",
+      "objective": "Replace runner.ts and the formatting in reporter.ts with a WorkflowExecutor that applies today's run policy, publishes every WorkflowEvent from doc/ARCHITECTURE.md to WorkflowObservers and returns the terminal result, plus a ConsoleReporter in src/reporter/ that turns those events into today's exact [afk] stderr lines.",
+      "status": "pending",
+      "stories_enabled": ["US-005", "US-006", "US-001"],
+      "acceptance_criteria_addressed": ["AC-017", "AC-018", "AC-018a", "AC-019", "AC-020", "AC-021", "AC-022", "AC-023", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "completion_criteria": [
+        "WorkflowExecutor is created with WorkflowOptions (adapter, model, reasoning effort, max iterations, session timeout, cwd), a LaunchPrompt and a SessionExecutorFactory. It creates one SessionExecutor and one CodingStep per iteration.",
+        "Policy: Continue and StepFailed start the next iteration. Finished, Blocked, Timeout and Interrupted stop immediately. After a SessionFailed one retry is allowed; a second consecutive SessionFailed ends with WorkflowFailed. Any other outcome resets the allowance. Retries count toward the limit. A SessionFailed on the last iteration with no previous error ends with MaxIterationsReached.",
+        "Events are immutable values with a 'type' discriminator and the names WorkflowStarted, IterationStarted, StepExecutionStarted, StepExecutionFinished, StepExecutionFailed, StepExecutionBlocked, StepExecutionRetried, SessionExecutionErrorOccurred, IterationFinished, WorkflowFinished, WorkflowInterrupted, WorkflowBlocked, WorkflowFailed, WorkflowTimedOut and MaxIterationsReached, all spelled correctly. They are published in the order given in the design's 'Event sequence' section. On a retry iteration both IterationStarted and StepExecutionRetried are published.",
+        "run() returns the terminal event, and observers receive exactly one terminal event, the same one. Terminal events carry the data their reporting and exit code need: the iteration limit, failure detail and stderr tail, blocker text, the configured timeout in seconds, and task metadata.",
+        "Observers cannot change control flow: the executor ignores observer return values, and a unit test shows that an observer which mutates or returns values has no effect on the run.",
+        "test/unit/workflow/ uses a recording observer to cover the policy and the full event sequence for: complete; blocked; fail then complete; iteration limit; retry recovers; two consecutive session failures; timeout; interruption; and a session failure on the last iteration.",
+        "ConsoleReporter writes exactly today's lines to its injected sink: the iteration line for a non-retry IterationStarted; the retry line using the configured limit; 'Task failure: …'; 'Execution error: …' followed by each stderr-tail line; and the final status line for each terminal event, with none for WorkflowFailed. It writes nothing for any other event. test/unit/reporter/ pins every event's output.",
+        "src/reporter/ imports only workflow event and observer types and no node module that writes output. No other module in src/ writes run-time [afk] status lines.",
+        "EXIT_CODES, the exit-code help text and the mapping from terminal result to exit code (0, 1, 3, 4, 5, 130) move to src/cli/. src/runner.ts, src/reporter.ts, test/unit/runner.test.ts and test/unit/reporter.test.ts are deleted; every policy case in runner.test.ts at 3f42e29 has an equivalent in test/unit/workflow/.",
+        "src/cli.ts wires the WorkflowExecutor, subscribes a ConsoleReporter writing to stderr, and exits with the code for the result of run(). It no longer formats run-time status lines.",
+        "git diff 3f42e29 -- test/integration src/code.md prints nothing.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "Stderr must stay byte-identical for every scenario in test/integration/, including the stderr-tail rule (never after launch failure), the configured seconds in the timeout line, and no final line for WorkflowFailed.",
+        "Do not introduce a WorkflowDefinition separate from WorkflowExecutor.",
+        "Do not modify anything under test/integration/ or src/code.md."
+      ],
+      "dependencies": ["TASK-003"]
+    },
+    {
+      "id": "TASK-005",
+      "objective": "Move option parsing, launch-prompt resolution, wiring, signal handling and exit-code selection into a CLI component in src/cli/, leaving src/cli.ts as a thin entry point that imports only src/cli/, replacing src/prompt.ts and the old cli.ts body.",
+      "status": "pending",
+      "stories_enabled": ["US-007", "US-001"],
+      "acceptance_criteria_addressed": ["AC-024", "AC-025", "AC-026", "AC-004", "AC-001", "AC-002", "AC-003", "AC-005"],
+      "completion_criteria": [
+        "The CLI validates options with today's messages and rules, help winning over everything; resolves the LaunchPrompt with today's rules and messages; gets the adapter from AgentRegistry; builds WorkflowOptions, a SessionExecutorFactory and a ConsoleReporter; subscribes the reporter; runs the WorkflowExecutor; and returns the exit code for the result of run(). The SessionExecutorFactory gets the AbortSignal triggered by SIGINT, SIGTERM or SIGHUP, and the grace period from AFK_TERMINATION_GRACE_MS (unset or invalid means the default).",
+        "src/cli/ contains no retry, iteration or outcome policy. The only things it writes are help, version, commander errors and '[afk] input error: …'.",
+        "src/cli.ts keeps its shebang, imports only from src/cli/, exits with the returned code, and on an unexpected error prints '[afk] <message>' and exits 2.",
+        "test/unit/cli/ covers option parsing (every invalid value in today's cli.test.ts), launch-prompt resolution (every case in today's prompt.test.ts), the mapping from every terminal result to its exit code, signal wiring, and the thin entry point. src/prompt.ts, test/unit/prompt.test.ts and test/unit/cli.test.ts are deleted.",
+        "After pnpm build, dist/cli.js is executable and is the bin entry, 'afk --version' prints the package.json version, and dist/code.md is byte-identical to src/code.md.",
+        "git diff 3f42e29 -- test/integration src/code.md prints nothing.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "Help text, option names and defaults, input-error wording and exit codes must stay byte-identical.",
+        "The version lookup must resolve package.json correctly from the built location under dist/.",
+        "Do not modify anything under test/integration/ or src/code.md."
+      ],
+      "dependencies": ["TASK-004"]
+    },
+    {
+      "id": "TASK-006",
+      "objective": "Guard the architecture automatically: unit tests that fail pnpm check on any upward import, any agent-specific knowledge outside src/agents/, or any leftover flat module from the old layout.",
+      "status": "pending",
+      "stories_enabled": ["US-008", "US-002"],
+      "acceptance_criteria_addressed": ["AC-027", "AC-028", "AC-007", "AC-002", "AC-003"],
+      "completion_criteria": [
+        "A unit test reads every relative import in every .ts file under src/. It fails if: a module imports from a higher layer in the order cli, workflow, session, agents; src/reporter/ imports anything other than workflow event and observer types; src/cli.ts imports anything outside src/cli/; or code outside src/agents/ imports anything from src/agents/ other than the AgentAdapter module and AgentRegistry.",
+        "A unit test searches every .ts file under src/ outside src/agents/ and fails if it finds an agent name, an agent executable, an agent flag (at least --output-last-message, --approve-for-me, --permission-mode, --output-format) or an agent output-format field.",
+        "A unit test asserts that src/runner.ts, src/session.ts, src/protocol.ts, src/reporter.ts, src/prompt.ts and src/agents/types.ts do not exist. test/unit/ contains no test importing a removed module.",
+        "Temporarily adding an upward import (for example from src/session/ to src/workflow/) and an agent flag outside src/agents/ makes the respective tests fail. The experiment is reverted and recorded in the implementation notes.",
+        "pnpm check exits 0 and pnpm test:coverage exits 0 with 100% coverage for every file under src/."
+      ],
+      "constraints": [
+        "Use only the existing toolchain (vitest, node built-ins); do not add dependencies.",
+        "Do not modify anything under test/integration/ or src/code.md."
+      ],
+      "dependencies": ["TASK-005"]
+    },
+    {
+      "id": "TASK-007",
+      "objective": "Update doc/ARCHITECTURE.md, AGENTS.md, doc/PRODUCT.md, doc/TESTING.md, doc/CONVENTIONS.md and doc/SECURITY.md so every component, package, event, file, constant and test reference matches the refactored code.",
+      "status": "pending",
+      "stories_enabled": ["US-009"],
+      "acceptance_criteria_addressed": ["AC-029", "AC-030", "AC-031", "AC-002"],
+      "completion_criteria": [
+        "doc/ARCHITECTURE.md has none of the typos listed in AC-029, and its prose has no other spelling errors. It uses WorkflowStep (not WorkflowExecutionStep), agents/ (not agent/ or adapter/) and reporter (not reporting). SessionResult lists the kinds implemented, including exited unsuccessfully. WorkflowStepResult lists only the implemented fields and says the specification and verification-findings paths are left out (A1). The CLI is described as getting the terminal result from WorkflowExecutor.run(), not as a WorkflowObserver. Every event and component name appears in src/ exactly as written.",
+        "The AGENTS.md Map table lists src/cli.ts, src/cli/, src/workflow/, src/session/, src/agents/, src/reporter/, src/code.md and the test folders, each with an accurate description. No listed path is missing. The Must-knows no longer refer to the runner or other removed modules.",
+        "In doc/PRODUCT.md, doc/TESTING.md, doc/CONVENTIONS.md and doc/SECURITY.md, every source file, module, constant and unit-test file referenced exists, including where the nonce is generated, where EXIT_CODES lives and which unit tests drive the workflow and step. A scripted check of every backticked src/ or test/ path in these docs and AGENTS.md, recorded in the notes, finds no missing path.",
+        "README.md help and agent content still satisfies test/unit/agent-neutral-docs.test.ts and the integration help tests.",
+        "pnpm check exits 0, prettier included."
+      ],
+      "constraints": [
+        "Documentation only: do not change behavior, src/, test/integration/ or src/code.md.",
+        "Keep the product contract in doc/PRODUCT.md unchanged except for the references to code locations."
+      ],
+      "dependencies": ["TASK-006"]
+    },
+    {
+      "id": "TASK-008",
+      "objective": "Validate that the finished refactoring satisfies every acceptance criterion, preserves all observable behavior and leaves the documentation accurate.",
+      "status": "pending",
+      "stories_enabled": ["US-001", "US-002", "US-003", "US-004", "US-005", "US-006", "US-007", "US-008", "US-009"],
+      "acceptance_criteria_addressed": ["AC-001", "AC-002", "AC-003", "AC-004", "AC-005", "AC-006", "AC-007", "AC-008", "AC-009", "AC-010", "AC-011", "AC-012", "AC-013", "AC-014", "AC-015", "AC-016", "AC-017", "AC-018", "AC-018a", "AC-019", "AC-020", "AC-021", "AC-022", "AC-023", "AC-024", "AC-025", "AC-026", "AC-027", "AC-028", "AC-029", "AC-030", "AC-031"],
+      "completion_criteria": [
+        "The implementation notes record, for every acceptance criterion from AC-001 to AC-031 (including AC-018a), the evidence that verifies it: a test, a command and its output, or a file inspection.",
+        "git diff 3f42e29 -- test/integration and git diff 3f42e29 -- src/code.md both print nothing.",
+        "pnpm check and pnpm test:coverage exit 0. pnpm test:integration passes three consecutive times without a flaky failure.",
+        "After a clean build (dist/ removed first), dist/cli.js is the executable bin entry and dist/code.md is byte-identical to src/code.md.",
+        "Any gap or defect found becomes a follow-up task in this plan instead of being fixed inside this task."
+      ],
+      "constraints": [
+        "Read-only apart from bookkeeping files (this plan and its implementation notes); temporary experiments must be reverted before finishing."
+      ],
+      "dependencies": ["TASK-007"]
+    }
+  ]
+}
