@@ -2,9 +2,9 @@ import { AgentRegistry } from "../agents/registry.js";
 import { ConsoleReporter } from "../reporter/console-reporter.js";
 import { SessionExecutorFactory } from "../session/session-executor-factory.js";
 import { WorkflowExecutor } from "../workflow/workflow-executor.js";
-import { EXIT_CODES, exitCodeFor } from "./exit-codes.js";
+import { EXIT_CODES, exitCodeFor } from "./cli-exit-codes.js";
 import { resolvePrompt } from "./launch-prompt.js";
-import { parseOptions } from "./options.js";
+import { parseOptions } from "./cli-options.js";
 
 async function readAllStdin(): Promise<string> {
   process.stdin.setEncoding("utf8");

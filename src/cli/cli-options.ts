@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import type { AgentRegistry } from "../agents/registry.js";
 import { DEFAULT_MAX_ITERATIONS } from "../workflow/workflow-executor.js";
-import { EXIT_CODES, formatExitCodeHelp } from "./exit-codes.js";
+import { EXIT_CODES, formatExitCodeHelp } from "./cli-exit-codes.js";
 
 const MAX_TIMER_MS = 2 ** 31 - 1;
 

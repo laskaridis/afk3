@@ -40,7 +40,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 - stdout is empty during a run (help and `--version` only). All status goes to stderr as `[afk] …` lines.
 - Agent stdout/stderr are captured, never streamed. No heartbeat lines.
 - Wording is agent-neutral ("agent session", "the coding agent") and identical across agents; tests assert it.
-- Exit codes and their meanings are defined once in `src/cli/exit-codes.ts` (`EXIT_CODES`, shown by `afk --help`). They are
+- Exit codes and their meanings are defined once in `src/cli/cli-exit-codes.ts` (`EXIT_CODES`, shown by `afk --help`). They are
   part of the user contract: don't renumber them.
 - `--help` / `-h` wins over every other option and over prompt input.
 
