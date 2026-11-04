@@ -38,19 +38,17 @@ export class CLI {
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(signal, () => interruption.abort());
 
     const graceMs = Number(process.env.AFK_TERMINATION_GRACE_MS) || undefined;
-    const factory = new SessionExecutorFactory(interruption.signal, options.sessionTimeout, graceMs);
-    const workflow = new WorkflowExecutor(
-      {
-        adapter: this.registry.get(options.agent)!,
-        model: options.model,
-        effort: options.reasoningEffort,
-        maxIterations: options.maxIterations,
-        sessionTimeoutSeconds: options.sessionTimeout,
-        cwd: options.cwd,
-      },
-      { text: resolved.prompt },
-      factory,
-    );
+    const sessionFactory = new SessionExecutorFactory(interruption.signal, options.sessionTimeout, graceMs);
+    const workflowOptions = {
+      adapter: this.registry.get(options.agent)!,
+      model: options.model,
+      effort: options.reasoningEffort,
+      maxIterations: options.maxIterations,
+      sessionTimeoutSeconds: options.sessionTimeout,
+      cwd: options.cwd,
+    };
+    const launchPrompt = { text: resolved.prompt };
+    const workflow = new WorkflowExecutor(workflowOptions, launchPrompt, sessionFactory);
     workflow.subscribe(new ConsoleReporter(process.stderr));
     return exitCodeFor(await workflow.run());
   }
