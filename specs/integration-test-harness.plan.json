@@ -6,7 +6,7 @@
     {
       "id": "TASK-001",
       "objective": "Make the integration suite depend only on the built CLI and the documented test contracts, so that restructuring src/ cannot break it while behavior is unchanged.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": [
         "US-001"
       ],

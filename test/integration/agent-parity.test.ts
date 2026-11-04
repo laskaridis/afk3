@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { agentNames } from "../../src/agents/registry.js";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+
+const AGENT_NAMES = ["codex", "claude"];
 
 /** `finalMessage` is rendered by each agent's fake in that agent's own output format. */
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
@@ -120,7 +121,7 @@ async function runScenario(agent: string, scenario: Scenario) {
   return { run, invocations: fake.invocations() };
 }
 
-describe.each(agentNames())("shared harness behavior: %s", (agent) => {
+describe.each(AGENT_NAMES)("shared harness behavior: %s", (agent) => {
   it.each(scenarios)("$name", async (scenario) => {
     const { run, invocations } = await runScenario(agent, scenario);
     expect(run.exitCode).toBe(scenario.exitCode);
@@ -136,7 +137,7 @@ describe.each(agentNames())("shared harness behavior: %s", (agent) => {
 
 describe("identical behavior across agents", () => {
   it.each(scenarios)("$name", async (scenario) => {
-    const results = await Promise.all(agentNames().map((agent) => runScenario(agent, scenario)));
+    const results = await Promise.all(AGENT_NAMES.map((agent) => runScenario(agent, scenario)));
     const [first, ...rest] = results;
     for (const other of rest) {
       expect(other.run.exitCode).toBe(first!.run.exitCode);

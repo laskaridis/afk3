@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EXIT_CODES } from "../../src/reporter.js";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
@@ -38,7 +37,7 @@ describe("afk --help", () => {
 
     const section = run.stdout.split("Exit codes:")[1] ?? "";
     const listed = [...section.matchAll(/^\s+(\d+)\s+\S/gm)].map((match) => Number(match[1]));
-    expect(listed.sort((a, b) => a - b)).toEqual(Object.values(EXIT_CODES).sort((a, b) => a - b));
+    expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 130]);
   });
 
   it("takes precedence over invalid options and prompt input", async () => {

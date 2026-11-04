@@ -44,7 +44,21 @@ fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
 - `fake-claude.mjs` sets `FAKE_AGENT_FORMAT=claude` and reuses `fake-codex.mjs`; `finalMessage` then emits Claude's JSON
   result on stdout instead of writing the `--output-last-message` file.
 - For timeout/interrupt tests pass `AFK_TERMINATION_GRACE_MS` (e.g. `"300"`) in `env` to keep them fast.
-- `withoutNonce(prompt)` masks the nonce when comparing prompts across sessions.
+- `withoutNonce(prompt)` masks the nonce announced in the prompt's result-block example when comparing prompts across sessions.
+- `expectedSessionPrompt(launchPrompt, recordedPrompt)` builds the exact prompt a session must receive from `dist/code.md`.
+
+## Contracts the integration suite relies on
+
+Beyond the public CLI (`dist/cli.js`, its arguments, environment, stdio, exit codes, and the files and processes it touches),
+integration tests depend on these contracts. Tests import nothing from `src/`; agent names, the default agent, and exit
+codes are literal values. If a refactoring changes one of these, update the suite in the same change.
+
+- `AFK_TERMINATION_GRACE_MS`: environment variable that shortens the SIGINT-to-SIGTERM grace period in termination scenarios.
+- `dist/code.md`: the shipped instructions file. Session prompts are compared exactly against the launch prompt, the
+  `---` separator, and this file with `{{NONCE}}` replaced (`expectedSessionPrompt` in `helpers.ts`).
+- The result-block example `<afk-harness-result nonce="…">` in the session prompt: the fake agents and `withoutNonce`
+  read the session nonce from it, whatever its length or alphabet.
+- Codex's `--output-last-message` file: how the Codex fake agent delivers the final message (stdout is ignored).
 
 ## Conventions
 

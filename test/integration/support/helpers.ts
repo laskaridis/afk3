@@ -18,8 +18,27 @@ export type Step =
   | { ignoreSignals: true }
   | { exit: number };
 
-/** The session prompt with its per-session nonce masked, for comparing prompts across sessions. */
-export const withoutNonce = (prompt: string) => prompt.replaceAll(/nonce[=,] ?[`"]?[0-9a-f]{8}/g, "nonce=<nonce>");
+const NONCE_EXAMPLE = /<afk-harness-result nonce="([^"]+)">/;
+
+/** The nonce a session prompt announces in its result-block example, or undefined if there is none. */
+export const promptNonce = (prompt: string) => NONCE_EXAMPLE.exec(prompt)?.[1];
+
+/** The session prompt with its per-session nonce masked, for comparing prompts across sessions. Any nonce shape works. */
+export function withoutNonce(prompt: string) {
+  const nonce = promptNonce(prompt);
+  return nonce === undefined ? prompt : prompt.replaceAll(nonce, "<nonce>");
+}
+
+/**
+ * The prompt a session must receive: the launch prompt verbatim, a blank line, `---`, then the shipped instructions
+ * (`dist/code.md`) with `{{NONCE}}` replaced by the session's nonce, and a trailing newline.
+ */
+export function expectedSessionPrompt(launchPrompt: string, recordedPrompt: string) {
+  const nonce = promptNonce(recordedPrompt);
+  if (nonce === undefined) throw new Error("recorded prompt has no result-block example to read the nonce from");
+  const instructions = readFileSync(join(repoRoot, "dist", "code.md"), "utf8").replaceAll("{{NONCE}}", nonce);
+  return `${launchPrompt}\n\n---\n${instructions}\n`;
+}
 
 export interface CodexInvocation {
   argv: string[];

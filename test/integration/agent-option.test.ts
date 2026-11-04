@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { agentNames, DEFAULT_AGENT } from "../../src/agents/registry.js";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
 const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
@@ -10,7 +9,6 @@ describe("afk --agent", () => {
     const fake = createFakeCodexEnvironment({ sessions: [CRASH, COMPLETE] });
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
 
-    expect(DEFAULT_AGENT).toBe("codex");
     expect(run.exitCode).toBe(0);
     expect(fake.invocations()).toHaveLength(2);
   });
@@ -29,7 +27,7 @@ describe("afk --agent", () => {
 
     expect(run.exitCode).toBe(2);
     expect(run.stderr).toContain("--agent");
-    for (const name of agentNames()) expect(run.stderr).toContain(name);
+    for (const name of ["codex", "claude"]) expect(run.stderr).toContain(name);
     expect(fake.invocations()).toHaveLength(0);
   });
 
@@ -39,7 +37,7 @@ describe("afk --agent", () => {
       const run = await startAfk({ args: [flag], cwd: fake.workspace, env: fake.env }).done;
 
       expect(run.stdout).toContain("--agent <name>");
-      for (const name of agentNames()) expect(run.stdout).toContain(name);
+      for (const name of ["codex", "claude"]) expect(run.stdout).toContain(name);
       expect(run.stdout).toContain("default: codex");
     });
   }
