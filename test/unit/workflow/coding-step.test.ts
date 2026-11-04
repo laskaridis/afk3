@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { SessionExecutor, SessionInput } from "../../../src/session/session-executor.js";
+import type { SessionExecutor } from "../../../src/session/session-executor.js";
+import type { SessionInput } from "../../../src/session/session-input.js";
 import type { SessionResult } from "../../../src/session/session-result.js";
 import { CodingStep } from "../../../src/workflow/coding-step.js";
 

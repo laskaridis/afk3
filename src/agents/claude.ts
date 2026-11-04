@@ -1,4 +1,5 @@
-import type { AgentAdapter, AgentInput, FinalMessageResult } from "./adapter.js";
+import type { AgentAdapter, FinalMessageResult } from "./adapter.js";
+import type { AgentInput } from "./agent-input.js";
 
 /** Adapter for Claude Code, run in non-interactive print mode with JSON output. */
 export class ClaudeAdapter implements AgentAdapter {

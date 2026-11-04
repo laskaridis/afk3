@@ -1,4 +1,5 @@
-import type { AgentAdapter, AgentInput, FinalMessageResult } from "./adapter.js";
+import type { AgentAdapter, FinalMessageResult } from "./adapter.js";
+import type { AgentInput } from "./agent-input.js";
 
 /** Adapter for Codex, run through `codex exec` with the final message written to a file. */
 export class CodexAdapter implements AgentAdapter {

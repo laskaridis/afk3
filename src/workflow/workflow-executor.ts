@@ -3,7 +3,8 @@ import { CodingStep } from "./coding-step.js";
 import type { TaskMetadata } from "./result-block.js";
 import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
 import type { WorkflowObserver } from "./workflow-observer.js";
-import type { LaunchPrompt, WorkflowOptions } from "./workflow-options.js";
+import type { LaunchPrompt } from "./launch-prompt.js";
+import type { WorkflowOptions } from "./workflow-options.js";
 
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;

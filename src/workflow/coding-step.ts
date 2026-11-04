@@ -2,7 +2,8 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { SessionExecutor } from "../session/session-executor.js";
 import { parseResultBlock, type ResultBlock, type TaskMetadata } from "./result-block.js";
-import type { WorkflowStep, WorkflowStepOptions } from "./workflow-step.js";
+import type { WorkflowStep } from "./workflow-step.js";
+import type { WorkflowStepOptions } from "./workflow-step-options.js";
 import type { WorkflowStepResult } from "./workflow-step-result.js";
 
 // Copied next to the compiled `workflow/` folder by the build script.

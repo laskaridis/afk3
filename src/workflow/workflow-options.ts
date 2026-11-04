@@ -1,11 +1,5 @@
 import type { AgentAdapter } from "../agents/adapter.js";
 
-/** The resolved launch prompt the workflow consumes. */
-export interface LaunchPrompt {
-  /** The prompt text given to the agent in every iteration, before the harness instructions are appended. */
-  readonly text: string;
-}
-
 /** Run configuration taken from the command line. */
 export interface WorkflowOptions {
   /** The adapter for the agent that runs each session. */

@@ -1,3 +1,5 @@
+import type { AgentInput } from "./agent-input.js";
+
 /** What an adapter found when looking for the agent's final message. */
 export type FinalMessageResult =
   /** The final message text, not yet checked for the harness result block. */
@@ -8,18 +10,6 @@ export type FinalMessageResult =
   | { invalid: true; reason: string }
   /** The agent itself reported a failure in its structured output. */
   | { agentError: true; detail: string };
-
-/** What an adapter needs to build the launch arguments for one session. */
-export interface AgentInput {
-  /** Working directory the session runs in. */
-  cwd: string;
-  /** A fresh path the session reads after the agent exits; agents that can write their final message there may do so. */
-  outputFile?: string;
-  /** Model to use; when omitted, no model flag is passed and the agent's own configuration applies. */
-  model?: string;
-  /** Reasoning effort to use; when omitted, no effort flag is passed and the agent's own configuration applies. */
-  effort?: string;
-}
 
 /** Knows one agent CLI: how to launch it and where its final message ends up. Pure and stateless. */
 export interface AgentAdapter {
