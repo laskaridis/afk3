@@ -4,7 +4,12 @@ import type { WorkflowEvent } from "../../../src/workflow/workflow-event.js";
 
 function render(event: WorkflowEvent): string {
   let out = "";
-  new ConsoleReporter({ write: (text) => (out += text) }).onEvent(event);
+  new ConsoleReporter({
+    write: (text) => {
+      out += text;
+      return true;
+    },
+  }).onEvent(event);
   return out;
 }
 
