@@ -23,7 +23,7 @@ or `pnpm build && pnpm vitest run test/integration/<file>.test.ts`.
 - `test/unit/workflow/workflow-executor.test.ts`: drives `WorkflowExecutor` with scripted steps and a recording observer; covers the run policy and the event sequence.
 - `test/unit/workflow/coding-step.test.ts`: drives `CodingStep` with a stubbed `SessionExecutor`; `reply(message)` builds a result block from the nonce the step passes in the session prompt.
 - `test/unit/workflow/result-block.test.ts`, `test/unit/cli/launch-prompt.test.ts`, `test/unit/agents/<name>.test.ts`: pure functions, table-driven with `it.each`.
-- `test/unit/session/`, `test/unit/reporter/console-reporter.test.ts`, `test/unit/cli/`: session executor and factory, console output, option parsing, exit codes and entry point.
+- `test/unit/session/`, `test/unit/reporting/console-reporter.test.ts`, `test/unit/cli/`: session executor and factory, console output, option parsing, exit codes and entry point.
 
 **Integration** (`test/integration/`) — run the built CLI against a fake agent on `PATH`, no real agent needed:
 

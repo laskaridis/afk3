@@ -1,5 +1,5 @@
 import { AgentRegistry } from "../agents/registry.js";
-import { ConsoleReporter } from "../reporter/console-reporter.js";
+import { ConsoleReporter } from "../reporting/console-reporter.js";
 import { SessionExecutorFactory } from "../session/session-executor-factory.js";
 import { WorkflowExecutor } from "../workflow/workflow-executor.js";
 import { EXIT_CODES, exitCodeFor } from "./cli-exit-codes.js";

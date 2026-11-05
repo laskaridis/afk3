@@ -27,7 +27,7 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 | `src/workflow/`              | `WorkflowExecutor` (iteration policy, events), `CodingStep`, result-block parser  |
 | `src/session/`               | `SessionExecutorFactory`, `SessionExecutor` (one agent process), `SessionResult`  |
 | `src/agents/`                | `AgentAdapter`, one adapter per agent, `AgentRegistry`                            |
-| `src/reporter/`              | `ConsoleReporter`: `[afk]` status lines from workflow events                      |
+| `src/reporting/`             | `ConsoleReporter`: `[afk]` status lines from workflow events                      |
 | `src/code.md`                | Instructions appended to every session prompt — a contract with the agent         |
 | `test/unit/`                 | Unit tests for source functions and static documentation checks                   |
 | `test/integration/`          | CLI integration tests that spawn `dist/cli.js` against fake agents                |
@@ -51,5 +51,5 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 - `src/code.md` is copied to `dist/` by the build script and is excluded from prettier. Its example block
   `<afk-harness-result nonce="{{NONCE}}">` is load-bearing: the fake agents read the session nonce from it, so changing
   or removing it breaks every integration test.
-- Keep `src/workflow/`, `src/session/`, `src/reporter/` and `src/cli/` agent-neutral (enforced by `pnpm depcheck`, see `.dependency-cruiser.cjs`): agent-specific knowledge belongs only in `src/agents/<name>.ts`.
+- Keep `src/workflow/`, `src/session/`, `src/reporting/` and `src/cli/` agent-neutral (enforced by `pnpm depcheck`, see `.dependency-cruiser.cjs`): agent-specific knowledge belongs only in `src/agents/<name>.ts`.
 - Never add a full-access / permission-bypass mode for any agent.

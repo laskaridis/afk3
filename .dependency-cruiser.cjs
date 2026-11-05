@@ -1,6 +1,6 @@
 /**
  * Architecture rules, checked by `pnpm depcheck` (part of `pnpm check`).
- * Layers, highest to lowest: cli, reporter, workflow, session, agents.
+ * Layers, highest to lowest: cli, reporting, workflow, session, agents.
  * A layer may import lower layers, never higher ones. See doc/ARCHITECTURE.md.
  * @type {import('dependency-cruiser').IConfiguration}
  */
@@ -14,39 +14,39 @@ module.exports = {
       to: { circular: true },
     },
     {
-      name: "reporter-not-up",
-      comment: "reporter may not import cli.",
+      name: "reporting-not-up",
+      comment: "reporting may not import cli.",
       severity: "error",
-      from: { path: "^src/reporter/" },
+      from: { path: "^src/reporting/" },
       to: { path: "^src/(cli/|cli\\.ts$)" },
     },
     {
       name: "workflow-not-up",
-      comment: "workflow may not import cli or reporter.",
+      comment: "workflow may not import cli or reporting.",
       severity: "error",
       from: { path: "^src/workflow/" },
-      to: { path: "^src/(cli/|cli\\.ts$|reporter/)" },
+      to: { path: "^src/(cli/|cli\\.ts$|reporting/)" },
     },
     {
       name: "session-not-up",
-      comment: "session may not import cli, reporter or workflow.",
+      comment: "session may not import cli, reporting or workflow.",
       severity: "error",
       from: { path: "^src/session/" },
-      to: { path: "^src/(cli/|cli\\.ts$|reporter/|workflow/)" },
+      to: { path: "^src/(cli/|cli\\.ts$|reporting/|workflow/)" },
     },
     {
       name: "agents-not-up",
       comment: "agents is the lowest layer and imports nothing from the other layers.",
       severity: "error",
       from: { path: "^src/agents/" },
-      to: { path: "^src/(cli/|cli\\.ts$|reporter/|workflow/|session/)" },
+      to: { path: "^src/(cli/|cli\\.ts$|reporting/|workflow/|session/)" },
     },
     {
-      name: "reporter-limits",
-      comment: "reporter depends only on workflow events and the observer contract.",
+      name: "reporting-limits",
+      comment: "reporting depends only on workflow events and the observer contract.",
       severity: "error",
-      from: { path: "^src/reporter/" },
-      to: { path: "^src/", pathNot: ["^src/reporter/", "^src/workflow/workflow-(event|observer)\\.ts$"] },
+      from: { path: "^src/reporting/" },
+      to: { path: "^src/", pathNot: ["^src/reporting/", "^src/workflow/workflow-(event|observer)\\.ts$"] },
     },
     {
       name: "entry-limits",
