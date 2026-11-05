@@ -93,12 +93,14 @@ The npm registry can take a minute to reflect a new version.
 
 ### 7. Tag the release (recommended)
 
-Tag the published commit so the version can be traced back to the source:
+Open the successful **Publish to npm** run from step 5 and copy its full commit SHA (open the commit linked from the
+run summary to copy the full SHA). Use that run's commit even if `main` has advanced since publishing. Replace the
+placeholder below with that SHA so the tag identifies the source that was actually published:
 
 ```sh
-git switch main
-git pull
-git tag vX.Y.Z
+published_sha=REPLACE_WITH_FULL_COMMIT_SHA_FROM_SUCCESSFUL_RUN
+git fetch origin "$published_sha"
+git tag vX.Y.Z "$published_sha"
 git push origin vX.Y.Z
 ```
 
