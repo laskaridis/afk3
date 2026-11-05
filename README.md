@@ -72,24 +72,3 @@ pnpm test:coverage # build, test, and generate coverage reports
 ```
 
 See [Testing](doc/TESTING.md#coverage) for coverage reports in CI and their scope.
-
-## Publishing
-
-The [Publish to npm](.github/workflows/publish.yml) workflow runs only when started manually from `main`. It uses npm
-trusted publishing through GitHub Actions OIDC, so it needs no npm token secret. In the `@laskaridis/afk` package settings
-on npmjs.com, add a **GitHub Actions** trusted publisher with these values:
-
-| Setting              | Value         |
-| -------------------- | ------------- |
-| Organization or user | `laskaridis`  |
-| Repository           | `afk3`        |
-| Workflow filename    | `publish.yml` |
-
-Leave the optional environment name empty and enable **Allow npm publish**. Once the workflow is on `main` and the
-trusted publisher is configured, run it from the repository's **Actions** tab.
-
-The workflow runs `pnpm check` and publishes the version in `package.json`. Bump that version before each later release;
-npm will not accept a version that has already been published or unpublished. The package is currently set to `1.0.0`;
-`0.1.0` was previously unpublished. npm blocks republishing a fully unpublished package name for 24 hours. If the package
-Settings page is no longer available, first publish an unused version interactively after that hold, configure the
-trusted publisher, then bump the version again before running the workflow.

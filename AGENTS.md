@@ -43,6 +43,7 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 - tests — [doc/TESTING.md](doc/TESTING.md) (fake agents, helpers, parity suite)
 - agent launch flags, permissions, files on disk — [doc/SECURITY.md](doc/SECURITY.md)
 - specs, plans, progress logs — [doc/WORKFLOW.md](doc/WORKFLOW.md)
+- releasing a new npm version — [doc/PUBLISH.md](doc/PUBLISH.md)
 
 ## Must-knows
 
