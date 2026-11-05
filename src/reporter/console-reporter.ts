@@ -1,11 +1,11 @@
 import type { WorkflowEvent } from "../workflow/workflow-event.js";
-import type { OutputSink } from "./output-sink.js";
+import type { ReporterOutputSink } from "./reporter-output-sink.js";
 import type { Reporter } from "./reporter.js";
 
 /** Writes today's `[afk]` status lines for workflow events to its sink. WorkflowFailed has no final line. */
 export class ConsoleReporter implements Reporter {
   /** @param sink Where the status lines are written. */
-  constructor(private readonly sink: OutputSink) {}
+  constructor(private readonly sink: ReporterOutputSink) {}
 
   /** Writes the status line for `event`, if it has one; other events are ignored. */
   onEvent(event: WorkflowEvent): void {
