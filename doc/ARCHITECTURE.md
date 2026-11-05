@@ -8,6 +8,97 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 - `vitest` for testing
 - `pnpm` package manager
 - GitHub Actions for CICD with CodeQL static scanning and Dependabot
+- `dependency-cruiser` for architecture fitness functions
+
+## Modules
+
+Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `session/` -> `agents/` (enforced by `pnpm depcheck`, see `.dependency-cruiser.cjs`). Afferent dependencies are the modules that import a module; efferent dependencies are the modules it imports.
+
+### `cli/`
+
+**Responsibilities:**
+
+- Parses and validates command-line options, resolves the launch prompt (argument, `--prompt-file` or stdin) and owns the exit codes.
+- Wires the runtime components together (`workflow/`, `session/`, `reporting/`, `agents/`), runs the workflow and maps its terminal result to the process exit code.
+- Handles process signals (SIGINT, SIGTERM, SIGHUP) and turns them into an abort signal.
+
+**Afferent dependencies:**
+
+- None (the `src/cli.ts` entry point only runs it)
+
+**Efferent dependencies:**
+
+- `workflow/`
+- `session/`
+- `reporting/`
+- `agents/`
+
+### `workflow/`
+
+**Responsibilities:**
+
+- Controls the iterative workflow: iteration policy, retries, limits, and interpretation of each step's result.
+- Builds the agent prompt for each step and parses the agent's final response (`<afk-harness-result>` block) into a step result.
+- Publishes `WorkflowEvent`s to `WorkflowObserver`s and returns the terminal event.
+
+**Afferent dependencies:**
+
+- `cli/`
+- `reporting/` (only the event and observer types)
+
+**Efferent dependencies:**
+
+- `session/`
+- `agents/`
+
+### `session/`
+
+**Responsibilities:**
+
+- Runs one non-interactive agent process for a prompt: spawns it, captures stdio and the final message, and enforces timeouts and termination (SIGTERM, then SIGKILL).
+- Reports the outcome of the process as a `SessionResult`.
+- Creates `SessionExecutor`s with consistent timeout and abort-signal configuration.
+
+**Afferent dependencies:**
+
+- `cli/`
+- `workflow/`
+
+**Efferent dependencies:**
+
+- `agents/`
+
+### `reporting/`
+
+**Responsibilities:**
+
+- Turns workflow events into the `[afk]` status lines written to the output sink (stderr).
+- Knows nothing about sessions or agents and only observes the workflow through the `WorkflowObserver` contract.
+
+**Afferent dependencies:**
+
+- `cli/`
+
+**Efferent dependencies:**
+
+- `workflow/` (only the event and observer types)
+
+### `agents/`
+
+**Responsibilities:**
+
+- Holds everything specific to a coding agent: how to launch Codex and Claude Code, and how to retrieve each one's final message.
+- Exposes the `AgentAdapter` contract and the `AgentRegistry`; the concrete adapters are private to the module.
+
+**Afferent dependencies:**
+
+- `cli/`
+- `workflow/`
+- `session/`
+
+**Efferent dependencies:**
+
+- None
 
 ## Components
 
@@ -17,15 +108,15 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 - Acts as the main user interface and trigger point for the workflow.
 - Uses `agents/AgentRegistry` to retrieve the concrete `agents/AgentAdapter` for the agent specified by the user.
-- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporter/Reporter`.
+- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporting/Reporter`.
 - Instantiates `workflow/WorkflowExecutor` and wires all its dependencies.
-- Instantiates a concrete `reporter/Reporter` and subscribes it to `workflow/WorkflowExecutor`.
+- Instantiates a concrete `reporting/Reporter` and subscribes it to `workflow/WorkflowExecutor`.
 - Runs the workflow with `WorkflowExecutor.run()` and maps the terminal result it returns (a terminal `workflow/WorkflowEvent`) to the process exit code. The CLI is not a `workflow/WorkflowObserver`.
 
 **Collaborators:**
 
 - Creates `workflow/WorkflowOptions`
-- Creates concrete `reporter/Reporter`
+- Creates concrete `reporting/Reporter`
 - Creates `workflow/LaunchPrompt`
 - Creates `session/SessionExecutorFactory`
 - Retrieves concrete `agents/AgentAdapter` from `agents/AgentRegistry`
@@ -138,7 +229,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 **Collaborators:**
 
-- Implemented by `reporter/Reporter`
+- Implemented by `reporting/Reporter`
 - Used by `workflow/WorkflowExecutor` to notify observers about `workflow/WorkflowEvent`s.
 
 ### `workflow/WorkflowEvent` (value class)
@@ -237,7 +328,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 - Used by `CLI` to retrieve the concrete `agents/AgentAdapter` specified from the user by name
 
-## `reporter/Reporter` (interface)
+## `reporting/Reporter` (interface)
 
 **Responsibilities:**
 
@@ -250,7 +341,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 
 **Concrete implementations**:
 
-- `reporter/ConsoleReporter` to report harness progress in the console.
+- `reporting/ConsoleReporter` to report harness progress in the console.
 
 ## Top-level module packages
 
@@ -258,7 +349,7 @@ This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflo
 - `agents` includes code related to concrete `agents/AgentAdapter`s and `agents/AgentRegistry`.
 - `workflow` includes code related to workflow execution layer, including concrete `workflow/WorkflowStep`s and their prompts.
 - `session` includes code related to session execution layer.
-- `reporter` includes code related to progress reporting layer.
+- `reporting` includes code related to progress reporting layer.
 
 ## Out of scope
 
