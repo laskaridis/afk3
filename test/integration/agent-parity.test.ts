@@ -1,6 +1,9 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { agentNames } from "../../src/agents/registry.js";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+
+const AGENT_NAMES = ["codex", "claude"];
 
 /** `finalMessage` is rendered by each agent's fake in that agent's own output format. */
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
@@ -22,11 +25,22 @@ interface Scenario {
   interrupt?: boolean;
   exitCode: number;
   invocations: number;
-  stderr: string[];
+  /** The complete expected stderr, one `[afk]` line (or agent stderr-tail line) per entry. */
+  transcript: string[];
 }
 
+const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
+const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
+const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting agent session";
+const LIMIT_1 = "[afk] Run stopped: iteration limit of 1 reached without reported completion";
+const COMPLETE_LINE = "[afk] Run complete: feature complete";
+const MISSING = "[afk] Execution error: agent exited without a final response";
+const INVALID =
+  "[afk] Execution error: agent final response is invalid: the result block body is not a single JSON object (found prose, Markdown fences, or malformed JSON)";
+const EXIT_7 = "[afk] Execution error: agent exited unsuccessfully with exit code 7";
+
 const scenarios: Scenario[] = [
-  { name: "complete", sessions: [COMPLETE], exitCode: 0, invocations: 1, stderr: ["feature complete"] },
+  { name: "complete", sessions: [COMPLETE], exitCode: 0, invocations: 1, transcript: [ITERATION_1, COMPLETE_LINE] },
   {
     name: "task metadata survives a full coding loop",
     sessions: [
@@ -35,21 +49,26 @@ const scenarios: Scenario[] = [
     ],
     exitCode: 0,
     invocations: 2,
-    stderr: ["feature complete"],
+    transcript: [ITERATION_1, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
   },
   {
     name: "blocked",
     sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
     exitCode: 1,
     invocations: 1,
-    stderr: ["need key"],
+    transcript: [ITERATION_1, "[afk] Run blocked: need key"],
   },
   {
     name: "fail then complete",
     sessions: [say({ outcome: "fail", failure_summary: "tests broke" }), COMPLETE],
     exitCode: 0,
     invocations: 2,
-    stderr: ["tests broke"],
+    transcript: [
+      ITERATION_1,
+      "[afk] Task failure: tests broke",
+      "[afk] Iteration 2/10: starting agent session",
+      COMPLETE_LINE,
+    ],
   },
   {
     name: "iteration limit",
@@ -57,35 +76,84 @@ const scenarios: Scenario[] = [
     args: ["--max-iterations", "2"],
     exitCode: 4,
     invocations: 2,
-    stderr: ["iteration limit"],
+    transcript: [
+      "[afk] Iteration 1/2: starting agent session",
+      "[afk] Iteration 2/2: starting agent session",
+      "[afk] Run stopped: iteration limit of 2 reached without reported completion",
+    ],
   },
   {
     name: "retry recovers",
     sessions: [[{ stderr: stderrLines(3) }, { exit: 7 }], COMPLETE],
     exitCode: 0,
     invocations: 2,
-    stderr: ["Execution error: agent exited unsuccessfully with exit code 7", "err 3", "retrying agent session"],
+    transcript: [ITERATION_1, EXIT_7, "err 1", "err 2", "err 3", RETRY_2, COMPLETE_LINE],
   },
   {
     name: "two consecutive execution errors",
     sessions: [[{ stderr: stderrLines(30) }, { exit: 7 }]],
     exitCode: 3,
     invocations: 2,
-    stderr: ["err 11", "err 30"],
+    transcript: [
+      ITERATION_1,
+      EXIT_7,
+      "err 11",
+      "err 12",
+      "err 13",
+      "err 14",
+      "err 15",
+      "err 16",
+      "err 17",
+      "err 18",
+      "err 19",
+      "err 20",
+      "err 21",
+      "err 22",
+      "err 23",
+      "err 24",
+      "err 25",
+      "err 26",
+      "err 27",
+      "err 28",
+      "err 29",
+      "err 30",
+      RETRY_2,
+      EXIT_7,
+      "err 11",
+      "err 12",
+      "err 13",
+      "err 14",
+      "err 15",
+      "err 16",
+      "err 17",
+      "err 18",
+      "err 19",
+      "err 20",
+      "err 21",
+      "err 22",
+      "err 23",
+      "err 24",
+      "err 25",
+      "err 26",
+      "err 27",
+      "err 28",
+      "err 29",
+      "err 30",
+    ],
   },
   {
     name: "missing final response",
     sessions: [[{ exit: 0 }]],
     exitCode: 3,
     invocations: 2,
-    stderr: ["agent exited without a final response"],
+    transcript: [ITERATION_1, MISSING, RETRY_2, MISSING],
   },
   {
     name: "protocol violation",
     sessions: [[{ finalMessage: "all done!" }, { exit: 0 }]],
     exitCode: 3,
     invocations: 2,
-    stderr: ["agent final response is invalid: "],
+    transcript: [ITERATION_1, INVALID, RETRY_2, INVALID],
   },
   {
     name: "timeout",
@@ -93,7 +161,88 @@ const scenarios: Scenario[] = [
     args: ["--session-timeout", "1"],
     exitCode: 5,
     invocations: 1,
-    stderr: ["timed out after 1 seconds"],
+    transcript: [ITERATION_1, "[afk] Run stopped: agent session timed out after 1 seconds"],
+  },
+  {
+    name: "retry allowance resets after a valid repeat",
+    sessions: [[{ exit: 7 }], say({ outcome: "repeat" }), [{ exit: 7 }], COMPLETE],
+    exitCode: 0,
+    invocations: 4,
+    transcript: [
+      ITERATION_1,
+      EXIT_7,
+      RETRY_2,
+      "[afk] Iteration 3/10: starting agent session",
+      EXIT_7,
+      "[afk] Iteration 4/10: retrying agent session after execution error",
+      COMPLETE_LINE,
+    ],
+  },
+  {
+    name: "a valid fail is not an execution error",
+    sessions: [[{ exit: 7 }], say({ outcome: "fail", failure_summary: "tests broke" }), [{ exit: 7 }], COMPLETE],
+    exitCode: 0,
+    invocations: 4,
+    transcript: [
+      ITERATION_1,
+      EXIT_7,
+      RETRY_2,
+      "[afk] Task failure: tests broke",
+      "[afk] Iteration 3/10: starting agent session",
+      EXIT_7,
+      "[afk] Iteration 4/10: retrying agent session after execution error",
+      COMPLETE_LINE,
+    ],
+  },
+  {
+    name: "last iteration: execution error",
+    sessions: [[{ exit: 7 }]],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, EXIT_7, LIMIT_1],
+  },
+  {
+    name: "last iteration: repeat",
+    sessions: [say({ outcome: "repeat" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, LIMIT_1],
+  },
+  {
+    name: "last iteration: fail",
+    sessions: [say({ outcome: "fail", failure_summary: "tests broke" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 4,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, "[afk] Task failure: tests broke", LIMIT_1],
+  },
+  {
+    name: "last iteration: complete",
+    sessions: [COMPLETE],
+    args: ["--max-iterations", "1"],
+    exitCode: 0,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, COMPLETE_LINE],
+  },
+  {
+    name: "last iteration: blocked",
+    sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
+    args: ["--max-iterations", "1"],
+    exitCode: 1,
+    invocations: 1,
+    transcript: [ITERATION_1_OF_1, "[afk] Run blocked: need key"],
+  },
+  {
+    name: "default iteration limit of 10",
+    sessions: [say({ outcome: "repeat" })],
+    exitCode: 4,
+    invocations: 10,
+    transcript: [
+      ...Array.from({ length: 10 }, (_, i) => `[afk] Iteration ${i + 1}/10: starting agent session`),
+      "[afk] Run stopped: iteration limit of 10 reached without reported completion",
+    ],
   },
   {
     name: "interruption",
@@ -101,9 +250,11 @@ const scenarios: Scenario[] = [
     interrupt: true,
     exitCode: 130,
     invocations: 1,
-    stderr: ["interrupted by user"],
+    transcript: [ITERATION_1, "[afk] Run interrupted by user"],
   },
 ];
+
+const asStderr = (lines: string[]) => lines.join("\n") + "\n";
 
 async function runScenario(agent: string, scenario: Scenario) {
   const fake = createFakeCodexEnvironment({ sessions: scenario.sessions }, agent);
@@ -120,12 +271,12 @@ async function runScenario(agent: string, scenario: Scenario) {
   return { run, invocations: fake.invocations() };
 }
 
-describe.each(agentNames())("shared harness behavior: %s", (agent) => {
+describe.each(AGENT_NAMES)("shared harness behavior: %s", (agent) => {
   it.each(scenarios)("$name", async (scenario) => {
     const { run, invocations } = await runScenario(agent, scenario);
     expect(run.exitCode).toBe(scenario.exitCode);
     expect(invocations).toHaveLength(scenario.invocations);
-    for (const text of scenario.stderr) expect(run.stderr).toContain(text);
+    expect(run.stderr).toBe(asStderr(scenario.transcript));
     expect(run.stdout).toBe("");
     for (const { cwd, stdin } of invocations) {
       expect(cwd).toBe(invocations[0]!.cwd);
@@ -134,9 +285,32 @@ describe.each(agentNames())("shared harness behavior: %s", (agent) => {
   });
 });
 
+describe.each(AGENT_NAMES)("launch failure: %s", (agent) => {
+  it("reports two execution errors, one retry, and exit 3", async () => {
+    const fake = createFakeCodexEnvironment({ sessions: [COMPLETE] }, agent);
+    const emptyBin = join(fake.workspace, "empty-bin");
+    mkdirSync(emptyBin);
+    const run = await startAfk({
+      args: ["--agent", agent, "build X"],
+      cwd: fake.workspace,
+      env: { ...fake.env, PATH: emptyBin },
+    }).done;
+    expect(run.exitCode).toBe(3);
+    expect(fake.invocations()).toHaveLength(0);
+    expect(run.stdout).toBe("");
+    const lines = run.stderr.split("\n");
+    expect(lines.pop()).toBe("");
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toBe(ITERATION_1);
+    expect(lines[1]).toMatch(/^\[afk\] Execution error: failed to launch agent: /);
+    expect(lines[2]).toBe(RETRY_2);
+    expect(lines[3]).toMatch(/^\[afk\] Execution error: failed to launch agent: /);
+  });
+});
+
 describe("identical behavior across agents", () => {
   it.each(scenarios)("$name", async (scenario) => {
-    const results = await Promise.all(agentNames().map((agent) => runScenario(agent, scenario)));
+    const results = await Promise.all(AGENT_NAMES.map((agent) => runScenario(agent, scenario)));
     const [first, ...rest] = results;
     for (const other of rest) {
       expect(other.run.exitCode).toBe(first!.run.exitCode);

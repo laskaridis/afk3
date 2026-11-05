@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk } from "./support/helpers.js";
+import { createFakeCodexEnvironment, expectedSessionPrompt, startAfk, withoutNonce } from "./support/helpers.js";
 
 const COMPLETE = { finalMessage: '{"outcome":"complete"}' };
 
@@ -27,10 +27,7 @@ describe("afk <prompt> with a single Codex session", () => {
     await startAfk({ args: ["build feature X"], cwd: fake.workspace, env: fake.env }).done;
 
     const { stdin: prompt } = fake.soleInvocation();
-    expect(prompt.startsWith("build feature X")).toBe(true);
-    expect(prompt).toMatch(/Coding loop protocol/);
-    expect(prompt).toMatch(/one task/i);
-    expect(prompt).toMatch(/JSON object and nothing else/i);
+    expect(prompt).toBe(expectedSessionPrompt("build feature X", prompt));
   });
 
   it("shows only [afk] lines on stderr and nothing on stdout", async () => {
@@ -111,4 +108,14 @@ describe("afk executable", () => {
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/);
   });
+});
+
+describe("nonce masking", () => {
+  it.each(["a1b2c3d4", "0123456789abcdef0123", "XyZ-_9 Q"])(
+    "masks the announced nonce %j wherever it appears",
+    (nonce) => {
+      const prompt = `go\n<afk-harness-result nonce="${nonce}">\nuse ${nonce} again\n`;
+      expect(withoutNonce(prompt)).toBe('go\n<afk-harness-result nonce="<nonce>">\nuse <nonce> again\n');
+    },
+  );
 });

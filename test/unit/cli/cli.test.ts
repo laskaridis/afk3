@@ -1,25 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RunResult } from "../../src/runner.js";
-import type { SessionResult } from "../../src/session.js";
+import type { TerminalWorkflowEvent } from "../../../src/workflow/workflow-event.js";
 import { Command } from "commander";
 
 const mocks = vi.hoisted(() => ({
-  runAfk: vi.fn(),
-  runSession: vi.fn(),
-  buildSessionPrompt: vi.fn((prompt: string, nonce: string) => `${prompt} :: ${nonce}`),
+  construct: vi.fn(),
+  run: vi.fn(),
+  subscribe: vi.fn(),
+  factory: vi.fn(),
 }));
 
-vi.mock("../../src/runner.js", async (original) => ({
-  ...(await original<typeof import("../../src/runner.js")>()),
-  runAfk: mocks.runAfk,
+vi.mock("../../../src/workflow/workflow-executor.js", async (original) => ({
+  ...(await original<typeof import("../../../src/workflow/workflow-executor.js")>()),
+  WorkflowExecutor: class {
+    constructor(...args: unknown[]) {
+      mocks.construct(...args);
+    }
+    subscribe(observer: unknown) {
+      mocks.subscribe(observer);
+    }
+    run() {
+      return mocks.run();
+    }
+  },
 }));
-vi.mock("../../src/session.js", async (original) => ({
-  ...(await original<typeof import("../../src/session.js")>()),
-  runSession: mocks.runSession,
-}));
-vi.mock("../../src/protocol.js", async (original) => ({
-  ...(await original<typeof import("../../src/protocol.js")>()),
-  buildSessionPrompt: mocks.buildSessionPrompt,
+vi.mock("../../../src/session/session-executor-factory.js", () => ({
+  SessionExecutorFactory: class {
+    constructor(...args: unknown[]) {
+      mocks.factory(...args);
+    }
+  },
 }));
 
 let originalArgv: string[];
@@ -31,9 +40,10 @@ let stdout: string;
 
 beforeEach(() => {
   vi.resetModules();
-  mocks.runAfk.mockReset();
-  mocks.runSession.mockReset();
-  mocks.buildSessionPrompt.mockClear();
+  mocks.construct.mockReset();
+  mocks.run.mockReset();
+  mocks.subscribe.mockReset();
+  mocks.factory.mockReset();
   originalArgv = process.argv;
   originalGrace = process.env.AFK_TERMINATION_GRACE_MS;
   listeners = {
@@ -56,7 +66,7 @@ beforeEach(() => {
     stdout += String(chunk);
     return true;
   });
-  mocks.runAfk.mockResolvedValue({ kind: "complete" });
+  mocks.run.mockResolvedValue({ type: "WorkflowFinished", task: {} });
 });
 
 afterEach(() => {
@@ -75,7 +85,7 @@ afterEach(() => {
 
 async function launch(args: string[]) {
   process.argv = ["node", "afk", ...args];
-  await import("../../src/cli.js");
+  await import("../../../src/cli.js");
   await vi.waitFor(() => expect(exitCodes).toHaveLength(1));
   return exitCodes[0];
 }
@@ -95,21 +105,15 @@ describe("CLI entrypoint", () => {
     ["--cwd", "package.json"],
   ])("rejects invalid option %s %s", async (option, value) => {
     expect(await launch([option, value, "prompt"])).toBe(2);
-    expect(mocks.runAfk).not.toHaveBeenCalled();
+    expect(mocks.run).not.toHaveBeenCalled();
   });
 
-  it("accepts validated options and wires the session prompt and callbacks", async () => {
+  it("wires the workflow executor from validated options and subscribes a console reporter", async () => {
     process.env.AFK_TERMINATION_GRACE_MS = "25";
-    mocks.runAfk.mockImplementation(async (config, runSession, reporter) => {
-      expect(config).toMatchObject({ launchPrompt: "prompt", maxIterations: 3, sessionTimeoutSeconds: 2.5 });
-      reporter.iterationStarted(1, 3);
-      reporter.retryStarted(2, 3, "reason");
-      reporter.failureSurfaced("test failed");
-      reporter.executionError("bad exit", ["tail"]);
-      expect(await runSession("prompt", "nonce")).toEqual({ kind: "exited", exitCode: 0 });
-      return { kind: "blocked", blockerText: "need key" };
+    mocks.subscribe.mockImplementation((observer: { onEvent(event: unknown): void }) => {
+      observer.onEvent({ type: "StepExecutionFailed", iteration: 1, failureSummary: "test failed", task: {} });
     });
-    mocks.runSession.mockResolvedValue({ kind: "exited", exitCode: 0 } satisfies Partial<SessionResult>);
+    mocks.run.mockResolvedValue({ type: "WorkflowBlocked", blockerText: "need key", task: {} });
     expect(
       await launch([
         "--agent",
@@ -127,55 +131,44 @@ describe("CLI entrypoint", () => {
         "prompt",
       ]),
     ).toBe(1);
-    expect(mocks.runSession).toHaveBeenCalledWith(
+    expect(mocks.construct).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: "prompt :: nonce",
-        cwd: process.cwd(),
+        adapter: expect.objectContaining({ name: "claude" }),
         model: "my-model",
         effort: "high",
-        graceMs: 25,
-        timeoutSeconds: 2.5,
+        maxIterations: 3,
+        sessionTimeoutSeconds: 2.5,
+        cwd: process.cwd(),
       }),
+      { text: "prompt" },
+      expect.anything(),
     );
-    expect(stderr).toContain("[afk] Iteration 1/3: starting agent session\n");
-    expect(stderr).toContain("[afk] Iteration 2/3: retrying agent session after execution error\n");
-    expect(stderr).toContain("[afk] Task failure: test failed\n");
-    expect(stderr).toContain("[afk] Execution error: bad exit\ntail\n");
-    expect(stderr).toContain("[afk] Run blocked: need key\n");
+    expect(mocks.factory).toHaveBeenCalledWith(expect.objectContaining({ aborted: false }), 2.5, 25);
+    expect(stderr).toBe("[afk] Task failure: test failed\n");
     expect(stdout).toBe("");
   });
 
-  it("uses defaults and forwards a signal to the session", async () => {
-    mocks.runAfk.mockImplementation(async (config, runSession) => {
-      expect(config.maxIterations).toBe(10);
-      expect(config.adapter.name).toBe("codex");
+  it("uses defaults and aborts the shared signal on SIGINT, SIGTERM and SIGHUP", async () => {
+    mocks.run.mockImplementation(async () => {
       process.emit("SIGINT");
       process.emit("SIGTERM");
       process.emit("SIGHUP");
-      await runSession("prompt", "nonce");
-      return { kind: "interrupted" };
+      return { type: "WorkflowInterrupted" };
     });
-    mocks.runSession.mockResolvedValue({ kind: "interrupted" });
     expect(await launch(["prompt"])).toBe(130);
-    expect(mocks.runSession.mock.calls[0]?.[0]).toMatchObject({
-      cwd: process.cwd(),
-      graceMs: undefined,
-      timeoutSeconds: undefined,
-      signal: expect.objectContaining({ aborted: true }),
-    });
-    expect(stderr).toContain("[afk] Run interrupted by user\n");
+    expect(mocks.construct.mock.calls[0]?.[0]).toMatchObject({ maxIterations: 10, cwd: process.cwd() });
+    expect(mocks.factory).toHaveBeenCalledWith(expect.objectContaining({ aborted: true }), undefined, undefined);
+    expect(stderr).toBe("");
   });
 
   it.each([
-    [{ kind: "complete" }, 0, "Run complete"],
-    [{ kind: "execution-error", errorKind: "exit-status", detail: "bad" }, 3, ""],
-    [{ kind: "iteration-limit", limit: 1 }, 4, "Run stopped: iteration limit"],
-    [{ kind: "timeout", seconds: 2 }, 5, "Run stopped: agent session timed out"],
-  ] as Array<[RunResult, number, string]>)("maps a %j result to exit %i", async (result, code, status) => {
-    mocks.runAfk.mockResolvedValue(result);
+    [{ type: "WorkflowFinished", task: {} }, 0],
+    [{ type: "WorkflowFailed", detail: "bad", stderrTail: [] }, 3],
+    [{ type: "MaxIterationsReached", limit: 1 }, 4],
+    [{ type: "WorkflowTimedOut", seconds: 2 }, 5],
+  ] as Array<[TerminalWorkflowEvent, number]>)("exits for the run() result %j with %i", async (result, code) => {
+    mocks.run.mockResolvedValue(result);
     expect(await launch(["prompt"])).toBe(code);
-    if (status) expect(stderr).toContain(status);
-    else expect(stderr).not.toContain("Run ");
   });
 
   it("reports missing prompt input before launching", async () => {
@@ -184,7 +177,7 @@ describe("CLI entrypoint", () => {
     try {
       expect(await launch([])).toBe(2);
       expect(stderr).toContain("[afk] input error: no prompt provided");
-      expect(mocks.runAfk).not.toHaveBeenCalled();
+      expect(mocks.run).not.toHaveBeenCalled();
     } finally {
       if (isTTY) Object.defineProperty(process.stdin, "isTTY", isTTY);
       else Reflect.deleteProperty(process.stdin, "isTTY");
@@ -194,12 +187,12 @@ describe("CLI entrypoint", () => {
   it("lets help win over invalid options and preserves options after --", async () => {
     expect(await launch(["--agent", "invalid", "--help"])).toBe(0);
     expect(stdout).toContain("Usage: afk");
-    expect(mocks.runAfk).not.toHaveBeenCalled();
+    expect(mocks.run).not.toHaveBeenCalled();
   });
 
   it("treats help after -- or as an option value as input", async () => {
     expect(await launch(["--", "--help"])).toBe(0);
-    expect(mocks.runAfk.mock.calls[0]?.[0].launchPrompt).toBe("--help");
+    expect(mocks.construct.mock.calls[0]?.[1]).toEqual({ text: "--help" });
   });
 
   it("reads piped stdin in chunks when there is no explicit prompt", async () => {
@@ -215,7 +208,7 @@ describe("CLI entrypoint", () => {
     const encoding = vi.spyOn(process.stdin, "setEncoding").mockReturnValue(process.stdin);
     try {
       expect(await launch([])).toBe(0);
-      expect(mocks.runAfk.mock.calls[0]?.[0].launchPrompt).toBe("piped prompt");
+      expect(mocks.construct.mock.calls[0]?.[1]).toEqual({ text: "piped prompt" });
       expect(encoding).toHaveBeenCalledWith("utf8");
     } finally {
       iterator.mockRestore();
@@ -238,7 +231,7 @@ describe("CLI entrypoint", () => {
   });
 
   it("prints a rejected main error and exits with input code", async () => {
-    mocks.runAfk.mockRejectedValue(new Error("unexpected"));
+    mocks.run.mockRejectedValue(new Error("unexpected"));
     expect(await launch(["prompt"])).toBe(2);
     expect(stderr).toContain("[afk] unexpected\n");
   });

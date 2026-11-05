@@ -1,17 +1,28 @@
 import { readFile } from "node:fs/promises";
 
+/** The resolved prompt, or a user-facing message saying why none could be resolved. */
 export type PromptResult = { ok: true; prompt: string } | { ok: false; message: string };
 
+/** The places a launch prompt can come from, as the CLI found them. */
 export interface PromptInput {
+  /** Positional prompt arguments; at most one is allowed. */
   positional: string[];
+  /** Path given with `--prompt-file`. */
   promptFile?: string;
+  /** Whether stdin is a terminal; a terminal is never read. */
   stdinIsTTY: boolean;
+  /** Reads all of stdin; called only when no explicit source is given and stdin is not a terminal. */
   readStdin: () => Promise<string>;
 }
 
 const isBlank = (text: string) => text.trim() === "";
 
-/** Resolve exactly one launch prompt; sources are never combined. */
+/**
+ * Resolve exactly one launch prompt; sources are never combined.
+ *
+ * Never throws for bad input: no source, several sources, an unreadable file or a blank prompt are returned as
+ * `{ ok: false, message }`.
+ */
 export async function resolvePrompt(input: PromptInput): Promise<PromptResult> {
   if (input.positional.length > 1) {
     return { ok: false, message: "expected a single prompt argument, got " + input.positional.length };

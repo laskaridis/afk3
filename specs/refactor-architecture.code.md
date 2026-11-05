@@ -1,0 +1,149 @@
+## Project discovery
+- Agents live in `src/agents/`: `adapter.ts` (AgentAdapter + AgentInput/FinalMessageResult), `codex.ts`, `claude.ts`, `registry.ts` (AgentRegistry: `get`, `names`, `defaultName`). Outside the package import only `adapter.js` and `registry.js`.
+- Adapters are classes; spreading an instance drops prototype methods, so tests that override members build a plain-object view (see `test/unit/session.test.ts`).
+- No python in this environment; use node scripts for scripted edits. `sed -i` needs `''` on macOS.
+- Sessions live in `src/session/`: `session-result.ts` (7-kind union), `session-executor.ts` (`SessionExecutor`, `STDERR_TAIL_LINES`, `DEFAULT_TERMINATION_GRACE_MS`), `session-executor-factory.ts`. Failure kinds carry `detail`; all but launch-failed/timed-out/interrupted carry `stderrTail`. Runner only maps kinds to error kinds and parses result blocks.
+- Verify each task with `pnpm check`, `pnpm test:coverage` and `git diff 3f42e29 -- test/integration src/code.md` (must be empty).
+- Workflow lives in `src/workflow/`: `workflow-step.ts` (WorkflowStep, WorkflowStepOptions), `workflow-step-result.ts` (type discriminator: Continue/Finished/StepFailed/Blocked/SessionFailed/Timeout/Interrupted; task_id/task_plan_file carried as parsed), `coding-step.ts` (nonce, prompt, `../code.md`), `result-block.ts` (parser). `runner.ts` takes a `StepRunner` and maps step results to `RunResult` (no errorKind any more).- Executor/events: `src/workflow/` has `workflow-executor.ts` (`WorkflowExecutor`, `DEFAULT_MAX_ITERATIONS`; optional 4th ctor arg `createStep` for tests), `workflow-event.ts` (`WorkflowEvent`, `TerminalWorkflowEvent`), `workflow-observer.ts` (`onEvent`), `workflow-options.ts` (`WorkflowOptions`, `LaunchPrompt`). `src/reporter/` = `ConsoleReporter` with injected sink; `src/cli/exit-codes.ts` = `EXIT_CODES`, `exitCodeFor(terminal event)`.
+- CLI lives in `src/cli/`: `cli.ts` (`CLI.run(argv)` → exit code), `options.ts` (`parseOptions` → run|exit), `launch-prompt.ts` (`resolvePrompt`), `exit-codes.ts`. `src/cli.ts` is the thin entry. Version is read via `../../package.json` (valid from src/cli and dist/cli).
+---
+
+## 2026-11-04
+- Task id: TASK-001
+- What was implemented:
+  - `agents/types.ts` renamed to `agents/adapter.ts` (interface + input/result types).
+  - `CodexAdapter` and `ClaudeAdapter` classes (behavior and arguments unchanged); `AgentRegistry` class replaces `agents`/`agentNames`/`DEFAULT_AGENT`.
+  - `src/cli.ts` derives help text, `--agent` validation and the default from `AgentRegistry`; `session.ts`/`runner.ts` import `agents/adapter.js`.
+  - Tests: new `registry.test.ts`; codex/claude tests pin exact args for every model x effort combination (plus outputFile for codex) and all extraction cases.
+- Files changed: src/agents/{adapter,codex,claude,registry}.ts, src/{cli,session,runner}.ts, test/unit/agents/{registry,codex,claude}.test.ts, test/unit/{agent-neutral-docs,session,runner}.test.ts, specs/refactor-architecture.plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0 (427 tests pass, typecheck, lint, prettier).
+  - `pnpm test:coverage` exit 0, 100% statements/branches/functions/lines, no files with missing coverage.
+  - `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - `ls src/agents` shows adapter.ts, claude.ts, codex.ts, registry.ts (no types.ts); grep shows outside importers only use `agents/registry.js` and `agents/adapter.js`.
+  - Criteria: registry order/default pinned in test/unit/agents/registry.test.ts; each adapter has own test file.
+- Learnings for future iterations: see Project discovery.
+- Scope deviations: test/unit/session.test.ts and test/unit/runner.test.ts edited only to build a plain-object codex adapter (needed because adapters are now classes); they are deleted in later tasks.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-002)
+- Task id: TASK-002
+- What was implemented:
+  - `src/session/`: `SessionResult` (launch-failed, timed-out, interrupted, exited-unsuccessfully, missing-final-message, invalid-final-message, success), `SessionExecutor` (spawn/stdin/stdout/20-line stderr tail/temp output file/SIGINT-SIGTERM-SIGKILL escalation/classification in order signal, agent error, non-zero exit, invalid, missing), `SessionExecutorFactory` (signal, timeout seconds, grace ms shared by every created executor).
+  - `src/session.ts` deleted. `runner.ts` now consumes the new `SessionResult` (maps kinds to its error kinds, still parses result blocks until TASK-003) and no longer takes an adapter; `cli.ts` creates the executor from the factory.
+  - Tests: `test/unit/session/{session-executor,session-executor-factory}.test.ts` (old session.test.ts moved + classification cases from runner.test.ts); `runner.test.ts` and `cli.test.ts` adapted.
+- Files changed: src/session/{session-result,session-executor,session-executor-factory}.ts, src/session.ts (deleted), src/runner.ts, src/cli.ts, test/unit/session/*.test.ts, test/unit/session.test.ts (moved), test/unit/{runner,cli}.test.ts, specs/refactor-architecture.plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0; `pnpm test:coverage` exit 0, 100% on all of src/ (439 tests).
+  - `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - `grep -rniE "codex|claude|--output|--approve|permission-mode" src/session` prints nothing; src/session imports only agents/adapter.js.
+  - Detail texts kept verbatim; precedence cases pinned in session-executor.test.ts "result classification"; old session.test.ts cases kept (moved) and runner classify cases moved to the executor tests (signal, agent error 0/non-zero, invalid, missing) and runner mapping tests.
+  - Plan statuses: TASK-001 (completed in previous commit but left "pending") and TASK-002 set to completed.
+- Learnings for future iterations: `runner.ts` still holds the result-block half of classification until TASK-003; mapped via `classify` on `session.kind`.
+- Scope deviations: cli.test.ts mocks the factory class instead of `runSession`; plan.json TASK-001 status corrected.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-003)
+- Task id: TASK-003
+- What was implemented:
+  - `src/workflow/`: WorkflowStep interface, WorkflowStepOptions, WorkflowStepResult, CodingStep (fresh nonce per execute, byte-identical session prompt, maps every SessionResult/parsed block), result-block parser (moved from protocol.ts).
+  - `src/protocol.ts` and `test/unit/protocol.test.ts` removed (moved via git mv). `runner.ts` runs one step per iteration via `StepRunner`; `cli.ts` builds a CodingStep from the executor and no longer builds prompts. `errorKind` dropped from RunResult execution-error (unused outside tests).
+- Files changed: src/workflow/{workflow-step,workflow-step-result,coding-step,result-block}.ts, src/{runner,cli}.ts, src/protocol.ts (deleted), test/unit/workflow/{coding-step,result-block}.test.ts, test/unit/{runner,cli,reporter}.test.ts, test/unit/protocol.test.ts (deleted), plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0; `pnpm test:coverage` exit 0 (445 tests), 100% on src/.
+  - `git diff 3f42e29 -- test/integration src/code.md` empty; `cmp src/code.md dist/code.md` identical after build.
+  - Mapping of old tests: protocol.test.ts parse cases -> test/unit/workflow/result-block.test.ts; buildSessionPrompt cases + runner nonce/classification cases (fresh nonce, other-nonce block, violation with stderr tail, empty message, each SessionResult kind) -> test/unit/workflow/coding-step.test.ts (details verbatim); runner policy cases stay in test/unit/runner.test.ts (until TASK-004).
+  - src/workflow imports only session/session-executor(.js, type) and its own modules; no agents import.
+- Learnings for future iterations: runner tests now script WorkflowStepResult values instead of session results.
+- Scope deviations: removed `errorKind`/ExecutionErrorKind from runner RunResult and edited reporter.test.ts/cli.test.ts accordingly. No subagent review run.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-004)
+- Task id: TASK-004
+- What was implemented:
+  - `WorkflowExecutor` (policy: retry-once, reset on other outcomes, retries count toward limit, last-iteration session failure -> MaxIterationsReached) publishing frozen events in the design's order; `run()` returns the terminal event, also published once.
+  - `ConsoleReporter` (src/reporter/) renders today's `[afk]` lines; no output for WorkflowFailed and non-listed events.
+  - `EXIT_CODES`, help text and `exitCodeFor` moved to `src/cli/exit-codes.ts`; `src/cli.ts` wires executor + reporter(stderr) and exits with the code for `run()`'s result.
+  - Deleted `src/runner.ts`, `src/reporter.ts`, `test/unit/runner.test.ts`, `test/unit/reporter.test.ts`.
+- Files changed: src/workflow/{workflow-executor,workflow-event,workflow-observer,workflow-options}.ts, src/reporter/{reporter,console-reporter}.ts, src/cli/exit-codes.ts, src/cli.ts, test/unit/workflow/workflow-executor.test.ts, test/unit/reporter/console-reporter.test.ts, test/unit/cli/exit-codes.test.ts, test/unit/cli.test.ts, plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0 (464 tests); `pnpm test:coverage` exit 0, 100% on all of src/.
+  - `git diff 3f42e29 -- test/integration src/code.md` prints nothing; integration suite (stderr byte-identical) passes within pnpm check.
+  - Old runner.test.ts policy cases -> workflow-executor.test.ts: repeat/complete, blocked, fail resets/surfaced, default+smaller limit, last-iteration outcomes, error-reset, two consecutive errors, retry announced and consumes iteration, last-iteration error -> limit, interruption, timeout (with/without seconds), error reporting with stderr tail (SessionExecutionErrorOccurred events). reporter.test.ts cases -> exit-codes.test.ts and console-reporter.test.ts.
+  - Reporter imports only workflow event/observer types; no node writing module.
+- Learnings for future iterations: `cli.test.ts` mocks `WorkflowExecutor` (constructor args in `mocks.construct`) so reporter output is not produced there; reporter output is covered in its own test and integration tests.
+- Scope deviations: events carry `task: {task_id, task_plan_file}` (as parsed); `LaunchPrompt` is `{ text }`. No subagent review run.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-005)
+- Task id: TASK-005
+- What was implemented:
+  - `src/cli/cli.ts` (CLI class: wiring, signals, grace env, exit code), `src/cli/options.ts` (commander parsing, help-wins, version), `src/cli/launch-prompt.ts` (moved from src/prompt.ts); `src/cli.ts` now a thin entry importing only src/cli/.
+  - Tests: test/unit/cli/{cli,entry,launch-prompt}.test.ts (moved/adapted from cli.test.ts and prompt.test.ts, plus new thin-entry test).
+- Files changed: src/cli.ts, src/cli/{cli,options,launch-prompt}.ts, test/unit/cli/*.test.ts, removed src/prompt.ts, test/unit/prompt.test.ts, test/unit/cli.test.ts, plan.json, this file.
+- Verification:
+  - pnpm check exit 0 (467 tests); pnpm test:coverage exit 0, 100% all files.
+  - git diff 3f42e29 -- test/integration src/code.md empty; dist/cli.js is -rwxr-xr-x; `node dist/cli.js --version` prints 0.1.0 (= package.json); cmp dist/code.md src/code.md identical.
+  - Criteria: option errors/exit codes pinned in cli.test.ts; prompt cases in launch-prompt.test.ts; terminal-result mapping in exit-codes.test.ts and cli.test.ts; signals in cli.test.ts; entry in entry.test.ts.
+- Learnings for future iterations: see Project discovery.
+- Scope deviations: none.
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-006)
+- Task id: TASK-006
+- What was implemented:
+  - `test/unit/architecture.test.ts`: reads every relative import in `src/**/*.ts` and enforces layer order (cli > reporter > workflow > session > agents; no upward imports), reporter imports only workflow event/observer types, `src/cli.ts` imports only `src/cli/`, and outside `src/agents/` only `adapter.js` and `registry.js` are imported. Scans non-agent sources for agent names, flags (`--output-last-message`, `--approve-for-me`, `--permission-mode`, `--output-format`) and output-format fields (`is_error`, `subtype`). Asserts old flat modules and `agents/types.ts` are gone and no unit test imports them. Detectors are also tested on synthetic inputs.
+- Files changed: test/unit/architecture.test.ts, specs/refactor-architecture.plan.json, this file.
+- Verification:
+  - `pnpm check` exit 0; `pnpm test:coverage` exit 0 (480 tests), 100% on src/.
+  - `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - Experiment: temporarily added `import ... from "../workflow/workflow-step.js"` to src/session/session-executor.ts and `"--output-format"` to src/workflow/result-block.ts; the import-direction and agent-knowledge tests failed on the real tree (3 failures). Both edits reverted (`git status` clean apart from new files).
+- Learnings for future iterations: the guard resolves imports to repo-relative `.js` paths; `src/cli.ts` counts as the cli layer. Reporter sits between cli and workflow.
+- Scope deviations: none. No subagent review run (test-only change).
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-007)
+- Task id: TASK-007
+- What was implemented:
+  - doc/ARCHITECTURE.md: all typos fixed (Workflow*, Occurred, session/, prose spelling); `WorkflowStep`, `agents/`, `reporter/` names; SessionResult lists the seven implemented kinds; WorkflowStepResult lists only implemented fields and states spec/verification-findings paths are left out (A1); CLI is described as using the terminal result returned by `WorkflowExecutor.run()`, not as an observer; package list updated.
+  - AGENTS.md Map table now lists src/cli.ts, src/cli/, src/workflow/, src/session/, src/agents/, src/reporter/, src/code.md and test folders; Must-knows refer to the architecture guard instead of the runner.
+  - doc/PRODUCT.md (nonce in `src/workflow/coding-step.ts`, `EXIT_CODES` in `src/cli/exit-codes.ts`), doc/TESTING.md (unit test files for workflow/step/session/reporter/cli/architecture; `AGENT_NAMES` literal).
+- Files changed: doc/ARCHITECTURE.md, AGENTS.md, doc/PRODUCT.md, doc/TESTING.md, plan.json, this file.
+- Verification:
+  - Scripted check of every backticked `src/`/`test/` path in AGENTS.md and doc/*.md (skipping `<name>`/glob placeholders): no missing path.
+  - `grep -nE "Worf|Occured|Interruped|FaileInv|adapter/|agent/|reporting|ExecutionStep" doc/ARCHITECTURE.md` prints nothing.
+  - grep for runner/protocol/prompt.ts/reporter.ts/runAfk/agentNames in docs: nothing left.
+  - `pnpm check` exit 0 (prettier included); README untouched so agent-neutral-docs and help tests unaffected.
+- Learnings for future iterations: none new.
+- Scope deviations: none (docs only).
+- Follow up needed: none.
+---
+
+## 2026-11-04 (TASK-008)
+- Task id: TASK-008
+- What was implemented: read-only validation of the finished refactoring; no source changes.
+- Files changed: specs/refactor-architecture.plan.json, this file.
+- Verification (evidence per acceptance criterion):
+  - AC-001, AC-005: `git diff 3f42e29 -- test/integration src/code.md` prints nothing.
+  - AC-002: after `rm -rf dist`, `pnpm check` exit 0 (build, 480 unit tests, typecheck, lint, prettier).
+  - AC-003: `pnpm test:coverage` exit 0; 100% statements/branches/functions/lines, "No files with missing coverage".
+  - AC-004: `dist/cli.js` is `-rwxr-xr-x`, package.json `bin.afk` = `dist/cli.js`; `cmp dist/code.md src/code.md` identical.
+  - AC-006, AC-008: src/agents/ = adapter.ts, claude.ts, codex.ts, registry.ts; test/unit/agents/{claude,codex,registry}.test.ts.
+  - AC-007, AC-027, AC-028: test/unit/architecture.test.ts (passes; also mutation-checked in TASK-006); flat modules and agents/types.ts absent from `ls`.
+  - AC-009..AC-012: src/session/ + test/unit/session/{session-executor-factory,session-executor}.test.ts pass.
+  - AC-013..AC-016: src/workflow/coding-step.ts, result-block.ts; test/unit/workflow/{coding-step,result-block}.test.ts pass.
+  - AC-017..AC-020, AC-018a: workflow-executor.test.ts passes; workflow-event.ts defines all 15 event types (IterationFinished, IterationStarted, MaxIterationsReached, SessionExecutionErrorOccurred, StepExecution{Blocked,Failed,Finished,Retried,Started}, Workflow{Blocked,Failed,Finished,Interrupted,Started,TimedOut}), spelled correctly.
+  - AC-021..AC-023: console-reporter.test.ts passes; reporter imports only workflow event/observer types and ./reporter.js.
+  - AC-024..AC-026: src/cli/ grep shows no retry/iteration policy (only option definitions and exit-code mapping); only stderr write is `[afk] input error:`; test/unit/cli/ passes.
+  - AC-029..AC-031: verified in TASK-007 (typo grep empty, path-existence script); unchanged since.
+  - `pnpm test:integration` run three consecutive times: 17 files / 274 tests passed each time.
+- Learnings for future iterations: none new.
+- Scope deviations: none.
+- Follow up needed: none; no defects found.
+---

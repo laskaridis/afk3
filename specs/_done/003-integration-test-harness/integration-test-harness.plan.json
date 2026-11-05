@@ -1,0 +1,234 @@
+{
+  "specification_document": "specs/integration-test-harness.spec.md",
+  "design_document": "specs/integration-test-harness.design.md",
+  "context_documents": [],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "objective": "Make the integration suite depend only on the built CLI and the documented test contracts, so that restructuring src/ cannot break it while behavior is unchanged.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-001"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004"
+      ],
+      "completion_criteria": [
+        "Searching test/integration/ for imports of src/ (any relative path reaching src/) finds none.",
+        "Agent-name, default-agent, and help exit-code expectations are literal values; temporarily editing a production constant they used to import cannot keep the corresponding test green.",
+        "For a first session and a retry, a test asserts that the recorded session prompt equals exactly the launch prompt, the separator, and dist/code.md with that session's nonce substituted. No integration test picks individual phrases out of the instructions.",
+        "Nonce masking works when the recorded prompts carry a nonce of a different length or alphabet; a small test-local check, or reasoning recorded in the notes, demonstrates this.",
+        "doc/TESTING.md lists AFK_TERMINATION_GRACE_MS, the shipped dist/code.md, the result-block example used by the fake agents, and Codex's --output-last-message as contracts the integration suite relies on.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Do not modify any file under src/.",
+        "Do not use Vitest snapshots (file or inline) for expected values.",
+        "Expected values come from the current code and build; documents under specs/_done/ are historical and must not be used as the source of expected behavior."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-002",
+      "objective": "Pin the complete [afk] stderr transcript of every existing shared harness scenario, for every agent, as literal expected output.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-002"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-005",
+        "AC-006",
+        "AC-007"
+      ],
+      "completion_criteria": [
+        "Each shared scenario in agent-parity.test.ts asserts that stderr equals a literal expected transcript and that stdout is empty, for each agent. Scenarios: complete, task metadata, blocked, fail then complete, iteration limit, retry recovers, two consecutive execution errors, missing final response, protocol violation, timeout, interruption.",
+        "The transcripts include full execution-error detail text (including the protocol violation reason), stderr-tail lines, iteration and retry lines with numbers, the task-failure line, and the final status line, wherever the scenario produces them.",
+        "A launch-failure scenario runs for each agent and asserts exactly the execution-error prefix, the retry line, exit code 3, and two execution-error lines, without asserting the OS-specific error text.",
+        "Changing the wording, order, or count of any [afk] line in a local, uncommitted experiment makes at least one parity test fail; record the experiment in the notes and revert it.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Capture expected transcripts from the current build's actual output; do not compose them from the specification or from src/ string literals.",
+        "Do not modify any file under src/.",
+        "Do not use Vitest snapshots (file or inline) for expected values."
+      ],
+      "dependencies": [
+        "TASK-001"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "objective": "Pin the retry-allowance reset, fail-is-not-an-error, last-iteration, and default-limit run-loop policies end to end for every agent.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-003"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-008",
+        "AC-009",
+        "AC-010",
+        "AC-011"
+      ],
+      "completion_criteria": [
+        "Per-agent scenarios exist for: execution error, repeat, execution error, complete (4 sessions, exit 0); and execution error, fail, execution error, complete (4 sessions, exit 0).",
+        "Per-agent scenarios exist for --max-iterations 1 with each of: execution error, repeat, fail, complete, blocked. Each asserts one session plus the exit code and final status given in AC-010.",
+        "A per-agent scenario without --max-iterations, with sessions that always repeat, asserts exactly 10 sessions, exit 4, and iteration lines 1/10 through 10/10.",
+        "Every new scenario asserts its full stderr transcript exactly, like the scenarios from TASK-002.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Do not modify any file under src/.",
+        "If current behavior differs from an expected outcome in the specification, do not change src/; report the finding with a fail outcome and a follow-up task."
+      ],
+      "dependencies": [
+        "TASK-002"
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "objective": "Pin how every kind of final response and agent exit is classified end to end for every agent, extending the shared fake agent where needed.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-004"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-012",
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-016"
+      ],
+      "completion_criteria": [
+        "Per-agent scenarios cover each invalid-response case listed in AC-012. Each asserts two sessions, exit 3, and the exact execution-error line with its reason text.",
+        "Per-agent scenarios show that a valid block carrying the session's nonce is acted on when surrounding text is present, and when a block with another nonce appears before it or after it. When two complete blocks carry the session's nonce, the last one wins.",
+        "Per-agent scenarios show that responses including task_id and task_plan_file are accepted (including blocked with both null), and that responses omitting both are accepted too.",
+        "A Codex scenario shows that a valid result block written only to stdout, with exit 0 and no output-file message, is reported as a missing final response.",
+        "The shared fake agent can end its own process with a chosen signal. A per-agent scenario asserts the signal execution-error line and the retry.",
+        "Each new fake-agent capability is documented in the fixture header and in the Step type in helpers.ts, and works for every agent's fake without a per-agent copy.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Do not modify any file under src/.",
+        "Extend fake-codex.mjs (shared by fake-claude.mjs); do not add per-agent fake copies.",
+        "Assert reason texts as the current build prints them."
+      ],
+      "dependencies": [
+        "TASK-002"
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "objective": "Pin timeout escalation, interruption by SIGINT, SIGTERM, or SIGHUP, and stderr-tail visibility end to end for every agent.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-005"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-017",
+        "AC-018",
+        "AC-019",
+        "AC-020"
+      ],
+      "completion_criteria": [
+        "A per-agent timeout scenario with an agent that ignores signals asserts that SIGINT then SIGTERM were received, that the agent pid is gone after afk exits, exit 5, and one session.",
+        "A per-agent scenario where the agent writes stderr and is then interrupted asserts that none of that stderr appears in afk's output.",
+        "Per-agent scenarios for non-zero exit, missing final response, and invalid final response, each after the agent wrote stderr, assert that the tail lines follow the execution-error line.",
+        "Per-agent scenarios that send SIGTERM and SIGHUP to afk assert the interrupted status line, exit 130, one session, and no running agent process afterwards.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Do not modify any file under src/.",
+        "Pass AFK_TERMINATION_GRACE_MS to keep termination scenarios fast."
+      ],
+      "dependencies": [
+        "TASK-002"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "objective": "Pin prompt-source conflicts with stdin, Claude launch-argument limits, and the absence of harness-created files for every agent and stop reason.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-006"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-021",
+        "AC-022",
+        "AC-023",
+        "AC-024"
+      ],
+      "completion_criteria": [
+        "Tests show that a positional prompt or --prompt-file together with non-blank piped stdin runs with the explicit source as the launch prompt, and that the stdin data never appears in the session prompt.",
+        "A test shows that a positional prompt or --prompt-file with a stdin pipe that is never closed still launches its session and completes.",
+        "A Claude test shows that without --model or --reasoning-effort, the arguments contain neither --model nor --effort.",
+        "A Claude test shows that the arguments never contain a bypassPermissions permission mode, --dangerously-skip-permissions, --resume, --continue, or --fork-session, including on a retry.",
+        "For each agent and each stop reason (complete, blocked, execution error, iteration limit, timeout, interruption), a test shows that the workspace, home, and temporary directory are unchanged and that existing progress.txt and specs/ content is intact.",
+        "pnpm check passes and git diff shows no change under src/."
+      ],
+      "constraints": [
+        "Do not modify any file under src/."
+      ],
+      "dependencies": [
+        "TASK-001"
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "objective": "Validate that the integration suite covers every acceptance criterion of the specification and works as a black-box behavior-preservation harness.",
+      "status": "completed",
+      "stories_enabled": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006"
+      ],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "AC-006",
+        "AC-007",
+        "AC-008",
+        "AC-009",
+        "AC-010",
+        "AC-011",
+        "AC-012",
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-016",
+        "AC-017",
+        "AC-018",
+        "AC-019",
+        "AC-020",
+        "AC-021",
+        "AC-022",
+        "AC-023",
+        "AC-024"
+      ],
+      "completion_criteria": [
+        "The notes record, for every acceptance criterion, the integration test or tests that verify it.",
+        "git diff against the branch's starting commit shows no change under src/.",
+        "pnpm check passes; pnpm test:integration passes three consecutive times without a flaky failure.",
+        "A temporary, uncommitted rename of src/agents/registry.ts and src/reporter.ts, with their imports in src/ updated, leaves pnpm test:integration green; the experiment is reverted and recorded in the notes.",
+        "Any gap or defect found becomes a follow-up task in this plan instead of being fixed inside this task."
+      ],
+      "constraints": [
+        "Read-only apart from bookkeeping files (this plan and its notes file); temporary experiments must be reverted before finishing."
+      ],
+      "dependencies": [
+        "TASK-003",
+        "TASK-004",
+        "TASK-005",
+        "TASK-006"
+      ]
+    }
+  ]
+}
