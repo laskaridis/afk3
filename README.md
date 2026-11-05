@@ -7,6 +7,14 @@ agent's final response, and repeats until the feature is reported complete, bloc
 
 Requires Node.js **22.13.0 or later**.
 
+## Install
+
+```sh
+npm install --global @laskaridis/afk
+```
+
+This installs the `afk` command. Install and authenticate a supported coding agent before running it.
+
 ## Usage
 
 ```

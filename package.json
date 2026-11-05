@@ -1,7 +1,13 @@
 {
-  "name": "afk-cli",
-  "version": "0.1.0",
+  "name": "@laskaridis/afk",
+  "version": "1.0.0",
   "description": "Leave a coding agent implementing a feature, one task at a time, while you are away from keyboard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laskaridis/afk3.git"
+  },
+  "bugs": "https://github.com/laskaridis/afk3/issues",
+  "homepage": "https://github.com/laskaridis/afk3#readme",
   "type": "module",
   "packageManager": "pnpm@9.15.1",
   "bin": {
@@ -10,11 +16,15 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"const fs=require('fs');fs.copyFileSync('src/code.md','dist/code.md');fs.chmodSync('dist/cli.js',0o755)\"",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && node -e \"const fs=require('fs');fs.copyFileSync('src/code.md','dist/code.md');fs.chmodSync('dist/cli.js',0o755)\"",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
