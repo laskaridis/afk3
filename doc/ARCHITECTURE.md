@@ -214,7 +214,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
   - Failure detail and stderr tail - if SessionFailed
   - Blocker text (the unblocking condition) - if Blocked.
   - Task ID and task list plan file path, carried as parsed from the result block (Continue, Finished, StepFailed, Blocked).
-- The specification file path and the verification findings file path are intentionally left out: adding them would change the `<afk-harness-result>` block contract in `src/code.md`.
+- The specification file path and the verification findings file path are intentionally left out: adding them would change the `<afk-harness-result>` block contract in `src/workflow/steps/coding-step.md`.
 
 **Collaborators:**
 

@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { SessionExecutor } from "../../../src/session/session-executor.js";
-import type { SessionInput } from "../../../src/session/session-input.js";
-import type { SessionResult } from "../../../src/session/session-result.js";
-import { CodingStep } from "../../../src/workflow/coding-step.js";
+import type { SessionExecutor } from "../../../../src/session/session-executor.js";
+import type { SessionInput } from "../../../../src/session/session-input.js";
+import type { SessionResult } from "../../../../src/session/session-result.js";
+import { CodingStep } from "../../../../src/workflow/steps/coding-step.js";
 
-const harness = readFileSync(new URL("../../../src/code.md", import.meta.url), "utf8");
+const harness = readFileSync(new URL("../../../../src/workflow/steps/coding-step.md", import.meta.url), "utf8");
 const OPTIONS = { cwd: "/work", model: "m", effort: "high" };
 
 type Scripted = SessionResult | ((nonce: string) => SessionResult);
@@ -35,7 +35,7 @@ const reply =
   });
 
 describe("CodingStep session prompt", () => {
-  it("passes the launch prompt, a blank line, ---, code.md with the nonce and a trailing newline", async () => {
+  it("passes the launch prompt, a blank line, ---, coding-step.md with the nonce and a trailing newline", async () => {
     const { step, inputs, nonces } = stub(reply({ outcome: "repeat" }));
     await step.execute("  build X\nnow ", OPTIONS);
     expect(inputs[0]!.prompt).toBe(`  build X\nnow \n\n---\n${harness.replaceAll("{{NONCE}}", nonces[0]!)}\n`);

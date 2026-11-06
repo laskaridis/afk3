@@ -1,5 +1,5 @@
 import type { SessionExecutorFactory } from "../session/session-executor-factory.js";
-import { CodingStep } from "./coding-step.js";
+import { CodingStep } from "./steps/coding-step.js";
 import type { TaskMetadata } from "./result-block.js";
 import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
 import type { WorkflowObserver } from "./workflow-observer.js";

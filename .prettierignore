@@ -2,5 +2,5 @@ dist
 coverage
 pnpm-lock.yaml
 specs
-src/code.md
+src/workflow/steps/coding-step.md
 .worktrees/

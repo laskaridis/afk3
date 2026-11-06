@@ -47,12 +47,15 @@ export function withoutNonce(prompt: string) {
 
 /**
  * The prompt a session must receive: the launch prompt verbatim, a blank line, `---`, then the shipped instructions
- * (`dist/code.md`) with `{{NONCE}}` replaced by the session's nonce, and a trailing newline.
+ * (`dist/workflow/steps/coding-step.md`) with `{{NONCE}}` replaced by the session's nonce, and a trailing newline.
  */
 export function expectedSessionPrompt(launchPrompt: string, recordedPrompt: string) {
   const nonce = promptNonce(recordedPrompt);
   if (nonce === undefined) throw new Error("recorded prompt has no result-block example to read the nonce from");
-  const instructions = readFileSync(join(repoRoot, "dist", "code.md"), "utf8").replaceAll("{{NONCE}}", nonce);
+  const instructions = readFileSync(join(repoRoot, "dist", "workflow", "steps", "coding-step.md"), "utf8").replaceAll(
+    "{{NONCE}}",
+    nonce,
+  );
   return `${launchPrompt}\n\n---\n${instructions}\n`;
 }
 
