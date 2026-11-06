@@ -1,0 +1,3 @@
+interface:
+  display_name: "specify"
+  short_description: "Use the current conversation context to create a specification document."

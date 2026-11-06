@@ -18,6 +18,4 @@ pnpm-debug.log*
 .idea/
 .vscode/
 
-.agents/
-.claude/
-skills-lock.json
+.worktrees/

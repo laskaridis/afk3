@@ -1,0 +1,4 @@
+---
+interface:
+  display_name: "doc-gardening"
+  short_description: "Verify docs against code and fix or escalate discrepancies."

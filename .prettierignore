@@ -4,3 +4,4 @@ pnpm-lock.yaml
 specs
 src/workflow/steps/coding-step.md
 .worktrees/
+.agents/skills

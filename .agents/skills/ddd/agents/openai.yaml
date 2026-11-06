@@ -1,0 +1,3 @@
+interface:
+  display_name: "DDD"
+  short_description: "Captures domain language and bounded context knowledge explicilty in the project"
