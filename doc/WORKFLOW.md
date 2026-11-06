@@ -22,7 +22,7 @@ Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), in
 
 - The notes file sits beside the specification: replace `.spec.md` with `.code.md`, or replace the final extension
   with `.code.md` for other specification filenames. Reuse the same file across iterations and create it if missing.
-- Entry format is defined in `src/code.md`: task id, what was implemented, files changed, verification evidence,
+- Entry format is defined in `src/workflow/steps/code-step.md`: task id, what was implemented, files changed, verification evidence,
   learnings, scope deviations, follow-ups.
 - A `## Project discovery` section at the top consolidates reusable learnings.
 - Task entries are append-only; never rewrite past entries. The `## Project discovery` section is updated separately

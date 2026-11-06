@@ -10,10 +10,10 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 | Term               | Meaning                                                                                        |
 | ------------------ | ---------------------------------------------------------------------------------------------- |
 | launch prompt      | The user's feature instructions, from exactly one source: argument, `--prompt-file`, or stdin  |
-| session prompt     | Launch prompt + `---` + `src/code.md` with `{{NONCE}}` replaced                                |
+| session prompt     | Launch prompt + `---` + `src/workflow/steps/code-step.md` with `{{NONCE}}` replaced            |
 | session            | One fresh, non-interactive agent process. Never resumed or forked                              |
 | iteration          | One session launch, retries included; bounded by `--max-iterations` (`DEFAULT_MAX_ITERATIONS`) |
-| nonce              | Random per session (`src/workflow/coding-step.ts`); the result block must carry it             |
+| nonce              | Random per session (`src/workflow/steps/coding-step.ts`); the result block must carry it       |
 | result block       | `<afk-harness-result nonce="…">{json}</afk-harness-result>`; the last one with the nonce wins  |
 | outcome            | `repeat` \| `complete` \| `blocked` (+`blocker_text`) \| `fail` (+`failure_summary`)           |
 | execution error    | `launch-failed` \| `exit-status` \| `missing-response` \| `invalid-response`                   |
