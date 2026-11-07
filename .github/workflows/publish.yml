@@ -2,6 +2,15 @@ name: Publish to npm
 
 on:
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full SHA of the approved release commit
+        required: true
+        type: string
+      expected_version:
+        description: Approved npm version
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -29,6 +38,11 @@ jobs:
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
+      - name: Verify approved release
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: node .github/scripts/verify-release.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - name: Install npm with trusted publishing support

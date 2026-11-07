@@ -8,13 +8,14 @@ local npm login: publishing runs in GitHub Actions and authenticates with npm tr
 
 The [Publish to npm](../.github/workflows/publish.yml) workflow:
 
-1. only runs when started manually (`workflow_dispatch`) and fails unless it runs from `main`;
+1. only runs on `main` via `workflow_dispatch`; requires the approved full commit SHA and npm version, and rejects mismatches;
 2. installs dependencies with `pnpm install --frozen-lockfile`;
 3. runs `pnpm check` (tests, typecheck, lint, prettier, depcheck) — a failure stops the release;
 4. runs `npm publish --access public`, which builds `dist/` first (via `prepack`) and publishes only the `dist/` folder.
 
-The version that gets published is whatever `version` says in `package.json` on `main`. The workflow does not bump the
-version, tag the commit, or create a GitHub release.
+The version published comes from `package.json` in the exact `main` commit selected by the workflow dispatch event. The
+workflow checks that commit and version against the approval inputs before publishing. It does not bump the version, tag
+the commit, or create a GitHub release.
 
 ## Before you start
 
@@ -34,10 +35,16 @@ Follow [semantic versioning](https://semver.org/):
 | New backwards-compatible feature                | minor | `1.0.0` → `1.1.0` |
 | Bug fix, docs, internal change                  | patch | `1.0.0` → `1.0.1` |
 
-Behavior and exit codes are a contract, see [PRODUCT.md](PRODUCT.md). When in doubt about a change being breaking, treat
-it as breaking.
+Consider changes to user-visible behavior and exit codes when choosing the bump. When in doubt about a change being
+breaking, treat it as breaking.
 
-npm never accepts a version number twice, even if that version was unpublished. Always pick a new one.
+The npm `latest` dist-tag is not necessarily the highest published version. Check **all** versions before choosing `X.Y.Z`:
+
+```sh
+npm view @laskaridis/afk versions --json
+```
+
+Choose a version greater than every published version, including those under other dist-tags, and explicitly confirm `X.Y.Z` is not in the list. npm never accepts a version number twice, even if that version was unpublished.
 
 ### 2. Bump the version on a branch
 
@@ -76,13 +83,37 @@ git push -u origin release-X.Y.Z
 
 Open a pull request, wait for CI to pass, and merge it into `main`.
 
-### 5. Run the workflow
+### 5. Approve the exact release commit and run the workflow
 
-1. Open the repository on GitHub, go to **Actions**, and select **Publish to npm**.
-2. Click **Run workflow**, make sure the branch is **main**, and confirm.
-3. Wait for the run to finish. If it fails, see [Troubleshooting](#troubleshooting).
+After the release PR is merged, fetch the current `main` commit and record its full SHA:
+
+```sh
+git fetch origin main
+approved_sha=$(git rev-parse origin/main)
+git show "$approved_sha:package.json"
+```
+
+Review the changes at that SHA, confirm the package version is `X.Y.Z`, and verify that CI passed for **that exact SHA**.
+If additional changes reached `main` after release approval, stop and reassess the release before authorizing it.
+Explicitly approve the SHA and version; a previous approval does not automatically cover a changed commit.
+
+Dispatch on `main`, supplying both approved values:
+
+```sh
+gh workflow run publish.yml --ref main \
+  -f expected_sha="$approved_sha" \
+  -f expected_version="X.Y.Z"
+```
+
+Alternatively, use **Actions → Publish to npm → Run workflow**, select **main**, and enter the **full approved SHA** and
+**expected version** in the form. The workflow fails safely if `main` changed before dispatch or if the package version
+does not match. Do not bypass a mismatch: reassess and reapprove the new commit before retrying. Wait for the run to
+succeed; see [Troubleshooting](#troubleshooting) if it fails.
 
 ### 6. Verify the release
+
+Confirm that the successful **Publish to npm** run used the approved commit SHA (its `head_sha`) and the approved
+version. Then verify the published package:
 
 ```sh
 npm view @laskaridis/afk version        # should print X.Y.Z
@@ -91,7 +122,7 @@ npx @laskaridis/afk@X.Y.Z --version     # smoke test of the published package
 
 The npm registry can take a minute to reflect a new version.
 
-### 7. Tag the release (recommended)
+### 7. Tag the release (mandatory)
 
 Open the successful **Publish to npm** run from step 5 and copy its full commit SHA (open the commit linked from the
 run summary to copy the full SHA). Use that run's commit even if `main` has advanced since publishing. Replace the
@@ -102,9 +133,11 @@ published_sha=REPLACE_WITH_FULL_COMMIT_SHA_FROM_SUCCESSFUL_RUN
 git fetch origin "$published_sha"
 git tag vX.Y.Z "$published_sha"
 git push origin vX.Y.Z
+git ls-remote origin refs/tags/vX.Y.Z # verify that the tag refers to the published commit
 ```
 
-Optionally create a GitHub release for that tag with `gh release create vX.Y.Z --generate-notes`.
+Do not report the release complete until the remote tag is verified to point to the commit from the successful publishing
+run. Optionally create a GitHub release for that tag with `gh release create vX.Y.Z --generate-notes`.
 
 ## First-time setup
 
@@ -122,13 +155,14 @@ repository or the workflow file breaks publishing until the trusted publisher is
 
 ## Troubleshooting
 
-| Symptom                                                         | Cause and fix                                                                                                                      |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `Run this workflow from main.`                                  | The workflow was started from another branch. Re-run it and select `main`.                                                         |
-| `pnpm check` fails                                              | Fix the failure on a branch, merge to `main`, and run the workflow again. Nothing was published.                                   |
-| `403` / "cannot publish over the previously published versions" | That version already exists (or was unpublished). Bump to a new version, merge, and re-run.                                        |
-| `E404` or authentication / OIDC error on publish                | The trusted publisher is missing or its values don't match the repository and workflow. See [First-time setup](#first-time-setup). |
-| Package name unavailable after a full unpublish                 | npm blocks republishing a fully unpublished name for 24 hours. Wait, then retry.                                                   |
+| Symptom                                                         | Cause and fix                                                                                                                              |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Run this workflow from main.`                                  | The workflow was started from another branch. Re-run it and select `main`.                                                                 |
+| Approved SHA or version mismatch                                | `main` advanced before dispatch or the package version differs. Reassess and obtain approval for the exact commit/version before retrying. |
+| `pnpm check` fails                                              | Fix the failure on a branch, merge to `main`, and run the workflow again. Nothing was published.                                           |
+| `403` / "cannot publish over the previously published versions" | That version already exists (or was unpublished). Bump to a new version, merge, and re-run.                                                |
+| `E404` or authentication / OIDC error on publish                | The trusted publisher is missing or its values don't match the repository and workflow. See [First-time setup](#first-time-setup).         |
+| Package name unavailable after a full unpublish                 | npm blocks republishing a fully unpublished name for 24 hours. Wait, then retry.                                                           |
 
 ## Rules of thumb
 
