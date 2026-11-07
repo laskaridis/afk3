@@ -2,6 +2,15 @@ name: Publish to npm
 
 on:
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full SHA of the approved release commit
+        required: true
+        type: string
+      expected_version:
+        description: Approved npm version
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -29,6 +38,26 @@ jobs:
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
+      - name: Verify approved release
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          actual_version="$(node -p "require('./package.json').version")"
+
+          if [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Provide a full 40-character approved commit SHA."
+            exit 1
+          fi
+          if [[ "$GITHUB_SHA" != "$EXPECTED_SHA" || "$actual_sha" != "$EXPECTED_SHA" ]]; then
+            echo "::error::Workflow checkout $actual_sha does not match approved SHA $EXPECTED_SHA."
+            exit 1
+          fi
+          if [[ "$actual_version" != "$EXPECTED_VERSION" ]]; then
+            echo "::error::Package version $actual_version does not match approved version $EXPECTED_VERSION."
+            exit 1
+          fi
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - name: Install npm with trusted publishing support
