@@ -1,6 +1,6 @@
 {
   "name": "@laskaridis/afk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Leave a coding agent implementing a feature, one task at a time, while you are away from keyboard",
   "repository": {
     "type": "git",
