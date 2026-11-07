@@ -1,12 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "code": {
-      "source": "laskaridis/skills",
-      "sourceType": "github",
-      "skillPath": "skills/_archived/code/SKILL.md",
-      "computedHash": "87340e0a70f8b3a4f1907739810f8fed0be63e9fe07b134a9592ac62170fb0bc"
-    },
     "ddd": {
       "source": "laskaridis/skills",
       "sourceType": "github",
