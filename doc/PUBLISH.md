@@ -38,7 +38,13 @@ Follow [semantic versioning](https://semver.org/):
 Consider changes to user-visible behavior and exit codes when choosing the bump. When in doubt about a change being
 breaking, treat it as breaking.
 
-npm never accepts a version number twice, even if that version was unpublished. Always pick a new one.
+The npm `latest` dist-tag is not necessarily the highest published version. Check **all** versions before choosing `X.Y.Z`:
+
+```sh
+npm view @laskaridis/afk versions --json
+```
+
+Choose a version greater than every published version, including those under other dist-tags, and explicitly confirm `X.Y.Z` is not in the list. npm never accepts a version number twice, even if that version was unpublished.
 
 ### 2. Bump the version on a branch
 
