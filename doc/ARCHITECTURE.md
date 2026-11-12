@@ -152,7 +152,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Controls the entire workflow execution as a sequence of iterative steps.
 - Executes `workflow/WorkflowStep`s in the correct order using a `session/SessionExecutor`
 - Dispatches each `workflow/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
-- Implements `workflow/step-handlers/WorkflowStepHandlerContext`, exposing only iteration, timeout information, event publishing and transition requests to handlers; full workflow options remain internal.
+- Creates a separate `workflow/step-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. All retry and terminal state is invocation-local; concurrent runs do not share it.
 - Publishes `workflow/WorkflowEvent`s:
   - `WorkflowStarted`
   - `IterationStarted`
@@ -228,7 +228,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Collaborators:**
 
-- Implemented by `workflow/WorkflowExecutor`.
+- Created by `workflow/WorkflowExecutor.run()` for each invocation.
 - Used by `workflow/step-handlers/WorkflowStepHandler` implementations.
 
 ### `workflow/WorkflowStepResult` (value class)

@@ -69,21 +69,15 @@ describe("WorkflowExecutor policy and events", () => {
     expect(calls.every((call) => call.prompt.startsWith("launch"))).toBe(true);
   });
 
-  it("tracks the step of the current iteration, replacing it on the next", async () => {
-    // The tracked step is private state; read it by bracket access since nothing else exposes it yet.
-    const { workflow } = setup([CONTINUE, FINISHED]);
-    expect(workflow["currentStep"]).toBeUndefined();
-    const seen: unknown[] = [];
-    workflow.subscribe({
-      onEvent: (event) => {
-        if (event.type === "StepExecutionStarted") seen.push(workflow["currentStep"]);
-      },
-    });
+  it("creates a new step for each iteration without leaking step identity", async () => {
+    const { workflow, events, executors } = setup([CONTINUE, FINISHED]);
     await workflow.run();
-    expect(seen).toHaveLength(2);
-    expect(seen[0]).toMatchObject({ name: "coding" });
-    expect(seen[1]).not.toBe(seen[0]);
-    expect(workflow["currentStep"]).toBe(seen[1]);
+    expect(executors).toHaveLength(2);
+    expect(executors[0]).not.toBe(executors[1]);
+    expect(events.filter((event) => event.type === "StepExecutionStarted")).toEqual([
+      { type: "StepExecutionStarted", iteration: 1, stepName: "coding" },
+      { type: "StepExecutionStarted", iteration: 2, stepName: "coding" },
+    ]);
   });
 
   it("complete: repeat then complete", async () => {
@@ -260,4 +254,50 @@ describe("WorkflowExecutor policy and events", () => {
     expect((await workflow.run()).type).toBe("WorkflowFinished");
     expect(calls).toHaveLength(2);
   });
+  it("restarts with a fresh retry allowance after a successful earlier run", async () => {
+    const { workflow, events, calls } = setup([ERROR, FINISHED, ERROR, FINISHED]);
+    expect((await workflow.run()).type).toBe("WorkflowFinished");
+    const boundary = events.length;
+    expect((await workflow.run()).type).toBe("WorkflowFinished");
+    expect(calls).toHaveLength(4);
+    expect(types(events.slice(boundary))).toEqual([
+      "WorkflowStarted",
+      "IterationStarted",
+      "StepExecutionStarted",
+      "SessionExecutionErrorOccurred",
+      "IterationFinished",
+      "IterationStarted",
+      "StepExecutionRetried",
+      "StepExecutionStarted",
+      "StepExecutionFinished",
+      "IterationFinished",
+      "WorkflowFinished",
+    ]);
+    expect(events[boundary + 1]).toEqual({ type: "IterationStarted", iteration: 1, limit: 10, retry: false });
+    expect(events[boundary + 5]).toEqual({ type: "IterationStarted", iteration: 2, limit: 10, retry: true });
+  });
+
+  it("restarts cleanly after reaching the iteration limit", async () => {
+    const { workflow, events } = setup([ERROR, FINISHED], { maxIterations: 1 });
+    expect(await workflow.run()).toEqual({ type: "MaxIterationsReached", limit: 1 });
+    const boundary = events.length;
+    expect((await workflow.run()).type).toBe("WorkflowFinished");
+    expect(events[boundary + 1]).toEqual({ type: "IterationStarted", iteration: 1, limit: 1, retry: false });
+  });
+
+  it("isolates retry decisions across overlapping runs", async () => {
+    const { workflow, events, calls } = setup([ERROR, ERROR, FINISHED, FINISHED]);
+    const results = await Promise.all([workflow.run(), workflow.run()]);
+    expect(results.map((result) => result.type)).toEqual(["WorkflowFinished", "WorkflowFinished"]);
+    expect(calls).toHaveLength(4);
+    const started = events.filter((event) => event.type === "IterationStarted");
+    expect(started).toEqual([
+      { type: "IterationStarted", iteration: 1, limit: 10, retry: false },
+      { type: "IterationStarted", iteration: 1, limit: 10, retry: false },
+      { type: "IterationStarted", iteration: 2, limit: 10, retry: true },
+      { type: "IterationStarted", iteration: 2, limit: 10, retry: true },
+    ]);
+    expect(events.filter((event) => event.type === "WorkflowFinished")).toHaveLength(2);
+  });
+
 });
