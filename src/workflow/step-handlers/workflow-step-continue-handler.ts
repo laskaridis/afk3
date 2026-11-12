@@ -1,4 +1,4 @@
-import type { WorkflowExecutor } from "../workflow-executor.js";
+import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
 import type { WorkflowStepResult } from "../workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 import { taskOf } from "./task-of.js";
@@ -8,12 +8,12 @@ export class WorkflowStepContinueHandler implements WorkflowStepHandler<
   Extract<WorkflowStepResult, { type: "Continue" }>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "Continue" }>, executor: WorkflowExecutor): void {
-    executor.publish({
+  handle(result: Extract<WorkflowStepResult, { type: "Continue" }>, context: WorkflowStepHandlerContext): void {
+    context.publish({
       type: "StepExecutionFinished",
-      iteration: executor.iteration,
+      iteration: context.iteration,
       task: taskOf(result),
     });
-    executor.continueWorkflow();
+    context.continueWorkflow();
   }
 }

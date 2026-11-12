@@ -1,4 +1,4 @@
-import type { WorkflowExecutor } from "../workflow-executor.js";
+import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
 import type { WorkflowStepResult } from "../workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 
@@ -7,10 +7,10 @@ export class WorkflowStepTimeoutHandler implements WorkflowStepHandler<
   Extract<WorkflowStepResult, { type: "Timeout" }>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "Timeout" }>, executor: WorkflowExecutor): void {
-    executor.endWorkflow({
+  handle(result: Extract<WorkflowStepResult, { type: "Timeout" }>, context: WorkflowStepHandlerContext): void {
+    context.endWorkflow({
       type: "WorkflowTimedOut",
-      seconds: executor.options.sessionTimeoutSeconds ?? 0,
+      seconds: context.sessionTimeoutSeconds ?? 0,
     });
   }
 }

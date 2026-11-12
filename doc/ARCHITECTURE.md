@@ -152,7 +152,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Controls the entire workflow execution as a sequence of iterative steps.
 - Executes `workflow/WorkflowStep`s in the correct order using a `session/SessionExecutor`
 - Dispatches each `workflow/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
-- Exposes `options`, `iteration`, `publish()`, `continueWorkflow()`, `retryLastStep()` and `endWorkflow()` to handlers: the executor is the context they delegate decisions to.
+- Implements `workflow/step-handlers/WorkflowStepHandlerContext`, exposing only iteration, timeout information, event publishing and transition requests to handlers; full workflow options remain internal.
 - Publishes `workflow/WorkflowEvent`s:
   - `WorkflowStarted`
   - `IterationStarted`
@@ -206,7 +206,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Collaborators:**
 
-- Receives the `workflow/WorkflowExecutor` as context and calls back into it. This is a type-only import cycle, which `pnpm depcheck` allows (`no-circular` ignores type-only edges).
+- Receives `workflow/step-handlers/WorkflowStepHandlerContext` instead of the concrete executor. The dependency-cruiser rules reject handler-to-executor dependencies and all circular imports, including type-only cycles.
 - Used by `workflow/WorkflowExecutor`
 
 **Concrete implementations (`workflow/step-handlers/`):**
@@ -218,6 +218,18 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - `WorkflowStepSessionFailedHandler`
 - `WorkflowStepTimeoutHandler`
 - `WorkflowStepInterruptedHandler`
+
+### `workflow/step-handlers/WorkflowStepHandlerContext` (interface)
+
+**Responsibilities:**
+
+- Exposes only iteration, configured session timeout, event publication, and continue/retry/end transition requests to step-result handlers.
+- Keeps handlers independent of the concrete executor and its internal state.
+
+**Collaborators:**
+
+- Implemented by `workflow/WorkflowExecutor`.
+- Used by `workflow/step-handlers/WorkflowStepHandler` implementations.
 
 ### `workflow/WorkflowStepResult` (value class)
 
