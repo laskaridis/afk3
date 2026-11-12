@@ -286,18 +286,13 @@ describe("WorkflowExecutor policy and events", () => {
     expect(events[boundary + 1]).toEqual({ type: "IterationStarted", iteration: 1, limit: 1, retry: false });
   });
 
-  it("isolates retry decisions across overlapping runs", async () => {
-    const { workflow, events, calls } = setup([ERROR, ERROR, FINISHED, FINISHED]);
-    const results = await Promise.all([workflow.run(), workflow.run()]);
-    expect(results.map((result) => result.type)).toEqual(["WorkflowFinished", "WorkflowFinished"]);
-    expect(calls).toHaveLength(4);
-    const started = events.filter((event) => event.type === "IterationStarted");
-    expect(started).toEqual([
-      { type: "IterationStarted", iteration: 1, limit: 10, retry: false },
-      { type: "IterationStarted", iteration: 1, limit: 10, retry: false },
-      { type: "IterationStarted", iteration: 2, limit: 10, retry: true },
-      { type: "IterationStarted", iteration: 2, limit: 10, retry: true },
-    ]);
-    expect(events.filter((event) => event.type === "WorkflowFinished")).toHaveLength(2);
+  it("rejects overlapping runs without disturbing the active run, then allows reuse", async () => {
+    const { workflow, events, calls } = setup([FINISHED, FINISHED]);
+    const first = workflow.run();
+    await expect(workflow.run()).rejects.toThrow("WorkflowExecutor is already running");
+    expect(await first).toMatchObject({ type: "WorkflowFinished" });
+    expect(await workflow.run()).toMatchObject({ type: "WorkflowFinished" });
+    expect(calls).toHaveLength(2);
+    expect(events.filter((event) => event.type === "WorkflowStarted")).toHaveLength(2);
   });
 });
