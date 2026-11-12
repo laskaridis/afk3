@@ -18,8 +18,9 @@ const MAX_RETRIES = 1;
 /**
  * Runs the workflow loop and owns its policy.
  *
- * Each invocation has independent retry, iteration, and termination state. Different invocations can run concurrently,
- * each with fresh CodingSteps and sessions. Observers receive events from all invocations in publication order.
+ * Serially re-entrant, not parallelizable: the same executor may run again after the previous run settles,
+ * but overlapping calls to run() are rejected. Each invocation has independent retry, iteration, and terminal state.
+ * Every iteration uses a fresh CodingStep and session.
  *
  * - Continue and StepFailed advance to the next iteration.
  * - Finished, Blocked, Timeout and Interrupted end the invocation.
@@ -30,6 +31,7 @@ const MAX_RETRIES = 1;
  */
 export class WorkflowExecutor {
   private readonly observers: WorkflowObserver[] = [];
+  private running = false;
 
   constructor(
     readonly options: WorkflowOptions,
@@ -37,7 +39,7 @@ export class WorkflowExecutor {
     private readonly sessions: SessionExecutorFactory,
   ) {}
 
-  /** Registers an observer for future events, including those of later or overlapping runs. */
+  /** Registers an observer for events from this executor's sequential runs. */
   subscribe(observer: WorkflowObserver): void {
     this.observers.push(observer);
   }
@@ -49,10 +51,25 @@ export class WorkflowExecutor {
     return frozen;
   }
 
-  /** Starts an independent invocation. Calls may be sequential or overlapping. */
+  /**
+   * Executes the workflow. Serially re-entrant but not parallelizable: call again only after the prior
+   * invocation settles. Overlapping calls reject with an error. The guard is released on success or failure.
+   */
   async run(): Promise<TerminalWorkflowEvent> {
+    if (this.running) {
+      throw new Error("WorkflowExecutor is already running");
+    }
+    this.running = true;
+    try {
+      return await this.executeWorkflow();
+    } finally {
+      this.running = false;
+    }
+  }
+
+  private async executeWorkflow(): Promise<TerminalWorkflowEvent> {
     const { maxIterations } = this.options;
-    // State belongs to this invocation, not the executor: another run cannot alter its retry or terminal decision.
+    // Each invocation starts with fresh iteration, retry, and terminal state.
     let previousError: string | undefined;
     let retriesUsed = 0;
     let iteration = 0;

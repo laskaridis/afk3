@@ -152,7 +152,8 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Controls the entire workflow execution as a sequence of iterative steps.
 - Executes `workflow/WorkflowStep`s in the correct order using a `session/SessionExecutor`
 - Dispatches each `workflow/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
-- Creates a separate `workflow/step-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. All retry and terminal state is invocation-local; concurrent runs do not share it.
+- Is serially re-entrant but not parallelizable: the same instance may be run again after completion, but overlapping `run()` calls are rejected. The active-run guard is released even when execution fails.
+- Creates a separate `workflow/step-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. Retry and terminal state is invocation-local.
 - Publishes `workflow/WorkflowEvent`s:
   - `WorkflowStarted`
   - `IterationStarted`
