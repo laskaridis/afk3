@@ -73,49 +73,53 @@ export class WorkflowExecutor {
     let previousError: string | undefined;
     let retriesUsed = 0;
     let iteration = 0;
-    let stepName = "";
+    let currentStepName = "";
     let currentError: string | undefined;
-    let pendingTerminal: TerminalWorkflowEvent | undefined;
+    let pendingTerminalWorkflowEvent: TerminalWorkflowEvent | undefined;
 
     const context: WorkflowStepHandlerContext = {
       get iteration() {
         return iteration;
       },
       get stepName() {
-        return stepName;
+        return currentStepName;
       },
       sessionTimeoutSeconds: this.options.sessionTimeoutSeconds,
       publish: <T extends WorkflowEvent>(event: T): T => this.publish(event),
       continueWorkflow: () => {},
       retryLastStep: (failure) => {
         if (retriesUsed >= MAX_RETRIES) {
-          pendingTerminal = { type: "WorkflowFailed", detail: failure.detail, stderrTail: failure.stderrTail };
+          pendingTerminalWorkflowEvent = {
+            type: "WorkflowFailed",
+            detail: failure.detail,
+            stderrTail: failure.stderrTail,
+          };
         } else {
           currentError = failure.detail;
         }
       },
       endWorkflow: (terminal) => {
-        pendingTerminal = terminal;
+        pendingTerminalWorkflowEvent = terminal;
       },
     };
 
     this.publish({ type: "WorkflowStarted", maxIterations });
     for (iteration = 1; iteration <= maxIterations; iteration++) {
       currentError = undefined;
-      pendingTerminal = undefined;
+      pendingTerminalWorkflowEvent = undefined;
       this.publish({ type: "IterationStarted", iteration, limit: maxIterations, retry: previousError !== undefined });
       const step = new CodingStep(this.sessions.create(this.options.adapter));
-      stepName = step.name;
+      currentStepName = step.name;
       if (previousError !== undefined) {
         this.publish({
           type: "StepExecutionRetried",
           iteration,
-          stepName,
+          stepName: currentStepName,
           limit: maxIterations,
           previousError,
         });
       }
-      this.publish({ type: "StepExecutionStarted", iteration, stepName });
+      this.publish({ type: "StepExecutionStarted", iteration, stepName: currentStepName });
       const result = await step.execute(this.launchPrompt.text, {
         cwd: this.options.cwd,
         model: this.options.model,
@@ -124,8 +128,8 @@ export class WorkflowExecutor {
 
       this.handle(result, context);
       this.publish({ type: "IterationFinished", iteration, outcome: result.type });
-      if (pendingTerminal !== undefined) {
-        return this.publish(pendingTerminal);
+      if (pendingTerminalWorkflowEvent !== undefined) {
+        return this.publish(pendingTerminalWorkflowEvent);
       }
       // Only an accepted session failure carries over and consumes retry allowance.
       previousError = currentError;
