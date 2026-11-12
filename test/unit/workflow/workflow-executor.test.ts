@@ -103,9 +103,11 @@ describe("WorkflowExecutor policy and events", () => {
     expect(events[3]).toEqual({
       type: "StepExecutionFinished",
       iteration: 1,
+      stepName: "coding",
       task: { task_id: "T-1", task_plan_file: "p.json" },
     });
     expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "Continue" });
+    expect(events[7]).toMatchObject({ type: "StepExecutionFinished", stepName: "coding" });
   });
 
   it("blocked: stops immediately with the blocker text", async () => {
@@ -117,14 +119,14 @@ describe("WorkflowExecutor policy and events", () => {
     });
     expect(calls).toHaveLength(1);
     expect(types(events).slice(3)).toEqual(["StepExecutionBlocked", "IterationFinished", "WorkflowBlocked"]);
-    expect(events[3]).toMatchObject({ blockerText: "need key", task: { task_id: "T-2" } });
+    expect(events[3]).toMatchObject({ stepName: "coding", blockerText: "need key", task: { task_id: "T-2" } });
   });
 
   it("fail then complete: the failure is published and the run continues", async () => {
     const { workflow, events, calls } = setup([FAILED, FINISHED]);
     expect((await workflow.run()).type).toBe("WorkflowFinished");
     expect(calls).toHaveLength(2);
-    expect(events[3]).toMatchObject({ type: "StepExecutionFailed", iteration: 1, failureSummary: "tests broke" });
+    expect(events[3]).toMatchObject({ type: "StepExecutionFailed", iteration: 1, stepName: "coding", failureSummary: "tests broke" });
     expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "StepFailed" });
   });
 
@@ -162,7 +164,7 @@ describe("WorkflowExecutor policy and events", () => {
       stderrTail: ["tail"],
     });
     expect(events[5]).toEqual({ type: "IterationStarted", iteration: 2, limit: 10, retry: true });
-    expect(events[6]).toEqual({ type: "StepExecutionRetried", iteration: 2, limit: 10, previousError: "exit 1" });
+    expect(events[6]).toEqual({ type: "StepExecutionRetried", iteration: 2, stepName: "coding", limit: 10, previousError: "exit 1" });
   });
 
   it("two consecutive session failures end with WorkflowFailed carrying the second detail and tail", async () => {

@@ -12,6 +12,7 @@ export class WorkflowStepContinueHandler implements WorkflowStepHandler<
     context.publish({
       type: "StepExecutionFinished",
       iteration: context.iteration,
+      stepName: context.stepName,
       task: taskOf(result),
     });
     context.continueWorkflow();

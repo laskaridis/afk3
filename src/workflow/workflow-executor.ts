@@ -73,12 +73,16 @@ export class WorkflowExecutor {
     let previousError: string | undefined;
     let retriesUsed = 0;
     let iteration = 0;
+    let stepName = "";
     let currentError: string | undefined;
     let pendingTerminal: TerminalWorkflowEvent | undefined;
 
     const context: WorkflowStepHandlerContext = {
       get iteration() {
         return iteration;
+      },
+      get stepName() {
+        return stepName;
       },
       sessionTimeoutSeconds: this.options.sessionTimeoutSeconds,
       publish: <T extends WorkflowEvent>(event: T): T => this.publish(event),
@@ -100,16 +104,18 @@ export class WorkflowExecutor {
       currentError = undefined;
       pendingTerminal = undefined;
       this.publish({ type: "IterationStarted", iteration, limit: maxIterations, retry: previousError !== undefined });
+      const step = new CodingStep(this.sessions.create(this.options.adapter));
+      stepName = step.name;
       if (previousError !== undefined) {
         this.publish({
           type: "StepExecutionRetried",
           iteration,
+          stepName,
           limit: maxIterations,
           previousError,
         });
       }
-      const step = new CodingStep(this.sessions.create(this.options.adapter));
-      this.publish({ type: "StepExecutionStarted", iteration, stepName: step.name });
+      this.publish({ type: "StepExecutionStarted", iteration, stepName });
       const result = await step.execute(this.launchPrompt.text, {
         cwd: this.options.cwd,
         model: this.options.model,
