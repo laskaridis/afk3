@@ -52,7 +52,9 @@ describe("workflow step handlers", () => {
   it("StepFailed reports the failure and leaves the run going", () => {
     const { context, events, ended, retried, continued } = setup();
     new WorkflowStepFailedHandler().handle({ type: "StepFailed", failureSummary: "broke", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionFailed", iteration: 0, stepName: "coding", failureSummary: "broke", task }]);
+    expect(events).toEqual([
+      { type: "StepExecutionFailed", iteration: 0, stepName: "coding", failureSummary: "broke", task },
+    ]);
     expect(ended).toEqual([]);
     expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
@@ -61,7 +63,9 @@ describe("workflow step handlers", () => {
   it("Blocked reports the blocker and ends the run", () => {
     const { context, events, ended } = setup();
     new WorkflowStepBlockedHandler().handle({ type: "Blocked", blockerText: "need key", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionBlocked", iteration: 0, stepName: "coding", blockerText: "need key", task }]);
+    expect(events).toEqual([
+      { type: "StepExecutionBlocked", iteration: 0, stepName: "coding", blockerText: "need key", task },
+    ]);
     expect(ended).toEqual([{ type: "WorkflowBlocked", blockerText: "need key", task }]);
   });
 
