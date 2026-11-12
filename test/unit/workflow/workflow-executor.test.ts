@@ -107,7 +107,7 @@ describe("WorkflowExecutor policy and events", () => {
       task: { task_id: "T-1", task_plan_file: "p.json" },
     });
     expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "Continue" });
-    expect(events[8]).toMatchObject({ type: "StepExecutionFinished", stepName: "coding" });
+    expect(events[7]).toMatchObject({ type: "StepExecutionFinished", stepName: "coding" });
   });
 
   it("blocked: stops immediately with the blocker text", async () => {
