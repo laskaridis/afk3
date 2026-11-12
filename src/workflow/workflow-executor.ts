@@ -1,6 +1,7 @@
 import type { SessionExecutorFactory } from "../session/session-executor-factory.js";
 import { CodingStep } from "./steps/coding-step.js";
 import type { WorkflowStepHandler } from "./step-handlers/workflow-step-handler.js";
+import type { WorkflowStepHandlerContext } from "./step-handlers/workflow-step-handler-context.js";
 import { STEP_HANDLERS } from "./step-handlers/workflow-step-handlers.js";
 import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
 import type { WorkflowObserver } from "./workflow-observer.js";
@@ -31,7 +32,7 @@ const MAX_RETRIES = 1;
  * Everything that happens is published as a frozen `WorkflowEvent` to the subscribed observers, and the run resolves
  * with the single terminal event. The executor reports nothing itself: output is up to the observers.
  */
-export class WorkflowExecutor {
+export class WorkflowExecutor implements WorkflowStepHandlerContext {
   private readonly observers: WorkflowObserver[] = [];
   private currentIteration = 0;
   private currentStep: WorkflowStep | undefined;
@@ -59,6 +60,11 @@ export class WorkflowExecutor {
   /** The iteration being run, counting from 1; 0 before the run starts. */
   get iteration(): number {
     return this.currentIteration;
+  }
+
+  /** Timeout information exposed to handlers without exposing full workflow options. */
+  get sessionTimeoutSeconds(): number | undefined {
+    return this.options.sessionTimeoutSeconds;
   }
 
   /** Registers an observer for all later events. Observers are notified in subscription order. */

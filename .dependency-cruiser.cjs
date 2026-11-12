@@ -8,12 +8,17 @@ module.exports = {
   forbidden: [
     {
       name: "no-circular",
-      comment:
-        "Import cycles make modules impossible to understand or test in isolation. Type-only edges are ignored: " +
-        "WorkflowStepHandlers take the WorkflowExecutor as a type, which has no runtime cost.",
+      comment: "Import cycles make modules impossible to understand or test in isolation, including type-only cycles.",
       severity: "error",
       from: {},
-      to: { circular: true, viaOnly: { dependencyTypesNot: ["type-only"] } },
+      to: { circular: true },
+    },
+    {
+      name: "step-handlers-not-executor",
+      comment: "Step-result handlers depend on WorkflowStepHandlerContext, not the concrete WorkflowExecutor.",
+      severity: "error",
+      from: { path: "^src/workflow/step-handlers/" },
+      to: { path: "^src/workflow/workflow-executor\\.ts$" },
     },
     {
       name: "reporting-not-up",

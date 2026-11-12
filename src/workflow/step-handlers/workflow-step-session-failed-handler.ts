@@ -1,4 +1,4 @@
-import type { WorkflowExecutor } from "../workflow-executor.js";
+import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
 import type { WorkflowStepResult } from "../workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 
@@ -7,14 +7,14 @@ export class WorkflowStepSessionFailedHandler implements WorkflowStepHandler<
   Extract<WorkflowStepResult, { type: "SessionFailed" }>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "SessionFailed" }>, executor: WorkflowExecutor): void {
-    executor.publish({
+  handle(result: Extract<WorkflowStepResult, { type: "SessionFailed" }>, context: WorkflowStepHandlerContext): void {
+    context.publish({
       type: "SessionExecutionErrorOccurred",
-      iteration: executor.iteration,
+      iteration: context.iteration,
       detail: result.detail,
       stderrTail: result.stderrTail,
     });
-    executor.retryLastStep({
+    context.retryLastStep({
       detail: result.detail,
       stderrTail: result.stderrTail,
     });
