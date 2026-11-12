@@ -8,10 +8,12 @@ module.exports = {
   forbidden: [
     {
       name: "no-circular",
-      comment: "Import cycles make modules impossible to understand or test in isolation.",
+      comment:
+        "Import cycles make modules impossible to understand or test in isolation. Type-only edges are ignored: " +
+        "WorkflowStepHandlers take the WorkflowExecutor as a type, which has no runtime cost.",
       severity: "error",
       from: {},
-      to: { circular: true },
+      to: { circular: true, viaOnly: { dependencyTypesNot: ["type-only"] } },
     },
     {
       name: "reporting-not-up",

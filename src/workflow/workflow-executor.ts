@@ -1,28 +1,31 @@
 import type { SessionExecutorFactory } from "../session/session-executor-factory.js";
 import { CodingStep } from "./steps/coding-step.js";
-import type { TaskMetadata } from "./result-block.js";
+import type { WorkflowStepHandler } from "./step-handlers/workflow-step-handler.js";
+import { STEP_HANDLERS } from "./step-handlers/workflow-step-handlers.js";
 import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
 import type { WorkflowObserver } from "./workflow-observer.js";
 import type { LaunchPrompt } from "./launch-prompt.js";
 import type { WorkflowOptions } from "./workflow-options.js";
+import type { WorkflowStep } from "./workflow-step.js";
+import type { WorkflowStepResult } from "./workflow-step-result.js";
 
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;
 
-/** An immutable copy of just the task fields of a step result, safe to embed in published events. */
-function taskOf(result: TaskMetadata): TaskMetadata {
-  return Object.freeze({ task_id: result.task_id, task_plan_file: result.task_plan_file });
-}
+/** How many times in a row a failed step is retried before the run fails. Internal: not user-configurable yet. */
+const MAX_RETRIES = 1;
 
 /**
  * Runs the workflow loop and owns its policy.
  *
- * Each iteration runs one fresh `CodingStep` in a new session and interprets its result:
+ * Each iteration runs one fresh `CodingStep` in a new session and hands its result to the `WorkflowStepHandler` for
+ * that result type. The handler publishes the step-level events and tells the executor, through `continueWorkflow()`, `retryLastStep()` or `endWorkflow()`,
+ * what the result means for the run:
  *
  * - `Continue` and `StepFailed` end the iteration and the loop moves on to the next one.
  * - `Finished`, `Blocked`, `Timeout` and `Interrupted` end the run immediately.
- * - `SessionFailed` is retried once: a second consecutive failure ends the run, and any other result resets the
- *   allowance. Retries count toward the iteration limit.
+ * - `SessionFailed` is retried up to `MAX_RETRIES` times in a row: the next consecutive failure ends the
+ *   run, and any other result resets the allowance. Retries count toward the iteration limit.
  * - Reaching `maxIterations` without a terminal outcome ends the run as `MaxIterationsReached`.
  *
  * Everything that happens is published as a frozen `WorkflowEvent` to the subscribed observers, and the run resolves
@@ -30,22 +33,72 @@ function taskOf(result: TaskMetadata): TaskMetadata {
  */
 export class WorkflowExecutor {
   private readonly observers: WorkflowObserver[] = [];
+  private currentIteration = 0;
+  private currentStep: WorkflowStep | undefined;
+  /** Set by `endWorkflow()` during the current iteration. */
+  private pendingTerminal: TerminalWorkflowEvent | undefined;
+  /** Set by `retryLastStep()` during the current iteration: the detail of the session failure. */
+  private currentError: string | undefined;
+  /** The session failure of the previous iteration, which makes the current one a retry. */
+  private previousError: string | undefined;
+  /** Retries already used by the current streak of consecutive session failures. */
+  private retriesUsed = 0;
 
   /**
    * @param options Run configuration: the agent adapter, the iteration limit, and the working directory, model, effort
-   *   and session timeout passed to each step.
+   *   and session timeout passed to each step. Readable by step handlers.
    * @param launchPrompt The user's prompt, given to every step.
    * @param sessions Creates the session executor for each iteration's step.
    */
   constructor(
-    private readonly options: WorkflowOptions,
+    readonly options: WorkflowOptions,
     private readonly launchPrompt: LaunchPrompt,
     private readonly sessions: SessionExecutorFactory,
   ) {}
 
+  /** The iteration being run, counting from 1; 0 before the run starts. */
+  get iteration(): number {
+    return this.currentIteration;
+  }
+
   /** Registers an observer for all later events. Observers are notified in subscription order. */
   subscribe(observer: WorkflowObserver): void {
     this.observers.push(observer);
+  }
+
+  /** Freezes the event, delivers it to every observer in order, and returns it so callers can return terminal events. */
+  publish<T extends WorkflowEvent>(event: T): T {
+    const frozen = Object.freeze(event) as T;
+    for (const observer of this.observers) observer.onEvent(frozen);
+    return frozen;
+  }
+
+  /**
+   * Asks for the current iteration to be repeated because its session failed. The executor owns the allowance: up to
+   * `MAX_RETRIES` retries per streak of consecutive failures; a failure after that ends the run as `WorkflowFailed`.
+   * Meant to be called by a step handler while it handles a result.
+   */
+  retryLastStep(failure: { detail: string; stderrTail: readonly string[] }): void {
+    if (this.retriesUsed >= MAX_RETRIES) {
+      this.endWorkflow({ type: "WorkflowFailed", detail: failure.detail, stderrTail: failure.stderrTail });
+    } else {
+      this.currentError = failure.detail;
+    }
+  }
+
+  /**
+   * Notifies the executor that the run goes on with the next iteration. A no-op: continuing is the default outcome of an
+   * iteration, and this call makes a handler say so explicitly. Meant to be called by a step handler while it handles a
+   * result.
+   */
+  continueWorkflow(): void {}
+
+  /**
+   * Asks for the run to end with `terminal`. The executor publishes it once the iteration's `IterationFinished` event
+   * is out. Meant to be called by a step handler while it handles a result.
+   */
+  endWorkflow(terminal: TerminalWorkflowEvent): void {
+    this.pendingTerminal = terminal;
   }
 
   /**
@@ -55,81 +108,55 @@ export class WorkflowExecutor {
   async run(): Promise<TerminalWorkflowEvent> {
     const { maxIterations } = this.options;
     this.publish({ type: "WorkflowStarted", maxIterations });
-    let previousError: string | undefined;
     for (let iteration = 1; iteration <= maxIterations; iteration++) {
-      const retry = previousError !== undefined;
-      this.publish({ type: "IterationStarted", iteration, limit: maxIterations, retry });
-      if (previousError !== undefined) {
-        this.publish({ type: "StepExecutionRetried", iteration, limit: maxIterations, previousError });
+      this.beginIteration(iteration);
+      this.publish({ type: "IterationStarted", iteration, limit: maxIterations, retry: this.hasPreviousError() });
+      if (this.hasPreviousError()) {
+        this.publish({
+          type: "StepExecutionRetried",
+          iteration,
+          limit: maxIterations,
+          previousError: this.previousError as string, // guaranteed by hasPreviousError()
+        });
       }
-      const step = new CodingStep(this.sessions.create(this.options.adapter));
-      this.publish({ type: "StepExecutionStarted", iteration, stepName: step.name });
-      const result = await step.execute(this.launchPrompt.text, {
+      this.currentStep = new CodingStep(this.sessions.create(this.options.adapter));
+      this.publish({ type: "StepExecutionStarted", iteration, stepName: this.currentStep.name });
+      const result = await this.currentStep.execute(this.launchPrompt.text, {
         cwd: this.options.cwd,
         model: this.options.model,
         effort: this.options.effort,
       });
 
-      // Set when this iteration ends the run. IterationFinished is published first, then the terminal event.
-      let terminal: TerminalWorkflowEvent | undefined;
-      switch (result.type) {
-        case "Continue":
-          this.publish({ type: "StepExecutionFinished", iteration, task: taskOf(result) });
-          break;
-        case "Finished":
-          this.publish({ type: "StepExecutionFinished", iteration, task: taskOf(result) });
-          terminal = { type: "WorkflowFinished", task: taskOf(result) };
-          break;
-        case "StepFailed":
-          this.publish({
-            type: "StepExecutionFailed",
-            iteration,
-            failureSummary: result.failureSummary,
-            task: taskOf(result),
-          });
-          break;
-        case "Blocked":
-          this.publish({
-            type: "StepExecutionBlocked",
-            iteration,
-            blockerText: result.blockerText,
-            task: taskOf(result),
-          });
-          terminal = { type: "WorkflowBlocked", blockerText: result.blockerText, task: taskOf(result) };
-          break;
-        case "SessionFailed":
-          this.publish({
-            type: "SessionExecutionErrorOccurred",
-            iteration,
-            detail: result.detail,
-            stderrTail: result.stderrTail,
-          });
-          // One retry per consecutive error; a second consecutive error stops the run.
-          if (previousError !== undefined) {
-            terminal = { type: "WorkflowFailed", detail: result.detail, stderrTail: result.stderrTail };
-          } else if (iteration === maxIterations) {
-            terminal = { type: "MaxIterationsReached", limit: maxIterations };
-          }
-          break;
-        case "Timeout":
-          terminal = { type: "WorkflowTimedOut", seconds: this.options.sessionTimeoutSeconds ?? 0 };
-          break;
-        case "Interrupted":
-          terminal = { type: "WorkflowInterrupted" };
-          break;
-      }
+      this.handle(result);
       this.publish({ type: "IterationFinished", iteration, outcome: result.type });
-      if (terminal !== undefined) return this.publish(terminal);
+      if (this.pendingTerminal !== undefined) {
+        return this.publish(this.pendingTerminal);
+      }
       // Only a session failure carries over: it makes the next iteration a retry.
-      previousError = result.type === "SessionFailed" ? result.detail : undefined;
+      this.previousError = this.currentError;
+      this.retriesUsed = this.hasCurrentError() ? this.retriesUsed + 1 : 0;
     }
     return this.publish({ type: "MaxIterationsReached", limit: maxIterations });
   }
 
-  /** Freezes the event, delivers it to every observer in order, and returns it so callers can return terminal events. */
-  private publish<T extends WorkflowEvent>(event: T): T {
-    const frozen = Object.freeze(event) as T;
-    for (const observer of this.observers) observer.onEvent(frozen);
-    return frozen;
+  /** Whether the previous iteration ended in a session failure, which makes the current iteration a retry. */
+  private hasPreviousError(): boolean {
+    return this.previousError !== undefined;
+  }
+
+  /** Whether the current iteration ended in a session failure that was accepted for retry. */
+  private hasCurrentError(): boolean {
+    return this.currentError !== undefined;
+  }
+
+  private beginIteration(iteration: number): void {
+    this.currentIteration = iteration;
+    this.pendingTerminal = undefined;
+    this.currentError = undefined;
+  }
+
+  private handle(result: WorkflowStepResult): void {
+    const handler = STEP_HANDLERS[result.type] as WorkflowStepHandler;
+    handler.handle(result, this);
   }
 }

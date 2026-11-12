@@ -25,7 +25,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 ## Run policy
 
 - `repeat` → next session; `fail` → print `[afk] Task failure: …`, next session; `complete` / `blocked` → stop.
-- One retry per consecutive execution error; a second consecutive one stops the run. A valid outcome resets it.
+- One retry (`MAX_RETRIES` in the executor; not user-configurable) per streak of consecutive execution errors; the next one stops the run. A valid outcome resets it.
 - A non-zero exit is an execution error even if the output contains a valid result block.
 - Timeout and interruption stop the run immediately, with no retry.
 - The harness trusts the outcome: it never reads tasks, git state, or runs tests.

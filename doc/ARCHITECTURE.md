@@ -151,7 +151,8 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - Controls the entire workflow execution as a sequence of iterative steps.
 - Executes `workflow/WorkflowStep`s in the correct order using a `session/SessionExecutor`
-- Inspects `workflow/WorkflowStepResult`s and handles workflow completion, step failures blocking conditions and iteration policy enforcement.
+- Dispatches each `workflow/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
+- Exposes `options`, `iteration`, `publish()`, `continueWorkflow()`, `retryLastStep()` and `endWorkflow()` to handlers: the executor is the context they delegate decisions to.
 - Publishes `workflow/WorkflowEvent`s:
   - `WorkflowStarted`
   - `IterationStarted`
@@ -173,7 +174,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - Creates `workflow/WorkflowStep`s.
 - Creates `session/SessionExecutor`s with the appropriate `agents/AgentAdapter` and uses them to execute `workflow/WorkflowStep`s.
-- Uses `workflow/WorkflowStepResult`s to decide control.
+- Uses `workflow/WorkflowStepHandler`s to handle `workflow/WorkflowStepResult`s.
 - Uses `workflow/WorkflowOptions`
 
 ### `workflow/WorkflowStep` (interface)
@@ -195,6 +196,28 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Concrete implementations:**
 
 - `CodingStep`
+
+### `workflow/WorkflowStepHandler` (interface)
+
+**Responsibilities:**
+
+- Handles a `workflow/WorkflowStepResult`.
+- Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()` or `endWorkflow()`.
+
+**Collaborators:**
+
+- Receives the `workflow/WorkflowExecutor` as context and calls back into it. This is a type-only import cycle, which `pnpm depcheck` allows (`no-circular` ignores type-only edges).
+- Used by `workflow/WorkflowExecutor`
+
+**Concrete implementations (`workflow/step-handlers/`):**
+
+- `WorkflowStepContinueHandler`,
+- `WorkflowStepFinishedHandler`
+- `WorkflowStepFailedHandler`
+- `WorkflowStepBlockedHandler`
+- `WorkflowStepSessionFailedHandler`
+- `WorkflowStepTimeoutHandler`
+- `WorkflowStepInterruptedHandler`
 
 ### `workflow/WorkflowStepResult` (value class)
 

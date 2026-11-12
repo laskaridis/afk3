@@ -69,6 +69,23 @@ describe("WorkflowExecutor policy and events", () => {
     expect(calls.every((call) => call.prompt.startsWith("launch"))).toBe(true);
   });
 
+  it("tracks the step of the current iteration, replacing it on the next", async () => {
+    // The tracked step is private state; read it by bracket access since nothing else exposes it yet.
+    const { workflow } = setup([CONTINUE, FINISHED]);
+    expect(workflow["currentStep"]).toBeUndefined();
+    const seen: unknown[] = [];
+    workflow.subscribe({
+      onEvent: (event) => {
+        if (event.type === "StepExecutionStarted") seen.push(workflow["currentStep"]);
+      },
+    });
+    await workflow.run();
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toMatchObject({ name: "coding" });
+    expect(seen[1]).not.toBe(seen[0]);
+    expect(workflow["currentStep"]).toBe(seen[1]);
+  });
+
   it("complete: repeat then complete", async () => {
     const { workflow, events } = setup([CONTINUE, FINISHED]);
     const result = await workflow.run();
