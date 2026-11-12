@@ -25,6 +25,7 @@ export type StepExecutionStarted = {
 export type StepExecutionFinished = {
   readonly type: "StepExecutionFinished";
   readonly iteration: number;
+  readonly stepName: string;
   readonly task: Readonly<TaskMetadata>;
 };
 
@@ -32,6 +33,7 @@ export type StepExecutionFinished = {
 export type StepExecutionFailed = {
   readonly type: "StepExecutionFailed";
   readonly iteration: number;
+  readonly stepName: string;
   readonly failureSummary: string;
   readonly task: Readonly<TaskMetadata>;
 };
@@ -40,6 +42,7 @@ export type StepExecutionFailed = {
 export type StepExecutionBlocked = {
   readonly type: "StepExecutionBlocked";
   readonly iteration: number;
+  readonly stepName: string;
   readonly blockerText: string;
   readonly task: Readonly<TaskMetadata>;
 };
@@ -48,6 +51,7 @@ export type StepExecutionBlocked = {
 export type StepExecutionRetried = {
   readonly type: "StepExecutionRetried";
   readonly iteration: number;
+  readonly stepName: string;
   readonly limit: number;
   readonly previousError: string;
 };

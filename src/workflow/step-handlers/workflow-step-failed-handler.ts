@@ -12,6 +12,7 @@ export class WorkflowStepFailedHandler implements WorkflowStepHandler<
     context.publish({
       type: "StepExecutionFailed",
       iteration: context.iteration,
+      stepName: context.stepName,
       failureSummary: result.failureSummary,
       task: taskOf(result),
     });

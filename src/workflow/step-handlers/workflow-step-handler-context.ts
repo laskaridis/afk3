@@ -3,6 +3,7 @@ import type { TerminalWorkflowEvent, WorkflowEvent } from "../workflow-event.js"
 /** The limited workflow state and operations available to step-result handlers. */
 export interface WorkflowStepHandlerContext {
   readonly iteration: number;
+  readonly stepName: string;
   readonly sessionTimeoutSeconds: number | undefined;
 
   /** Publish a step-level event to workflow observers. */

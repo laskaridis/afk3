@@ -17,6 +17,7 @@ function setup(sessionTimeoutSeconds?: number) {
   const continued: unknown[] = [];
   const context: WorkflowStepHandlerContext = {
     iteration: 0,
+    stepName: "coding",
     sessionTimeoutSeconds,
     publish: (event) => {
       events.push(event);
@@ -35,7 +36,7 @@ describe("workflow step handlers", () => {
   it("Continue reports the step finished and leaves the run going", () => {
     const { context, events, ended, retried, continued } = setup();
     new WorkflowStepContinueHandler().handle({ type: "Continue", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, task }]);
+    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
     expect(ended).toEqual([]);
     expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
@@ -44,14 +45,16 @@ describe("workflow step handlers", () => {
   it("Finished reports the step finished and ends the run", () => {
     const { context, events, ended } = setup();
     new WorkflowStepFinishedHandler().handle({ type: "Finished", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, task }]);
+    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
     expect(ended).toEqual([{ type: "WorkflowFinished", task }]);
   });
 
   it("StepFailed reports the failure and leaves the run going", () => {
     const { context, events, ended, retried, continued } = setup();
     new WorkflowStepFailedHandler().handle({ type: "StepFailed", failureSummary: "broke", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionFailed", iteration: 0, failureSummary: "broke", task }]);
+    expect(events).toEqual([
+      { type: "StepExecutionFailed", iteration: 0, stepName: "coding", failureSummary: "broke", task },
+    ]);
     expect(ended).toEqual([]);
     expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
@@ -60,7 +63,9 @@ describe("workflow step handlers", () => {
   it("Blocked reports the blocker and ends the run", () => {
     const { context, events, ended } = setup();
     new WorkflowStepBlockedHandler().handle({ type: "Blocked", blockerText: "need key", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionBlocked", iteration: 0, blockerText: "need key", task }]);
+    expect(events).toEqual([
+      { type: "StepExecutionBlocked", iteration: 0, stepName: "coding", blockerText: "need key", task },
+    ]);
     expect(ended).toEqual([{ type: "WorkflowBlocked", blockerText: "need key", task }]);
   });
 

@@ -12,6 +12,7 @@ export class WorkflowStepBlockedHandler implements WorkflowStepHandler<
     context.publish({
       type: "StepExecutionBlocked",
       iteration: context.iteration,
+      stepName: context.stepName,
       blockerText: result.blockerText,
       task: taskOf(result),
     });

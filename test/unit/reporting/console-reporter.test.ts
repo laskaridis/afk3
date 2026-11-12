@@ -21,11 +21,11 @@ describe("ConsoleReporter", () => {
     ],
     [{ type: "IterationStarted", iteration: 2, limit: 5, retry: true }, ""],
     [
-      { type: "StepExecutionRetried", iteration: 2, limit: 5, previousError: "boom" },
+      { type: "StepExecutionRetried", iteration: 2, stepName: "coding", limit: 5, previousError: "boom" },
       "[afk] Iteration 2/5: retrying agent session after execution error\n",
     ],
     [
-      { type: "StepExecutionFailed", iteration: 1, failureSummary: "tests broke", task: {} },
+      { type: "StepExecutionFailed", iteration: 1, stepName: "coding", failureSummary: "tests broke", task: {} },
       "[afk] Task failure: tests broke\n",
     ],
     [
@@ -47,8 +47,8 @@ describe("ConsoleReporter", () => {
     [{ type: "WorkflowFailed", detail: "bad", stderrTail: ["t"] }, ""],
     [{ type: "WorkflowStarted", maxIterations: 3 }, ""],
     [{ type: "StepExecutionStarted", iteration: 1, stepName: "coding" }, ""],
-    [{ type: "StepExecutionFinished", iteration: 1, task: {} }, ""],
-    [{ type: "StepExecutionBlocked", iteration: 1, blockerText: "x", task: {} }, ""],
+    [{ type: "StepExecutionFinished", iteration: 1, stepName: "coding", task: {} }, ""],
+    [{ type: "StepExecutionBlocked", iteration: 1, stepName: "coding", blockerText: "x", task: {} }, ""],
     [{ type: "IterationFinished", iteration: 1, outcome: "Continue" }, ""],
   ];
 
