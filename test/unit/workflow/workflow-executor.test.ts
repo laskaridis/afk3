@@ -254,6 +254,7 @@ describe("WorkflowExecutor policy and events", () => {
     expect((await workflow.run()).type).toBe("WorkflowFinished");
     expect(calls).toHaveLength(2);
   });
+
   it("restarts with a fresh retry allowance after a successful earlier run", async () => {
     const { workflow, events, calls } = setup([ERROR, FINISHED, ERROR, FINISHED]);
     expect((await workflow.run()).type).toBe("WorkflowFinished");
@@ -299,5 +300,4 @@ describe("WorkflowExecutor policy and events", () => {
     ]);
     expect(events.filter((event) => event.type === "WorkflowFinished")).toHaveLength(2);
   });
-
 });
