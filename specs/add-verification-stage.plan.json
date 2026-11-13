@@ -6,7 +6,7 @@
     {
       "id": "TASK-001",
       "objective": "Ship bundled verification instructions as src/workflow/steps/verification-step.md so the harness has a verification contract file to send to an agent.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-001"],
       "acceptance_criteria_addressed": ["AC-009"],
       "completion_criteria": [

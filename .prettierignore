@@ -3,5 +3,6 @@ coverage
 pnpm-lock.yaml
 specs
 src/workflow/steps/coding-step.md
+src/workflow/steps/verification-step.md
 .worktrees/
 .agents/skills
