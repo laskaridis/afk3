@@ -1,0 +1,187 @@
+{
+  "specification_document": "specs/add-verification-stage.spec.md",
+  "design_document": "specs/add-verification-stage.design.md",
+  "context_documents": [],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "objective": "Ship bundled verification instructions as src/workflow/steps/verification-step.md so the harness has a verification contract file to send to an agent.",
+      "status": "pending",
+      "stories_enabled": ["US-001"],
+      "acceptance_criteria_addressed": ["AC-009"],
+      "completion_criteria": [
+        "src/workflow/steps/verification-step.md exists and states the verification response contract: the per-phase outcome vocabulary and required fields of AC-010/AC-017, that the agent is limited-write (writes only its findings file and the task-plan bookkeeping, never source files), that it marks the verified task complete and commits that bookkeeping, that it never edits the implementation notes file, and the naming convention of the findings file described in the specification's assumptions.",
+        "The file contains a result-block example wrapped in <afk-harness-result nonce=\"{{NONCE}}\"> from which the session nonce can be read.",
+        "pnpm build copies the file to dist/workflow/steps/verification-step.md with identical content.",
+        "The file is excluded from prettier the same way the coding instructions are, and pnpm format:check passes.",
+        "A test demonstrates that the file is present in the built output and carries the nonce example block.",
+        "pnpm check passes."
+      ],
+      "constraints": [
+        "The wording and methodology of the verification instructions are out of scope: a placeholder body that states the contract is sufficient.",
+        "Do not change how the coding instructions are bundled; mirror them."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-002",
+      "objective": "Accept and validate the three verification options on the command line so a run can be configured with a verification attempt limit, model and reasoning effort.",
+      "status": "pending",
+      "stories_enabled": ["US-004", "US-005"],
+      "acceptance_criteria_addressed": ["AC-024", "AC-033"],
+      "completion_criteria": [
+        "afk accepts --max-verification-attempts <count>, --verify-model <name> and --verify-reasoning-effort <level>, and all three appear in --help.",
+        "--max-verification-attempts defaults to 2 and rejects anything that is not a positive integer with an input error, the input-error exit code and no session launched.",
+        "An empty value for --verify-model or --verify-reasoning-effort produces an input error, the input-error exit code and no session launched.",
+        "The three validated values reach the workflow run options.",
+        "Integration tests cover the accepted and the rejected invocations end to end; existing help assertions still pass.",
+        "pnpm check passes."
+      ],
+      "constraints": [
+        "Keep the existing options, their defaults and the existing exit codes unchanged.",
+        "Follow the existing option-parsing idiom (commander parsers throwing InvalidArgumentError)."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-003",
+      "objective": "Move the coding session to its own outcome vocabulary so a coding session commits a candidate and reports it without ever declaring a task or the feature complete.",
+      "status": "pending",
+      "stories_enabled": ["US-002"],
+      "acceptance_criteria_addressed": [
+        "AC-010",
+        "AC-011",
+        "AC-012",
+        "AC-013",
+        "AC-014",
+        "AC-015",
+        "AC-016",
+        "AC-039"
+      ],
+      "completion_criteria": [
+        "The result-block parser validates a coding session's block against the coding vocabulary only (task_implemented, no_more_tasks, blocked) and rejects repeat, complete and fail as contract violations.",
+        "task_id and task_plan_file are required in every coding block, task_id may be null only with no_more_tasks or blocked, task_plan_file may be null only with blocked, and a block omitting either field is a contract violation.",
+        "An optional revision field is accepted on task_implemented as a non-empty string or null, and is a contract violation on any other outcome; a findings_file field on a coding block is a contract violation.",
+        "A contract violation is reported as an invalid response and follows the existing one-retry execution-error policy.",
+        "no_more_tasks ends the run successfully with the stderr line [afk] Run complete: no more tasks, including on the last allowed iteration.",
+        "blocked prints the blocker and ends the run unsuccessfully, as today.",
+        "src/workflow/steps/coding-step.md documents only the new coding vocabulary, in its example block, its rules and its stop conditions; states that the session commits the candidate and never marks a task complete; documents the optional revision field; requires a progress entry in the notes file for every committed candidate, including in a correction iteration, and states that the agent never relies on the verification agent's findings file for its own notes; extends its explicit-assignment rules to a harness-supplied assignment carrying a findings reference, with the specification and task list taken from the assigned task plan file; drops the request to delegate a review of the change; and keeps a validation task that finds a defect recording a follow-up task and reporting task_implemented.",
+        "The former task-failure status line and its step result are gone, and no code path can still produce them.",
+        "Unit and integration tests script coding sessions with the new vocabulary and cover each new contract violation; pnpm check passes."
+      ],
+      "constraints": [
+        "Interim behaviour until TASK-004: a task_implemented outcome continues to the next coding session; do not invent any other handling for it.",
+        "Keep the <afk-harness-result nonce=\"{{NONCE}}\"> example block in the coding instructions: the fake agents read the session nonce from it.",
+        "Keep the harness free of any knowledge of task plans, git state or test results.",
+        "Keep status-line wording agent-neutral and follow the established [afk] <Label>: <detail> shape."
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "TASK-004",
+      "objective": "Verify every candidate with a fresh, independent verification session whose verdict decides whether the run advances, finishes, stops, or sends the same task back to the coding agent with the findings.",
+      "status": "pending",
+      "stories_enabled": ["US-001", "US-003"],
+      "acceptance_criteria_addressed": [
+        "AC-001",
+        "AC-002",
+        "AC-003",
+        "AC-004",
+        "AC-005",
+        "AC-006",
+        "AC-007",
+        "AC-008",
+        "AC-010",
+        "AC-012",
+        "AC-017",
+        "AC-018",
+        "AC-019",
+        "AC-020",
+        "AC-021",
+        "AC-022",
+        "AC-023",
+        "AC-025",
+        "AC-026"
+      ],
+      "completion_criteria": [
+        "After a coding session reports task_implemented, and before any further coding session, the harness runs a fresh non-interactive verification session in the same workspace with the same agent, permissions, working directory and session timeout, never resumed or forked.",
+        "The verification session prompt is the launch prompt, then an assignment naming the task_id, task_plan_file and revision reported by the coding session, then --- , then the bundled verification instructions with this session's nonce substituted; the revision line is omitted when the coding session reported none; all paths are passed through verbatim and no file named by them is read by the harness.",
+        "The verification session's result block is validated against the verification vocabulary only (verification_passed, workflow_finished, verification_failed with non-empty failure_summary and findings_file, blocked with blocker_text), with task_id and task_plan_file required and findings_file rejected on any other verification outcome; anything else is an invalid response.",
+        "verification_passed with tasks remaining starts a fresh coding session prompted with the launch prompt alone, carrying no assignment and no verification notes; workflow_finished ends the run with reported completion and exit 0; blocked prints the blocker and ends the run unsuccessfully.",
+        "verification_failed starts a correction iteration whose prompt contains no launch prompt: an assignment naming the rejected task_id, the task_plan_file, the findings_file and the verifier's failure_summary, a fixed instruction to fix what the verifier found for that task, then --- , then the coding instructions with this session's nonce substituted.",
+        "A correction iteration counts against --max-iterations; a verification session and its retries never do, and the candidate produced by the last allowed coding iteration is still verified, with the run then ending as the specification's table requires for workflow_finished, verification_passed, verification_failed below the attempt limit, and blocked.",
+        "A session that received an assignment and answers with a different task_id is reported as an invalid response, in both phases, except for a blocked response with task_id null.",
+        "A verification session that fails to execute or violates the contract is retried once, immediately, with a new nonce and the same assignment; a second consecutive execution error ends the run; a valid outcome resets the retry budget. A correction iteration retried after an execution error repeats the same assignment, including the findings reference, with a new nonce.",
+        "stderr carries [afk] Iteration <n>/<limit>: starting agent session for a coding session, [afk] Iteration <n>/<limit>: starting verification session and [afk] Iteration <n>/<limit>: retrying verification session after execution error for a verification session with <n> the coding iteration that produced the candidate, [afk] Verification passed for a passing verdict, and [afk] Verification failed (attempt <k>/<limit>): <failure summary> for a rejection.",
+        "The attempt count behind <k> is incremented only by a verification_failed verdict, never by a blocked outcome or an execution error, is reset when a different task id is observed, and lives only for the duration of the run.",
+        "Integration tests drive full two-phase runs for each supported agent, asserting the exact verification and correction prompts built from the bundled instructions, the stderr wording, the exit codes and the number and order of sessions; unit tests cover the new step, step results and executor policy. pnpm check passes."
+      ],
+      "constraints": [
+        "Verification is unconditional: no option, environment variable or outcome may skip it.",
+        "Both phases use the one agent selected for the run; there is no per-phase agent selection.",
+        "The harness must not read, resolve or validate the task plan, findings file, git state or test results.",
+        "Keep the established layering and the step/policy split: a step owns its prompt, nonce and result interpretation; the executor owns when sessions run, limits, retries and terminal events; handlers decide no policy.",
+        "Interim behaviour until TASK-005: a rejection always starts a correction iteration, bounded only by --max-iterations.",
+        "Status lines stay agent-neutral and byte-identical across agents."
+      ],
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003"]
+    },
+    {
+      "id": "TASK-005",
+      "objective": "Stop the run with a dedicated exit code once a task has been rejected by verification as many times as the configured limit allows.",
+      "status": "pending",
+      "stories_enabled": ["US-004"],
+      "acceptance_criteria_addressed": ["AC-006", "AC-027", "AC-028", "AC-029"],
+      "completion_criteria": [
+        "When a verification session rejects a task whose attempt count has reached --max-verification-attempts, the run stops without launching a correction iteration, prints [afk] Run stopped: verification limit of <count> reached for <task id> on stderr and exits with code 6.",
+        "Exit code 6 is listed by afk --help with the meaning \"verification rejected the same task too many times\", and exit codes 0-5 and 130 keep their numbers and meanings.",
+        "When the attempt limit and the iteration limit are reached at once, the run exits with 6 rather than 4.",
+        "Stopping at the verification limit writes no file and modifies no task plan: the workspace is unchanged by the harness.",
+        "Integration tests cover reaching the limit with the default and with a configured limit, the precedence over the iteration limit, and the unchanged workspace; pnpm check passes."
+      ],
+      "constraints": [
+        "Exit code 6 is additive; do not renumber any existing exit code.",
+        "The attempt counter stays in memory for the duration of the run and is never persisted."
+      ],
+      "dependencies": ["TASK-004"]
+    },
+    {
+      "id": "TASK-006",
+      "objective": "Run the verification phase with its own model and reasoning effort so candidates can be reviewed by a different or stronger model than the one that implemented them.",
+      "status": "pending",
+      "stories_enabled": ["US-005"],
+      "acceptance_criteria_addressed": ["AC-030", "AC-031", "AC-032", "AC-034"],
+      "completion_criteria": [
+        "A verification session launched with --verify-model and/or --verify-reasoning-effort passes those values to the agent unchanged, while coding sessions in the same run keep using --model and --reasoning-effort or the agent's own configuration.",
+        "With neither override supplied, a verification session resolves its model and reasoning effort exactly like a coding session, including any --model and --reasoning-effort given.",
+        "Both phases run the one agent chosen with --agent.",
+        "Integration tests assert the arguments each phase's agent process receives for every combination of the four model and effort options, for each supported agent; pnpm check passes."
+      ],
+      "constraints": [
+        "Pass the values through unchanged; the harness does not validate or translate model or effort names.",
+        "Do not add per-phase agent selection."
+      ],
+      "dependencies": ["TASK-002", "TASK-004"]
+    },
+    {
+      "id": "TASK-007",
+      "objective": "Bring the behaviour contract, architecture, repository map and development documentation in line with the two-phase loop so they remain the single source of truth.",
+      "status": "pending",
+      "stories_enabled": ["US-006"],
+      "acceptance_criteria_addressed": ["AC-035", "AC-036", "AC-037", "AC-038"],
+      "completion_criteria": [
+        "README.md lists --max-verification-attempts, --verify-model and --verify-reasoning-effort in its options table and describes the two-phase loop and the new exit code.",
+        "doc/PRODUCT.md defines candidate, verification session, correction iteration, assignment and findings file; redefines iteration and session prompt for two phases; states the two-phase loop, each phase's outcome vocabulary, the per-task verification limit and the per-phase outcome meanings in its outcome row and run policy; replaces the statement that the parser accepts blocks omitting task_id and task_plan_file; and lists exit code 6.",
+        "doc/ARCHITECTURE.md shows the two-phase flow, lists the verification step among the concrete WorkflowStep implementations, lists the new WorkflowEvents, and replaces the note that the findings file path is intentionally left out of the result-block contract.",
+        "AGENTS.md lists the bundled verification instructions file and no longer describes the coding instructions as appended to every session prompt.",
+        "doc/WORKFLOW.md lists <feature-name-slug>.verify.md among the feature artifacts, doc/TESTING.md describes how tests script coding and verification sessions and build the expected verification prompt, and doc/PUBLISH.md lists the bundled verification instructions file in the expected package contents.",
+        "Every statement added about harness behaviour matches the shipped code, and the documentation tests and pnpm check pass."
+      ],
+      "constraints": [
+        "Use the project's established domain language; do not introduce synonyms for the terms the specification defines.",
+        "Document only behaviour that exists in the code at the end of this task."
+      ],
+      "dependencies": ["TASK-004", "TASK-005", "TASK-006"]
+    }
+  ]
+}
