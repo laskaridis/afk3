@@ -166,7 +166,7 @@
     {
       "id": "TASK-007",
       "objective": "Bring the behaviour contract, architecture, repository map and development documentation in line with the two-phase loop so they remain the single source of truth.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-006"],
       "acceptance_criteria_addressed": ["AC-035", "AC-036", "AC-037", "AC-038"],
       "completion_criteria": [

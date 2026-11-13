@@ -209,7 +209,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Responsibilities:**
 
 - Handles a `workflow/WorkflowStepResult`.
-- Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()` or `endWorkflow()`.
+- Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()`, `requestCorrection()` or `endWorkflow()`.
 
 **Collaborators:**
 
@@ -232,7 +232,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Responsibilities:**
 
-- Exposes only iteration, configured session timeout, event publication, and continue/retry/end transition requests to step-result handlers.
+- Exposes only iteration, configured session timeout, event publication, and continue/retry/correction/end transition requests to step-result handlers.
 - Keeps handlers independent of the concrete executor and its internal state.
 
 **Collaborators:**
