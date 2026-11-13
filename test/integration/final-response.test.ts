@@ -4,6 +4,9 @@ import { createFakeCodexEnvironment, promptNonce, startAfk, type Step } from "./
 const AGENT_NAMES = ["codex", "claude"];
 
 const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
+const VERIFY_1 = "[afk] Iteration 1/10: starting verification session";
+const VERIFIED = "[afk] Verification passed";
+const PASSED_BODY = '{"outcome":"verification_passed","task_id":"T-1","task_plan_file":"p.json"}';
 const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
 const COMPLETE_LINE = "[afk] Run complete: no more tasks";
 
@@ -259,11 +262,14 @@ describe.each(AGENT_NAMES)("valid final responses: %s", (agent) => {
       name: "two blocks with the session nonce: the last one wins (repeat last)",
       sessions: [
         raw(`${complete}\n${block('{"outcome":"task_implemented","task_id":"T-1","task_plan_file":"p.json"}')}`),
+        raw(block(PASSED_BODY)),
       ],
       args: ["--max-iterations", "1"],
       exitCode: 4,
       transcript: [
         "[afk] Iteration 1/1: starting agent session",
+        "[afk] Iteration 1/1: starting verification session",
+        VERIFIED,
         "[afk] Run stopped: iteration limit of 1 reached without reported completion",
       ],
     },
@@ -275,19 +281,21 @@ describe.each(AGENT_NAMES)("valid final responses: %s", (agent) => {
             '{"outcome":"task_implemented","task_id":"TASK-001","task_plan_file":"specs/f.plan.json","revision":"9f3c2ab"}',
           ),
         ),
+        raw(block('{"outcome":"verification_passed","task_id":"TASK-001","task_plan_file":"specs/f.plan.json"}')),
         raw(complete),
       ],
       exitCode: 0,
-      transcript: [ITERATION_1, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
     },
     {
       name: "task_implemented with a null revision",
       sessions: [
         raw(block('{"outcome":"task_implemented","task_id":"TASK-001","task_plan_file":"p.json","revision":null}')),
+        raw(block('{"outcome":"verification_passed","task_id":"TASK-001","task_plan_file":"p.json"}')),
         raw(complete),
       ],
       exitCode: 0,
-      transcript: [ITERATION_1, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
     },
     {
       name: "no_more_tasks on the last allowed iteration",

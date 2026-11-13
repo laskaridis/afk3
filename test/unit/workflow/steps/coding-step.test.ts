@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SessionExecutor } from "../../../../src/session/session-executor.js";
 import type { SessionInput } from "../../../../src/session/session-input.js";
 import type { SessionResult } from "../../../../src/session/session-result.js";
+import type { CorrectionAssignment } from "../../../../src/workflow/assignment.js";
 import { CodingStep } from "../../../../src/workflow/steps/coding-step.js";
 
 const harness = readFileSync(new URL("../../../../src/workflow/steps/coding-step.md", import.meta.url), "utf8");
@@ -11,7 +12,15 @@ const OPTIONS = { cwd: "/work", model: "m", effort: "high" };
 type Scripted = SessionResult | ((nonce: string) => SessionResult);
 
 /** A stubbed SessionExecutor that records inputs and recovers the session's nonce from the prompt. */
-function stub(...results: Scripted[]) {
+function stub(...results: Scripted[]): ReturnType<typeof stubWith>;
+function stub(correction: CorrectionAssignment, ...results: Scripted[]): ReturnType<typeof stubWith>;
+function stub(...args: Array<Scripted | CorrectionAssignment>) {
+  const [first] = args;
+  const isCorrection = typeof first === "object" && "taskId" in first;
+  return stubWith(isCorrection ? first : undefined, ...((isCorrection ? args.slice(1) : args) as Scripted[]));
+}
+
+function stubWith(correction: CorrectionAssignment | undefined, ...results: Scripted[]) {
   const inputs: SessionInput[] = [];
   const nonces: string[] = [];
   const executor = {
@@ -23,7 +32,7 @@ function stub(...results: Scripted[]) {
       return typeof result === "function" ? result(nonce) : result;
     },
   } as unknown as SessionExecutor;
-  return { step: new CodingStep(executor), inputs, nonces };
+  return { step: new CodingStep(executor, correction), inputs, nonces };
 }
 
 const IMPLEMENTED = { outcome: "task_implemented", task_id: "TASK-011", task_plan_file: "p.json" };
@@ -55,6 +64,55 @@ describe("CodingStep session prompt", () => {
 
   it("is named coding", () => {
     expect(stub().step.name).toBe("coding");
+  });
+});
+
+describe("CodingStep correction assignment", () => {
+  const CORRECTION = {
+    taskId: "TASK-011",
+    taskPlanFile: "specs/f.plan.json",
+    findingsFile: "specs/f.verify.md",
+    failureSummary: "AC-2 not met\nsecond line",
+  };
+
+  const stubWithCorrection = (...results: Scripted[]) => stub(CORRECTION, ...results);
+
+  it("prompts with the assignment, a fixed instruction, --- and the instructions, without the launch prompt", async () => {
+    const { step, inputs, nonces } = stubWithCorrection(reply(IMPLEMENTED));
+    await step.execute("build X", OPTIONS);
+    expect(inputs[0]!.prompt).toBe(
+      [
+        "Correction Assignment:",
+        "- task_id: TASK-011",
+        "- task_plan_file: specs/f.plan.json",
+        "- findings_file: specs/f.verify.md",
+        "- failure_summary: AC-2 not met\nsecond line",
+        "Fix the issues the verification agent found for this task.",
+        "---",
+        `${harness.replaceAll("{{NONCE}}", nonces[0]!)}\n`,
+      ].join("\n"),
+    );
+    expect(inputs[0]!.prompt).not.toContain("build X");
+  });
+
+  it("reports another task id than the assigned one as an invalid response", async () => {
+    const { step } = stubWithCorrection(reply({ ...IMPLEMENTED, task_id: "TASK-012" }));
+    expect(await step.execute("p", OPTIONS)).toMatchObject({
+      type: "SessionFailed",
+      detail: 'agent final response is invalid: "task_id" is "TASK-012" but the assigned task is "TASK-011"',
+    });
+  });
+
+  it("exempts blocked with a null task_id", async () => {
+    const { step } = stubWithCorrection(
+      reply({ outcome: "blocked", blocker_text: "x", task_id: null, task_plan_file: null }),
+    );
+    expect(await step.execute("p", OPTIONS)).toMatchObject({ type: "Blocked", blockerText: "x" });
+  });
+
+  it("does not accept no_more_tasks in a correction iteration", async () => {
+    const { step } = stubWithCorrection(reply({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }));
+    expect(await step.execute("p", OPTIONS)).toMatchObject({ type: "SessionFailed" });
   });
 });
 

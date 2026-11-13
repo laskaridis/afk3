@@ -6,24 +6,63 @@ export type TaskMetadata = {
   task_plan_file?: string | null;
 };
 
+/** The phase of the loop a session runs in; each phase has its own outcome vocabulary. */
+export type ResultPhase = "coding" | "verification";
+
+/** The task a session reports on, as the result block names it. */
+type ReportedTask = {
+  /** Identifier of the task the session worked on. */
+  task_id: string;
+  /** Path of the file holding the task's plan. */
+  task_plan_file: string;
+};
+
 /** The validated JSON object a coding session reports at the end of a session, discriminated by `outcome`. */
-export type ResultBlock = {
-  /** Identifier of the task the session worked on; `null` only with `no_more_tasks` or `blocked`. */
-  task_id: string | null;
-  /** Path of the file holding the task's plan; `null` only with `blocked`. */
-  task_plan_file: string | null;
-} &
+export type CodingResultBlock =
   /** A candidate was committed and is ready for verification; `revision` optionally names its commit. */
-  (
-    | { outcome: "task_implemented"; revision?: string | null }
-    /** No pending task exists; nothing was implemented. */
-    | { outcome: "no_more_tasks" }
-    /** No progress is possible without outside help; `blocker_text` says why. */
-    | { outcome: "blocked"; blocker_text: string }
-  );
+  | ({ outcome: "task_implemented"; revision?: string | null } & ReportedTask)
+  /** No pending task exists; nothing was implemented. */
+  | { outcome: "no_more_tasks"; task_id: null; task_plan_file: string }
+  /** No progress is possible without outside help; `blocker_text` says why. */
+  | { outcome: "blocked"; blocker_text: string; task_id: string | null; task_plan_file: string | null };
+
+/** The validated JSON object a verification session reports at the end of a session, discriminated by `outcome`. */
+export type VerificationResultBlock =
+  /** The candidate passed and tasks remain. */
+  | ({ outcome: "verification_passed" } & ReportedTask)
+  /** The candidate passed and no tasks remain. */
+  | ({ outcome: "workflow_finished" } & ReportedTask)
+  /** The candidate was rejected; `findings_file` names the verification agent's notes. */
+  | ({ outcome: "verification_failed"; failure_summary: string; findings_file: string } & ReportedTask)
+  /** No progress is possible without outside help; `blocker_text` says why. */
+  | { outcome: "blocked"; blocker_text: string; task_id: string | null; task_plan_file: string | null };
 
 /** Why a final message does not satisfy the result-block contract, as a user-facing fragment. */
 export type ContractViolation = { violation: string };
+
+/** Per phase, each valid outcome with the extra fields it accepts. Every one is a required string except `revision`. */
+const VOCABULARY: Record<ResultPhase, Record<string, readonly string[]>> = {
+  coding: { task_implemented: ["revision"], no_more_tasks: [], blocked: ["blocker_text"] },
+  verification: {
+    verification_passed: [],
+    workflow_finished: [],
+    verification_failed: ["failure_summary", "findings_file"],
+    blocked: ["blocker_text"],
+  },
+};
+
+/** Per phase, the outcomes that may carry a null `task_id`. */
+const NULL_TASK_ID_OUTCOMES: Record<ResultPhase, readonly string[]> = {
+  coding: ["no_more_tasks", "blocked"],
+  verification: ["blocked"],
+};
+
+/** "a", "a or b" or "a, b, or c". */
+function listOf(items: readonly string[]): string {
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, or ${items.at(-1)}`;
+}
 
 /** The body of the last complete result block carrying this session's nonce, so echoed examples and noise are ignored. */
 function extractResultBody(text: string, nonce: string): string | undefined {
@@ -43,9 +82,16 @@ function isTextOrNull(value: unknown): value is string | null {
 }
 
 /** The contract violation for how `task_id` and `task_plan_file` combine with the outcome, if there is one. */
-function taskMetadataViolation(outcome: string, taskId: string | null, taskPlanFile: string | null) {
-  if (taskId === null && outcome === "task_implemented") {
-    return 'a null "task_id" requires outcome "no_more_tasks" or "blocked" because no task was implemented';
+function taskMetadataViolation(
+  phase: ResultPhase,
+  outcome: string,
+  taskId: string | null,
+  taskPlanFile: string | null,
+) {
+  const nullable = NULL_TASK_ID_OUTCOMES[phase];
+  if (taskId === null && !nullable.includes(outcome)) {
+    const names = listOf(nullable.map((name) => `"${name}"`));
+    return `a null "task_id" requires outcome ${names} because no task was ${phase === "coding" ? "implemented" : "verified"}`;
   }
   if (taskId !== null && outcome === "no_more_tasks") {
     return 'outcome "no_more_tasks" requires a null "task_id" because no task was selected';
@@ -57,15 +103,30 @@ function taskMetadataViolation(outcome: string, taskId: string | null, taskPlanF
 }
 
 /**
- * Finds and validates the result block in a coding session's final message.
+ * Finds and validates the result block in a session's final message, against the vocabulary of `phase` only.
  *
  * Only the last complete block carrying `nonce` counts. Never throws: a missing message, a missing block, malformed
- * JSON or a field that breaks the contract is returned as a `ContractViolation`.
+ * JSON, an outcome of the other phase or a field that breaks the contract is returned as a `ContractViolation`.
  *
  * @param text The agent's final message, if it produced one.
  * @param nonce The session nonce the block must carry.
+ * @param phase Whose vocabulary the block must use.
  */
-export function parseResultBlock(text: string | undefined, nonce: string): ResultBlock | ContractViolation {
+export function parseResultBlock(
+  text: string | undefined,
+  nonce: string,
+  phase: "coding",
+): CodingResultBlock | ContractViolation;
+export function parseResultBlock(
+  text: string | undefined,
+  nonce: string,
+  phase: "verification",
+): VerificationResultBlock | ContractViolation;
+export function parseResultBlock(
+  text: string | undefined,
+  nonce: string,
+  phase: ResultPhase,
+): CodingResultBlock | VerificationResultBlock | ContractViolation {
   if (text === undefined || text.trim() === "") {
     return { violation: "the final message is missing or empty" };
   }
@@ -88,43 +149,39 @@ export function parseResultBlock(text: string | undefined, nonce: string): Resul
   }
 
   const fields = value as Record<string, unknown>;
-  const { outcome } = fields;
+  const vocabulary = VOCABULARY[phase];
   for (const key of ["task_id", "task_plan_file"] as const) {
     if (!Object.hasOwn(fields, key)) return { violation: `"${key}" is required` };
     if (!isTextOrNull(fields[key])) return { violation: `"${key}" must be a non-empty string or null` };
   }
-  const taskId = fields.task_id as string | null;
-  const taskPlanFile = fields.task_plan_file as string | null;
-  if (outcome !== "task_implemented" && outcome !== "no_more_tasks" && outcome !== "blocked") {
-    return { violation: 'missing or unsupported "outcome" (expected task_implemented, no_more_tasks, or blocked)' };
+  const { outcome } = fields;
+  if (typeof outcome !== "string" || !Object.hasOwn(vocabulary, outcome)) {
+    return { violation: `missing or unsupported "outcome" (expected ${listOf(Object.keys(vocabulary))})` };
   }
-  const metadataViolation = taskMetadataViolation(outcome, taskId, taskPlanFile);
+  const metadataViolation = taskMetadataViolation(
+    phase,
+    outcome,
+    fields.task_id as string | null,
+    fields.task_plan_file as string | null,
+  );
   if (metadataViolation !== undefined) return { violation: metadataViolation };
 
-  const allowed = ["outcome", "task_id", "task_plan_file"];
-  if (outcome === "task_implemented") allowed.push("revision");
-  if (outcome === "blocked") allowed.push("blocker_text");
+  const outcomeFields = vocabulary[outcome]!;
+  const allowed = ["outcome", "task_id", "task_plan_file", ...outcomeFields];
   const extra = Object.keys(fields).filter((key) => !allowed.includes(key));
   if (extra.length > 0) {
     return { violation: `outcome "${outcome}" has unsupported fields: ${extra.join(", ")}` };
   }
 
-  const metadata = { task_id: taskId, task_plan_file: taskPlanFile };
-  switch (outcome) {
-    case "no_more_tasks":
-      return { outcome, ...metadata };
-    case "task_implemented": {
-      const { revision } = fields;
-      if (revision === undefined) return { outcome, ...metadata };
-      if (!isTextOrNull(revision)) return { violation: '"revision" must be a non-empty string or null' };
-      return { outcome, revision, ...metadata };
-    }
-    case "blocked": {
-      const detail = fields.blocker_text;
-      if (typeof detail !== "string" || detail.trim() === "") {
-        return { violation: 'outcome "blocked" requires a non-empty string "blocker_text"' };
-      }
-      return { outcome, blocker_text: detail, ...metadata };
+  if (fields.revision !== undefined && !isTextOrNull(fields.revision)) {
+    return { violation: '"revision" must be a non-empty string or null' };
+  }
+  for (const key of outcomeFields.filter((name) => name !== "revision")) {
+    const text = fields[key];
+    if (typeof text !== "string" || text.trim() === "") {
+      return { violation: `outcome "${outcome}" requires a non-empty string "${key}"` };
     }
   }
+  // Every field was validated above, so the object has the shape of the matching block type.
+  return fields as CodingResultBlock | VerificationResultBlock;
 }

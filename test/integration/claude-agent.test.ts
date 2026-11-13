@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, IMPLEMENTED, PASSED, rounds, startAfk, type Step } from "./support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const COMPLETE = say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" });
@@ -49,27 +49,22 @@ describe("afk --agent claude", () => {
         1,
         "need key",
       ],
-      [
-        "task_implemented",
-        say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" }),
-        4,
-        "iteration limit",
-      ],
+      ["task_implemented", IMPLEMENTED, 4, "iteration limit"],
     ])("%s", async (_name, steps, exitCode, text) => {
-      const { done } = runClaude([steps], ["--max-iterations", "2"]);
+      const { done } = runClaude(steps === IMPLEMENTED ? rounds(IMPLEMENTED, PASSED, 2) : [steps], [
+        "--max-iterations",
+        "2",
+      ]);
       const run = await done;
       expect(run.exitCode).toBe(exitCode);
       expect(run.stderr).toContain(text);
     });
 
-    it("task_implemented continues to the next coding session", async () => {
-      const { fake, done } = runClaude([
-        say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" }),
-        COMPLETE,
-      ]);
+    it("task_implemented is verified, then continues to the next coding session", async () => {
+      const { fake, done } = runClaude([IMPLEMENTED, PASSED, COMPLETE]);
       const run = await done;
       expect(run.exitCode).toBe(0);
-      expect(fake.invocations()).toHaveLength(2);
+      expect(fake.invocations()).toHaveLength(3);
     });
   });
 

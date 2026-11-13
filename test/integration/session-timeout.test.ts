@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, PASSED, startAfk, type Step } from "./support/helpers.js";
 
 const complete: Step[] = [
   { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
@@ -50,7 +50,10 @@ describe("--session-timeout", () => {
   }, 15000);
 
   it("applies the timeout to each session separately", async () => {
-    const { fake, done } = run([repeat, repeat, [{ sleepMs: 1000 }, ...complete]], ["--session-timeout", "2"]);
+    const { fake, done } = run(
+      [repeat, [{ sleepMs: 1000 }, ...PASSED], [{ sleepMs: 1000 }, ...complete]],
+      ["--session-timeout", "2"],
+    );
     const result = await done;
 
     expect(result.exitCode).toBe(0);

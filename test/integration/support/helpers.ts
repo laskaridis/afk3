@@ -34,6 +34,28 @@ export type Step =
   | { ignoreSignals: true }
   | { exit: number };
 
+/** A session that answers with the given result block fields and exits successfully. */
+export const reply = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
+
+/** A coding session that commits a candidate for task `T-1`. */
+export const IMPLEMENTED: Step[] = reply({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" });
+
+/** A verification session that accepts the candidate of task `T-1` while tasks remain. */
+export const PASSED: Step[] = reply({ outcome: "verification_passed", task_id: "T-1", task_plan_file: "p.json" });
+
+/** A verification session that rejects the candidate of task `T-1`. */
+export const REJECTED: Step[] = reply({
+  outcome: "verification_failed",
+  failure_summary: "AC-1 not met",
+  findings_file: "p.verify.md",
+  task_id: "T-1",
+  task_plan_file: "p.json",
+});
+
+/** `rounds` repetitions of a coding session followed by its verification session; the last session then repeats. */
+export const rounds = (coding: Step[], verification: Step[], count: number): Step[][] =>
+  Array.from({ length: count }, () => [coding, verification]).flat();
+
 const NONCE_EXAMPLE = /<afk-harness-result nonce="([^"]+)">/;
 
 /** The nonce a session prompt announces in its result-block example, or undefined if there is none. */
@@ -57,6 +79,55 @@ export function expectedSessionPrompt(launchPrompt: string, recordedPrompt: stri
     nonce,
   );
   return `${launchPrompt}\n\n---\n${instructions}\n`;
+}
+
+/** The bundled instructions of a step (`coding` or `verification`) with the session nonce read from `recordedPrompt`. */
+function bundledInstructions(step: "coding" | "verification", recordedPrompt: string) {
+  const nonce = promptNonce(recordedPrompt);
+  if (nonce === undefined) throw new Error("recorded prompt has no result-block example to read the nonce from");
+  return readFileSync(join(repoRoot, "dist", "workflow", "steps", `${step}-step.md`), "utf8").replaceAll(
+    "{{NONCE}}",
+    nonce,
+  );
+}
+
+/**
+ * The prompt a verification session must receive: the launch prompt, a blank line, the assignment naming the candidate
+ * (the `- revision:` line only when one was reported), `---`, then the shipped verification instructions with the
+ * session's nonce, and a trailing newline.
+ */
+export function expectedVerificationPrompt(
+  launchPrompt: string,
+  assignment: { taskId: string; taskPlanFile: string; revision?: string },
+  recordedPrompt: string,
+) {
+  const lines = [
+    "Verification Assignment:",
+    `- task_id: ${assignment.taskId}`,
+    `- task_plan_file: ${assignment.taskPlanFile}`,
+    ...(assignment.revision === undefined ? [] : [`- revision: ${assignment.revision}`]),
+  ];
+  return `${launchPrompt}\n\n${lines.join("\n")}\n---\n${bundledInstructions("verification", recordedPrompt)}\n`;
+}
+
+/**
+ * The prompt a correction iteration must receive: the correction assignment and its fixed instruction, `---`, then the
+ * shipped coding instructions with the session's nonce, and a trailing newline. It has no launch prompt.
+ */
+export function expectedCorrectionPrompt(
+  assignment: { taskId: string; taskPlanFile: string; findingsFile: string; failureSummary: string },
+  recordedPrompt: string,
+) {
+  return [
+    "Correction Assignment:",
+    `- task_id: ${assignment.taskId}`,
+    `- task_plan_file: ${assignment.taskPlanFile}`,
+    `- findings_file: ${assignment.findingsFile}`,
+    `- failure_summary: ${assignment.failureSummary}`,
+    "Fix the issues the verification agent found for this task.",
+    "---",
+    `${bundledInstructions("coding", recordedPrompt)}\n`,
+  ].join("\n");
 }
 
 export interface CodexInvocation {

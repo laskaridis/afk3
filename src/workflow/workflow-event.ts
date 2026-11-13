@@ -6,19 +6,20 @@ export type WorkflowStarted = {
   readonly maxIterations: number;
 };
 
-/** An iteration began (`iteration` of `limit`, counting from 1). `retry` is true when it repeats the previous iteration after a session failure. */
+/** An iteration began (`iteration` of `limit`, counting from 1). Verification of its candidate happens inside it. */
 export type IterationStarted = {
   readonly type: "IterationStarted";
   readonly iteration: number;
   readonly limit: number;
-  readonly retry: boolean;
 };
 
-/** The step named `stepName` began in `iteration`. */
+/** The step named `stepName` began in `iteration` (of `limit`). `retry` is true when it repeats the previous session after a failure. */
 export type StepExecutionStarted = {
   readonly type: "StepExecutionStarted";
   readonly iteration: number;
   readonly stepName: string;
+  readonly limit: number;
+  readonly retry: boolean;
 };
 
 /** The step ended with a valid outcome that lets the run go on or ends it successfully; `task` is the task it reported. */
@@ -55,6 +56,24 @@ export type SessionExecutionErrorOccurred = {
   readonly stderrTail: readonly string[];
 };
 
+/** The verification session accepted the candidate of `iteration`. */
+export type VerificationPassed = {
+  readonly type: "VerificationPassed";
+  readonly iteration: number;
+  readonly task: Readonly<TaskMetadata>;
+};
+
+/** The verification session rejected the candidate of `iteration`; this was verification attempt `attempt` of `limit` for the task. */
+export type VerificationFailed = {
+  readonly type: "VerificationFailed";
+  readonly iteration: number;
+  readonly attempt: number;
+  readonly limit: number;
+  readonly failureSummary: string;
+  readonly findingsFile: string;
+  readonly task: Readonly<TaskMetadata>;
+};
+
 /** An iteration ended; `outcome` names how. */
 export type IterationFinished = {
   readonly type: "IterationFinished";
@@ -65,6 +84,12 @@ export type IterationFinished = {
 /** Terminal: the coding agent reported no pending task. */
 export type WorkflowFinished = {
   readonly type: "WorkflowFinished";
+  readonly task: Readonly<TaskMetadata>;
+};
+
+/** Terminal: the verification agent accepted the last candidate and reported that no task remains. */
+export type WorkflowCompleted = {
+  readonly type: "WorkflowCompleted";
   readonly task: Readonly<TaskMetadata>;
 };
 
@@ -101,7 +126,13 @@ export type MaxIterationsReached = {
 
 /** The one event that ends a run; it is both published and returned by `WorkflowExecutor.run()`. */
 export type TerminalWorkflowEvent =
-  WorkflowFinished | WorkflowBlocked | WorkflowFailed | WorkflowTimedOut | WorkflowInterrupted | MaxIterationsReached;
+  | WorkflowFinished
+  | WorkflowCompleted
+  | WorkflowBlocked
+  | WorkflowFailed
+  | WorkflowTimedOut
+  | WorkflowInterrupted
+  | MaxIterationsReached;
 
 /** Immutable notifications published by the WorkflowExecutor, discriminated by `type`. */
 export type WorkflowEvent =
@@ -112,5 +143,7 @@ export type WorkflowEvent =
   | StepExecutionBlocked
   | StepExecutionRetried
   | SessionExecutionErrorOccurred
+  | VerificationPassed
+  | VerificationFailed
   | IterationFinished
   | TerminalWorkflowEvent;

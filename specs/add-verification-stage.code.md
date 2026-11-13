@@ -65,3 +65,26 @@
   - None beyond migrating existing tests to the new contract (required by the spec).
 - Follow up needed: none
 ---
+
+## 2026-11-13 (TASK-004)
+- Task id: TASK-004
+- What was implemented:
+  - Phase-aware `parseResultBlock(text, nonce, phase)` with coding and verification vocabularies (`findings_file`/`failure_summary` rules, null-id rules per phase).
+  - `VerificationStep` plus shared `executeStepSession` (`steps/step-session.ts`); `CodingStep` takes an optional `CorrectionAssignment`. Both reject a block naming another task than the assigned one (blocked with null id exempt).
+  - New step results `VerificationPassed`, `FeatureVerified`, `VerificationFailed` with handlers; context gained `requestCorrection`. New events `VerificationPassed`, `VerificationFailed`, terminal `WorkflowCompleted` ("Run complete: feature complete", exit 0). The start line moved from `IterationStarted` to `StepExecutionStarted` (now `limit`, `retry`).
+  - `WorkflowExecutor`: verification runs inside the coding iteration with its own inner retry loop (shared consecutive-error budget), per-run attempt counter (reset when a different task id is observed), correction assignment carried to the next iteration (and across coding retries). Interim: rejection always starts a correction (TASK-005); verification uses `--model`/`--reasoning-effort` (TASK-006).
+- Files changed:
+  - src/workflow/{result-block,assignment,workflow-event,workflow-executor,workflow-step-result}.ts, src/workflow/steps/{coding-step,verification-step,step-session}.ts, src/workflow/step-handlers/* (3 new, context, registry), src/reporting/console-reporter.ts, src/cli/cli-exit-codes.ts
+  - tests: unit (result-block, steps, handlers, executor, reporter), integration (new verification-stage.test.ts; helpers `reply/IMPLEMENTED/PASSED/REJECTED/rounds/expectedVerificationPrompt/expectedCorrectionPrompt`; eight suites migrated to two-phase scripts)
+  - specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
+- Verification:
+  - `pnpm check` passes (641 tests, typecheck, lint, prettier, depcheck); `pnpm test:coverage` 100% statements/branches/functions/lines before the last small change.
+  - Criteria: per-agent integration tests assert exact verification and correction prompts, stderr lines, exit codes and session order; unit tests cover steps, handlers, policy (iteration accounting, last-iteration outcomes, retry sharing, attempt counting/reset, assignment mismatch).
+  - Delegated read-only review: no defects; one low observation (counter reset only on rejection) was fixed and tested.
+- Learnings for future iterations:
+  - Fake-agent `sessions` repeat the last list, so loops that iterate need `rounds(coding, verification, n)` and the invocation index continues across runs in one environment.
+  - A `no_more_tasks` answer in a correction iteration is invalid (assigned task id mismatch).
+- Scope deviations:
+  - AC-002's prose says the verification prompt starts with the launch prompt but its example omits it (design says assignment alone); implemented the prose, which TASK-004's criteria also state.
+- Follow up needed: none
+---

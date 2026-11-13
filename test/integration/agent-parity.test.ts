@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, IMPLEMENTED, PASSED, rounds, startAfk, type Step } from "./support/helpers.js";
 
 const AGENT_NAMES = ["codex", "claude"];
 
@@ -31,6 +31,9 @@ interface Scenario {
 
 const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
 const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
+const VERIFY_1 = "[afk] Iteration 1/10: starting verification session";
+const VERIFY_1_OF_1 = "[afk] Iteration 1/1: starting verification session";
+const VERIFIED = "[afk] Verification passed";
 const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting agent session";
 const LIMIT_1 = "[afk] Run stopped: iteration limit of 1 reached without reported completion";
 const COMPLETE_LINE = "[afk] Run complete: no more tasks";
@@ -45,11 +48,12 @@ const scenarios: Scenario[] = [
     name: "task metadata survives a full coding loop",
     sessions: [
       say({ outcome: "task_implemented", task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" }),
+      say({ outcome: "verification_passed", task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" }),
       say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "specs/feature.plan.json" }),
     ],
     exitCode: 0,
-    invocations: 2,
-    transcript: [ITERATION_1, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+    invocations: 3,
+    transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
   },
   {
     name: "blocked",
@@ -60,13 +64,17 @@ const scenarios: Scenario[] = [
   },
   {
     name: "iteration limit",
-    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
+    sessions: rounds(IMPLEMENTED, PASSED, 2),
     args: ["--max-iterations", "2"],
     exitCode: 4,
-    invocations: 2,
+    invocations: 4,
     transcript: [
       "[afk] Iteration 1/2: starting agent session",
+      "[afk] Iteration 1/2: starting verification session",
+      VERIFIED,
       "[afk] Iteration 2/2: starting agent session",
+      "[afk] Iteration 2/2: starting verification session",
+      VERIFIED,
       "[afk] Run stopped: iteration limit of 2 reached without reported completion",
     ],
   },
@@ -153,18 +161,15 @@ const scenarios: Scenario[] = [
   },
   {
     name: "retry allowance resets after a valid repeat",
-    sessions: [
-      [{ exit: 7 }],
-      say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" }),
-      [{ exit: 7 }],
-      COMPLETE,
-    ],
+    sessions: [[{ exit: 7 }], IMPLEMENTED, PASSED, [{ exit: 7 }], COMPLETE],
     exitCode: 0,
-    invocations: 4,
+    invocations: 5,
     transcript: [
       ITERATION_1,
       EXIT_7,
       RETRY_2,
+      "[afk] Iteration 2/10: starting verification session",
+      VERIFIED,
       "[afk] Iteration 3/10: starting agent session",
       EXIT_7,
       "[afk] Iteration 4/10: retrying agent session after execution error",
@@ -181,11 +186,11 @@ const scenarios: Scenario[] = [
   },
   {
     name: "last iteration: repeat",
-    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
+    sessions: [IMPLEMENTED, PASSED],
     args: ["--max-iterations", "1"],
     exitCode: 4,
-    invocations: 1,
-    transcript: [ITERATION_1_OF_1, LIMIT_1],
+    invocations: 2,
+    transcript: [ITERATION_1_OF_1, VERIFY_1_OF_1, VERIFIED, LIMIT_1],
   },
   {
     name: "last iteration: complete",
@@ -205,11 +210,15 @@ const scenarios: Scenario[] = [
   },
   {
     name: "default iteration limit of 10",
-    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
+    sessions: rounds(IMPLEMENTED, PASSED, 10),
     exitCode: 4,
-    invocations: 10,
+    invocations: 20,
     transcript: [
-      ...Array.from({ length: 10 }, (_, i) => `[afk] Iteration ${i + 1}/10: starting agent session`),
+      ...Array.from({ length: 10 }, (_, i) => [
+        `[afk] Iteration ${i + 1}/10: starting agent session`,
+        `[afk] Iteration ${i + 1}/10: starting verification session`,
+        VERIFIED,
+      ]).flat(),
       "[afk] Run stopped: iteration limit of 10 reached without reported completion",
     ],
   },
