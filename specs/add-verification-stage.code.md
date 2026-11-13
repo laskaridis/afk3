@@ -126,3 +126,18 @@
   - None. Delegated review skipped: one-line policy change fully covered by tests.
 - Follow up needed: none
 ---
+
+## 2026-11-13 (TASK-007)
+- Task id: TASK-007
+- What was implemented:
+  - Documentation brought in line with the two-phase loop: README (options table, loop description, exit code 6 via help), doc/PRODUCT.md (new domain terms, redefined iteration/session prompt/outcome, per-phase run policy, verification limit, null-id rules, exit code 6), doc/ARCHITECTURE.md (two-phase flow, VerificationStep, new handlers/step results/events, findings-file note replaced), AGENTS.md (map + must-knows), doc/WORKFLOW.md (`.verify.md`), doc/TESTING.md (scripting two-phase sessions, expected prompt helpers), doc/PUBLISH.md (package contents).
+- Files changed:
+  - README.md, AGENTS.md, doc/{PRODUCT,ARCHITECTURE,WORKFLOW,TESTING,PUBLISH}.md, specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
+- Verification:
+  - `pnpm check` passes (tests, typecheck, lint, prettier, depcheck).
+  - Statements checked against code: event/handler/step-result names from src/workflow, exit code 6 and wording from cli-exit-codes.ts and console-reporter.ts, helper names from test/integration/support/helpers.ts.
+- Learnings for future iterations:
+  - `python3` needs `ASDF_PYTHON_VERSION=3.13.5` in this repo; `pnpm format` reflows doc tables.
+- Scope deviations: removed the stale `StepExecutionFailed` entry from the ARCHITECTURE event list (no such event exists in code).
+- Follow up needed: none
+---

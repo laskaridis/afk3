@@ -14,6 +14,7 @@ the specification. Once merged, all of them move to `specs/_done/NNN-<feature-na
 | `<feature-name-slug>.plan.json`  | `spec_path` + `tasks[]` with `id` (`TASK-00x`), `objective`, `status`, ACs, criteria   |
 | `<feature-name-slug>.prompt.txt` | The launch prompt given to `afk`                                                       |
 | `<feature-name-slug>.code.md`    | Append-only log written by the `code` loop, one entry per task                         |
+| `<feature-name-slug>.verify.md`  | Findings file written by the verification agent when it rejects a candidate            |
 
 Skills come from `laskaridis/skills` (`specify`, `plan`, `code`, `tdd`, …), installed locally into the git-ignored
 `.claude/skills` and `.agents/skills`.

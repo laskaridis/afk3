@@ -2,6 +2,8 @@
 
 This project follows a strict layering architecture: `[User] -> [CLI]-> [Workflow Execution] -> [Step Execution] -> [SessionExecution] -> [Coding Agent]`. Dependencies are strictly from upper to lower layers, the inverse is not allowed. Workflow Execution layer publishes events to notify external observers (i.e. the Reporter). `WorkflowExecutor.run()` also returns the terminal event, which the CLI maps to the exit code.
 
+Each iteration is a two-phase flow: `CodingStep` → `TaskImplemented` → `VerificationStep` → `VerificationPassed` (next coding session), `FeatureVerified` (end) or `VerificationFailed` (a correction iteration of `CodingStep` carrying a `CorrectionAssignment`, or the end of the run at the verification limit). `NoMoreTasks` and `Blocked` end the run from either step.
+
 ## Tech stack
 
 - TypeScript compiled by `tsc`
@@ -159,17 +161,20 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
   - `IterationStarted`
   - `StepExecutionStarted`
   - `StepExecutionFinished`
-  - `StepExecutionFailed`
   - `StepExecutionBlocked`
   - `StepExecutionRetried`
   - `SessionExecutionErrorOccurred`
+  - `VerificationPassed`
+  - `VerificationFailed`
   - `IterationFinished`
   - `WorkflowFinished`
+  - `WorkflowCompleted`
   - `WorkflowInterrupted`
   - `WorkflowBlocked`
   - `WorkflowFailed`
   - `WorkflowTimedOut`
   - `MaxIterationsReached`
+  - `VerificationLimitReached`
 
 **Collaborators:**
 
@@ -197,6 +202,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Concrete implementations:**
 
 - `CodingStep`
+- `VerificationStep` (runs inside the iteration of the candidate it verifies; both steps share `executeStepSession`)
 
 ### `workflow/WorkflowStepHandler` (interface)
 
@@ -212,9 +218,11 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Concrete implementations (`workflow/step-handlers/`):**
 
-- `WorkflowStepContinueHandler`,
-- `WorkflowStepFinishedHandler`
-- `WorkflowStepFailedHandler`
+- `WorkflowStepTaskImplementedHandler`
+- `WorkflowStepNoMoreTasksHandler`
+- `WorkflowStepVerificationPassedHandler`
+- `WorkflowStepFeatureVerifiedHandler`
+- `WorkflowStepVerificationFailedHandler`
 - `WorkflowStepBlockedHandler`
 - `WorkflowStepSessionFailedHandler`
 - `WorkflowStepTimeoutHandler`
@@ -239,18 +247,20 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Communicates the result of a step execution back the workflow executor to handle next action.
 - Encapsulates the step execution outcome details:
   - Outcome:
-    - Continue - successful execution of the step and workflow should proceed.
-    - Finished - successful execution of the step and the workflow should terminate.
-    - StepFailed - unsuccessful execution of the step but progress may be possible.
+    - TaskImplemented - the coding step committed a candidate (optional revision); it is verified next.
+    - NoMoreTasks - the coding step found no pending task and the workflow should terminate.
+    - VerificationPassed - the candidate was accepted and tasks remain.
+    - FeatureVerified - the candidate was accepted, no tasks remain, and the workflow should terminate.
+    - VerificationFailed - the candidate was rejected; carries the failure summary and findings file path.
     - SessionFailed - unsuccessful execution of the step because of an underlying session execution failure.
     - Blocked - unsuccessful execution of the step and progress is not possible.
     - Timeout - undefined execution of the step as process timed out.
     - Interrupted - undefined execution of the step because of a user interruption.
-  - Failure summary - if StepFailed
+  - Failure summary and findings file path - if VerificationFailed
   - Failure detail and stderr tail - if SessionFailed
   - Blocker text (the unblocking condition) - if Blocked.
-  - Task ID and task list plan file path, carried as parsed from the result block (Continue, Finished, StepFailed, Blocked).
-- The specification file path and the verification findings file path are intentionally left out: adding them would change the `<afk-harness-result>` block contract in `src/workflow/steps/coding-step.md`.
+  - Task ID and task list plan file path, carried as parsed from the result block.
+- The findings file path is part of the verification result-block contract (`findings_file` on `verification_failed`); the harness passes it verbatim into the correction assignment and never reads it. The specification file path is not carried.
 
 **Collaborators:**
 
