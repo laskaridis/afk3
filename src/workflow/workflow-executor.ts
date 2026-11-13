@@ -179,8 +179,8 @@ export class WorkflowExecutor {
       };
       const options: WorkflowStepOptions = {
         cwd: this.options.cwd,
-        model: this.options.model,
-        effort: this.options.effort,
+        model: this.options.verifyModel ?? this.options.model,
+        effort: this.options.verifyEffort ?? this.options.effort,
       };
       correction = undefined;
       let result: WorkflowStepResult;

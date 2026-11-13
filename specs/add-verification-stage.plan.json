@@ -148,7 +148,7 @@
     {
       "id": "TASK-006",
       "objective": "Run the verification phase with its own model and reasoning effort so candidates can be reviewed by a different or stronger model than the one that implemented them.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-005"],
       "acceptance_criteria_addressed": ["AC-030", "AC-031", "AC-032", "AC-034"],
       "completion_criteria": [
