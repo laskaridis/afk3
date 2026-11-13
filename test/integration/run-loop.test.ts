@@ -1,27 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, PASSED, rounds, startAfk, withoutNonce, type Step } from "./support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
 const REPEAT = say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" });
 
 describe("afk run loop", () => {
-  it("launches task_implemented, task_implemented, no_more_tasks as three separate identical codex exec processes", async () => {
+  it("launches coding and verification sessions as separate codex exec processes, each coding session identical", async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [REPEAT, REPEAT, say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" })],
+      sessions: [
+        REPEAT,
+        PASSED,
+        REPEAT,
+        PASSED,
+        say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }),
+      ],
     });
 
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
 
     expect(run.exitCode).toBe(0);
     const invocations = fake.invocations();
-    expect(invocations).toHaveLength(3);
-    for (const { argv, cwd, stdin } of invocations) {
+    expect(invocations).toHaveLength(5);
+    for (const { argv, cwd } of invocations) {
       expect(argv[0]).toBe("exec");
       expect(argv).not.toContain("resume");
       expect(argv).not.toContain("fork");
       expect(cwd).toBe(fake.workspace);
-      expect(withoutNonce(stdin)).toBe(withoutNonce(invocations[0]!.stdin));
     }
+    for (const index of [0, 2, 4]) {
+      expect(withoutNonce(invocations[index]!.stdin)).toBe(withoutNonce(invocations[0]!.stdin));
+    }
+    expect(invocations[1]!.stdin).toContain("Verification Assignment:");
     expect(run.stderr).toContain("Run complete: no more tasks");
   });
 
@@ -86,14 +95,14 @@ describe("afk run loop", () => {
   });
 
   it("gives each run a fresh budget and stops with the iteration limit (exit 4)", async () => {
-    const fake = createFakeCodexEnvironment(REPEAT);
+    const fake = createFakeCodexEnvironment({ sessions: rounds(REPEAT, PASSED, 4) });
     const args = ["build X", "--max-iterations", "2"];
 
     const first = await startAfk({ args, cwd: fake.workspace, env: fake.env }).done;
-    expect(fake.invocations()).toHaveLength(2);
+    expect(fake.invocations()).toHaveLength(4);
     const second = await startAfk({ args, cwd: fake.workspace, env: fake.env }).done;
 
-    expect(fake.invocations()).toHaveLength(4);
+    expect(fake.invocations()).toHaveLength(8);
     for (const run of [first, second]) {
       expect(run.exitCode).toBe(4);
       expect(run.stderr).toMatch(/iteration limit.*2/i);

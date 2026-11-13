@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   createFakeCodexEnvironment,
   expectedSessionPrompt,
+  PASSED,
   snapshotTree,
   startAfk,
   type Step,
@@ -130,7 +131,7 @@ describe.each(AGENT_NAMES)("no files created or changed: %s", (agent) => {
     { name: "complete", sessions: [complete], args: [], exitCode: 0 },
     { name: "blocked", sessions: [blocked], args: [], exitCode: 1 },
     { name: "execution error", sessions: [crash, crash], args: [], exitCode: 3 },
-    { name: "iteration limit", sessions: [repeat], args: ["--max-iterations", "1"], exitCode: 4 },
+    { name: "iteration limit", sessions: [repeat, PASSED], args: ["--max-iterations", "1"], exitCode: 4 },
     {
       name: "timeout",
       sessions: [[{ ignoreSignals: true }, { sleepMs: 30000 }]],

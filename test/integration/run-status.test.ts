@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, statSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, PASSED, startAfk, type Step } from "./support/helpers.js";
 
 const complete: Step[] = [
   { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
@@ -96,7 +96,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: "iteration limit",
-    sessions: [repeat],
+    sessions: [repeat, PASSED, repeat, PASSED],
     args: ["--max-iterations", "2"],
     exitCode: 4,
     status: ["Run stopped: iteration limit of 2"],
@@ -122,7 +122,7 @@ const scenarios: Scenario[] = [
 
 describe("run progress", () => {
   it("announces each iteration with its number and the limit, and retries distinctly", async () => {
-    const fake = createFakeCodexEnvironment({ sessions: [repeat, [{ exit: 1 }], repeat, complete] });
+    const fake = createFakeCodexEnvironment({ sessions: [repeat, PASSED, [{ exit: 1 }], repeat, PASSED, complete] });
     const afk = startAfk({ args: ["do it", "--max-iterations", "5"], cwd: fake.workspace, env: fake.env });
     const run = await afk.done;
 

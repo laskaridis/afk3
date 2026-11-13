@@ -80,7 +80,7 @@
     {
       "id": "TASK-004",
       "objective": "Verify every candidate with a fresh, independent verification session whose verdict decides whether the run advances, finishes, stops, or sends the same task back to the coding agent with the findings.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-001", "US-003"],
       "acceptance_criteria_addressed": [
         "AC-001",

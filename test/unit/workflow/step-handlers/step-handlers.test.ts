@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { WorkflowStepBlockedHandler } from "../../../../src/workflow/step-handlers/workflow-step-blocked-handler.js";
+import { WorkflowStepFeatureVerifiedHandler } from "../../../../src/workflow/step-handlers/workflow-step-feature-verified-handler.js";
+import { WorkflowStepVerificationFailedHandler } from "../../../../src/workflow/step-handlers/workflow-step-verification-failed-handler.js";
+import { WorkflowStepVerificationPassedHandler } from "../../../../src/workflow/step-handlers/workflow-step-verification-passed-handler.js";
 import { WorkflowStepInterruptedHandler } from "../../../../src/workflow/step-handlers/workflow-step-interrupted-handler.js";
 import { WorkflowStepNoMoreTasksHandler } from "../../../../src/workflow/step-handlers/workflow-step-no-more-tasks-handler.js";
 import { WorkflowStepSessionFailedHandler } from "../../../../src/workflow/step-handlers/workflow-step-session-failed-handler.js";
@@ -14,6 +17,7 @@ function setup(sessionTimeoutSeconds?: number) {
   const ended: unknown[] = [];
   const retried: unknown[] = [];
   const continued: unknown[] = [];
+  const corrections: unknown[] = [];
   const context: WorkflowStepHandlerContext = {
     iteration: 0,
     stepName: "coding",
@@ -25,8 +29,9 @@ function setup(sessionTimeoutSeconds?: number) {
     continueWorkflow: () => void continued.push(true),
     endWorkflow: (terminal) => void ended.push(terminal),
     retryLastStep: (failure) => void retried.push(failure),
+    requestCorrection: (assignment) => void corrections.push(assignment),
   };
-  return { context, events, ended, retried, continued };
+  return { context, events, ended, retried, continued, corrections };
 }
 
 const task = { task_id: "T-1", task_plan_file: "p.json" };
@@ -39,6 +44,40 @@ describe("workflow step handlers", () => {
     expect(ended).toEqual([]);
     expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
+  });
+
+  it("VerificationPassed reports the verdict and leaves the run going", () => {
+    const { context, events, ended, continued } = setup();
+    new WorkflowStepVerificationPassedHandler().handle({ type: "VerificationPassed", ...task }, context);
+    expect(events).toEqual([
+      { type: "StepExecutionFinished", iteration: 0, stepName: "coding", task },
+      { type: "VerificationPassed", iteration: 0, task },
+    ]);
+    expect(ended).toEqual([]);
+    expect(continued).toHaveLength(1);
+  });
+
+  it("FeatureVerified reports the verdict and ends the run as completed", () => {
+    const { context, events, ended } = setup();
+    new WorkflowStepFeatureVerifiedHandler().handle({ type: "FeatureVerified", ...task }, context);
+    expect(events).toEqual([
+      { type: "StepExecutionFinished", iteration: 0, stepName: "coding", task },
+      { type: "VerificationPassed", iteration: 0, task },
+    ]);
+    expect(ended).toEqual([{ type: "WorkflowCompleted", task }]);
+  });
+
+  it("VerificationFailed reports the step finished and requests a correction for the rejected task", () => {
+    const { context, events, ended, corrections } = setup();
+    new WorkflowStepVerificationFailedHandler().handle(
+      { type: "VerificationFailed", failureSummary: "bad", findingsFile: "f.verify.md", ...task },
+      context,
+    );
+    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
+    expect(corrections).toEqual([
+      { taskId: "T-1", taskPlanFile: "p.json", findingsFile: "f.verify.md", failureSummary: "bad" },
+    ]);
+    expect(ended).toEqual([]);
   });
 
   it("NoMoreTasks reports the step finished and ends the run", () => {

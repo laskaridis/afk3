@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { parseResultBlock } from "../../../src/workflow/result-block.js";
 
 const NONCE = "7f3a9c21";
+const parseCoding = (text: string | undefined, nonce: string) => parseResultBlock(text, nonce, "coding");
+const parseVerification = (text: string | undefined, nonce: string) => parseResultBlock(text, nonce, "verification");
 const block = (body: string, nonce = NONCE) => `<afk-harness-result nonce="${nonce}">\n${body}\n</afk-harness-result>`;
-const parse = (response: object) => parseResultBlock(block(JSON.stringify(response)), NONCE);
+const parse = (response: object) => parseCoding(block(JSON.stringify(response)), NONCE);
 const violationOf = (response: object) => (parse(response) as { violation: string }).violation;
 
 const PLAN = "specs/feature.plan.json";
@@ -25,11 +27,11 @@ describe("parseResultBlock", () => {
   for (const [name, response] of valid) {
     it(`accepts ${name}, with and without surrounding whitespace and noise`, () => {
       const body = JSON.stringify(response);
-      expect(parseResultBlock(block(body), NONCE)).toEqual(response);
-      expect(
-        parseResultBlock(`<afk-harness-result nonce="${NONCE}">\n  ${body}\t\n</afk-harness-result>`, NONCE),
-      ).toEqual(response);
-      expect(parseResultBlock(`banner\nDone.\n${block(body)}\ntrailing noise\n`, NONCE)).toEqual(response);
+      expect(parseCoding(block(body), NONCE)).toEqual(response);
+      expect(parseCoding(`<afk-harness-result nonce="${NONCE}">\n  ${body}\t\n</afk-harness-result>`, NONCE)).toEqual(
+        response,
+      );
+      expect(parseCoding(`banner\nDone.\n${block(body)}\ntrailing noise\n`, NONCE)).toEqual(response);
     });
   }
 
@@ -40,7 +42,7 @@ describe("parseResultBlock", () => {
       block(JSON.stringify(IMPLEMENTED)),
       block(JSON.stringify(NO_MORE), "deadbeef"),
     ].join("\n");
-    expect(parseResultBlock(text, NONCE)).toEqual(IMPLEMENTED);
+    expect(parseCoding(text, NONCE)).toEqual(IMPLEMENTED);
   });
 
   it.each(["repeat", "complete", "fail", "workflow_finished", "verification_passed", "verification_failed", "done"])(
@@ -133,9 +135,91 @@ describe("parseResultBlock", () => {
 
   for (const [name, text] of invalid) {
     it(`rejects ${name} with a readable reason`, () => {
-      const result = parseResultBlock(text, NONCE);
+      const result = parseCoding(text, NONCE);
       expect(result).toHaveProperty("violation");
       expect((result as { violation: string }).violation.length).toBeGreaterThan(10);
     });
   }
+});
+
+describe("parseResultBlock in the verification phase", () => {
+  const verify = (response: object) => parseVerification(block(JSON.stringify(response)), NONCE);
+  const verificationViolation = (response: object) => (verify(response) as { violation: string }).violation;
+  const PASSED = { outcome: "verification_passed", task_id: "TASK-011", task_plan_file: PLAN };
+  const FINISHED = { outcome: "workflow_finished", task_id: "TASK-011", task_plan_file: PLAN };
+  const FAILED = {
+    outcome: "verification_failed",
+    failure_summary: "AC-002 not met",
+    findings_file: "specs/feature.verify.md",
+    task_id: "TASK-011",
+    task_plan_file: PLAN,
+  };
+
+  it.each([
+    ["verification_passed", PASSED],
+    ["workflow_finished", FINISHED],
+    ["verification_failed", FAILED],
+    ["blocked", BLOCKED],
+    ["blocked without a task", { ...BLOCKED, task_id: null, task_plan_file: null }],
+  ])("accepts %s", (_name, response) => {
+    expect(verify(response)).toEqual(response);
+  });
+
+  it.each(["task_implemented", "no_more_tasks", "repeat", "complete", "fail"])(
+    "rejects the outcome %s as outside the verification vocabulary",
+    (outcome) => {
+      expect(verificationViolation({ ...PASSED, outcome })).toBe(
+        'missing or unsupported "outcome" (expected verification_passed, workflow_finished, verification_failed, or blocked)',
+      );
+    },
+  );
+
+  it.each(["verification_passed", "workflow_finished", "verification_failed"])(
+    "allows a null task_id only with blocked, not with %s",
+    (outcome) => {
+      const base = { ...FAILED, outcome };
+      expect(verificationViolation({ ...base, task_id: null })).toBe(
+        'a null "task_id" requires outcome "blocked" because no task was verified',
+      );
+    },
+  );
+
+  it("allows a null task_plan_file only with blocked", () => {
+    expect(verificationViolation({ ...PASSED, task_plan_file: null })).toContain('a null "task_plan_file" requires');
+  });
+
+  it.each(["task_id", "task_plan_file"])("requires %s", (field) => {
+    const without: Record<string, unknown> = { ...PASSED };
+    delete without[field];
+    expect(verificationViolation(without)).toBe(`"${field}" is required`);
+  });
+
+  it.each(["failure_summary", "findings_file"])("requires a non-empty %s on verification_failed", (field) => {
+    for (const value of [undefined, "", "  ", 5]) {
+      const response: Record<string, unknown> = { ...FAILED, [field]: value };
+      if (value === undefined) delete response[field];
+      expect(verificationViolation(response)).toBe(
+        `outcome "verification_failed" requires a non-empty string "${field}"`,
+      );
+    }
+  });
+
+  it("rejects findings_file on every other verification outcome", () => {
+    for (const response of [PASSED, FINISHED, BLOCKED]) {
+      expect(verificationViolation({ ...response, findings_file: "f.md" })).toBe(
+        `outcome "${response.outcome}" has unsupported fields: findings_file`,
+      );
+    }
+  });
+
+  it("rejects revision and failure_summary where they do not belong", () => {
+    expect(verificationViolation({ ...PASSED, revision: "9f3c2ab" })).toContain("unsupported fields: revision");
+    expect(verificationViolation({ ...PASSED, failure_summary: "x" })).toContain("unsupported fields: failure_summary");
+  });
+
+  it("requires a non-empty blocker_text on blocked", () => {
+    expect(verificationViolation({ ...BLOCKED, blocker_text: "" })).toBe(
+      'outcome "blocked" requires a non-empty string "blocker_text"',
+    );
+  });
 });
