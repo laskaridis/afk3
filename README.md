@@ -3,7 +3,13 @@
 Leave a coding agent implementing a feature, one task at a time, while you are away from keyboard.
 
 `afk` is agent-neutral: it launches a fresh session of the coding agent you choose, hands it your instructions, reads the
-agent's final response, and repeats until the feature is reported complete, blocked, or the iteration limit is reached.
+agent's final response, and repeats until the feature is reported complete, blocked, or a limit is reached.
+
+Every run is a two-phase loop. A coding session implements one task and commits a candidate; a fresh, independent
+verification session then reviews it. A passing verdict lets the run advance (or finish, when the verification agent
+reports that no task remains). A rejection sends the same task back to the coding agent in a correction iteration with
+the verification findings, until the task is accepted or the per-task verification limit stops the run (exit code 6).
+Verification cannot be skipped.
 
 Requires Node.js **22.13.0 or later**.
 
@@ -23,15 +29,18 @@ afk [options] [prompt...]
 
 The feature instructions come from the prompt arguments, `--prompt-file <path>`, or stdin.
 
-| Option                        | Description                                                            |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| `--agent <name>`              | Coding agent for every session: `codex` or `claude` (default: `codex`) |
-| `--prompt-file <path>`        | Read the feature instructions from a file                              |
-| `--cwd <directory>`           | Workspace directory for every session (default: current directory)     |
-| `--max-iterations <count>`    | Maximum number of agent sessions to launch (default: 10)               |
-| `--session-timeout <seconds>` | Stop the run if a single session exceeds this many seconds             |
-| `--model <name>`              | Model for every session, passed to the agent unchanged                 |
-| `--reasoning-effort <level>`  | Reasoning effort for every session, passed to the agent unchanged      |
+| Option                                | Description                                                                       |
+| ------------------------------------- | --------------------------------------------------------------------------------- |
+| `--agent <name>`                      | Coding agent for every session: `codex` or `claude` (default: `codex`)            |
+| `--prompt-file <path>`                | Read the feature instructions from a file                                         |
+| `--cwd <directory>`                   | Workspace directory for every session (default: current directory)                |
+| `--max-iterations <count>`            | Maximum number of coding iterations, corrections included (default: 10)           |
+| `--max-verification-attempts <count>` | Rejections by verification one task may receive before the run stops (default: 2) |
+| `--session-timeout <seconds>`         | Stop the run if a single session exceeds this many seconds                        |
+| `--model <name>`                      | Model for every session, passed to the agent unchanged                            |
+| `--reasoning-effort <level>`          | Reasoning effort for every session, passed to the agent unchanged                 |
+| `--verify-model <name>`               | Model for verification sessions only, passed to the agent unchanged               |
+| `--verify-reasoning-effort <level>`   | Reasoning effort for verification sessions only, passed unchanged                 |
 
 Run `afk --help` for the exit codes.
 
