@@ -43,6 +43,14 @@ describe("afk --help", () => {
     expect(run.stdout.replace(/\s+/g, " ")).toMatch(/--max-verification-attempts <count>.*\(default: 2\)/);
   });
 
+  it("describes --max-iterations as counting coding iterations only", async () => {
+    const fake = createFakeCodexEnvironment(COMPLETE);
+    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
+    expect(run.stdout.replace(/\s+/g, " ")).toMatch(
+      /--max-iterations <count> maximum number of coding iterations, corrections included \(default: 10\)/,
+    );
+  });
+
   it("lists exactly the exit codes the CLI maps", async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
     const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;

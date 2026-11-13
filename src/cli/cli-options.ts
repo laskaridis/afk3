@@ -12,7 +12,7 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 export interface CliOptions {
   /** Name of the agent to run, one of the registry's names. */
   agent: string;
-  /** Maximum number of agent sessions to launch; a positive integer. */
+  /** Maximum number of coding iterations, corrections included; verification sessions do not count. A positive integer. */
   maxIterations: number;
   /** Per-session timeout in seconds; no timeout when omitted. */
   sessionTimeout?: number;
@@ -109,7 +109,7 @@ export function parseOptions(argv: string[], registry: AgentRegistry): ParsedOpt
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option(
       "--max-iterations <count>",
-      "maximum number of agent sessions to launch",
+      "maximum number of coding iterations, corrections included",
       parsePositiveInteger,
       DEFAULT_MAX_ITERATIONS,
     )
