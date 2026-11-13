@@ -45,6 +45,9 @@ export class ConsoleReporter implements Reporter {
       case "MaxIterationsReached":
         this.line(`Run stopped: iteration limit of ${event.limit} reached without reported completion`);
         break;
+      case "VerificationLimitReached":
+        this.line(`Run stopped: verification limit of ${event.limit} reached for ${event.taskId}`);
+        break;
       case "WorkflowTimedOut":
         this.line(`Run stopped: agent session timed out after ${event.seconds} seconds`);
         break;

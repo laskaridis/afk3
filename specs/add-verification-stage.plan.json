@@ -129,7 +129,7 @@
     {
       "id": "TASK-005",
       "objective": "Stop the run with a dedicated exit code once a task has been rejected by verification as many times as the configured limit allows.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-004"],
       "acceptance_criteria_addressed": ["AC-006", "AC-027", "AC-028", "AC-029"],
       "completion_criteria": [

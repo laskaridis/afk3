@@ -88,3 +88,23 @@
   - AC-002's prose says the verification prompt starts with the launch prompt but its example omits it (design says assignment alone); implemented the prose, which TASK-004's criteria also state.
 - Follow up needed: none
 ---
+
+## 2026-11-13 (TASK-005)
+- Task id: TASK-005
+- What was implemented:
+  - New terminal event `VerificationLimitReached` ({limit, taskId}); `requestCorrection` in `WorkflowExecutor` ends the run with it instead of scheduling a correction once the per-task rejection count reaches `--max-verification-attempts`. The `Verification failed (attempt k/n)` line is still printed first.
+  - Exit code 6 (`verificationLimit`, "verification rejected the same task too many times") in `cli-exit-codes.ts`, listed in `--help`; reporter line `Run stopped: verification limit of <n> reached for <task id>`.
+  - Precedence over the iteration limit is natural: the pending terminal event is returned before `MaxIterationsReached`.
+- Files changed:
+  - src/workflow/{workflow-event,workflow-executor}.ts, src/reporting/console-reporter.ts, src/cli/cli-exit-codes.ts
+  - tests: unit (executor, reporter, exit codes), integration (verification-stage, help)
+  - specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
+- Verification:
+  - `pnpm check` passes (654 tests, typecheck, lint, prettier, depcheck).
+  - Criteria: default and configured limit stop with exit 6, no correction session (integration, per agent; unit); help lists 6 and 0-5/130 unchanged (help + exit-code tests); both limits at once -> 6 (unit + integration); workspace directory listing unchanged (integration); counter remains in memory only.
+- Learnings for future iterations:
+  - With the default limit of 2, scripts that reject a task twice now end the run; use `--max-verification-attempts` in tests needing more rejections.
+- Scope deviations:
+  - None. Delegated review skipped: small policy change fully covered by tests.
+- Follow up needed: none
+---

@@ -124,6 +124,13 @@ export type MaxIterationsReached = {
   readonly limit: number;
 };
 
+/** Terminal: verification rejected `taskId` `limit` times, the configured maximum. */
+export type VerificationLimitReached = {
+  readonly type: "VerificationLimitReached";
+  readonly limit: number;
+  readonly taskId: string;
+};
+
 /** The one event that ends a run; it is both published and returned by `WorkflowExecutor.run()`. */
 export type TerminalWorkflowEvent =
   | WorkflowFinished
@@ -132,7 +139,8 @@ export type TerminalWorkflowEvent =
   | WorkflowFailed
   | WorkflowTimedOut
   | WorkflowInterrupted
-  | MaxIterationsReached;
+  | MaxIterationsReached
+  | VerificationLimitReached;
 
 /** Immutable notifications published by the WorkflowExecutor, discriminated by `type`. */
 export type WorkflowEvent =

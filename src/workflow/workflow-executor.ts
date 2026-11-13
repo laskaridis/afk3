@@ -32,7 +32,9 @@ const MAX_RETRIES = 1;
  * Two phases: every TaskImplemented candidate is verified, inside its iteration, by a fresh VerificationStep.
  *
  * - VerificationPassed advances to the next iteration, which starts a fresh autonomous coding session.
- * - VerificationFailed makes the next iteration a correction iteration for the same task.
+ * - VerificationFailed makes the next iteration a correction iteration for the same task, unless the task has
+ *   been rejected maxVerificationAttempts times, which ends the run with VerificationLimitReached (taking
+ *   precedence over the iteration limit).
  * - FeatureVerified, NoMoreTasks, Blocked, Timeout and Interrupted end the invocation.
  * - SessionFailed is retried up to MAX_RETRIES times in a row, in either phase; another outcome resets the retry
  *   allowance. A coding retry uses an iteration; a verification retry re-runs inside the same one.
@@ -126,7 +128,15 @@ export class WorkflowExecutor {
           findingsFile: assignment.findingsFile,
           task: Object.freeze({ task_id: assignment.taskId, task_plan_file: assignment.taskPlanFile }),
         });
-        correction = assignment;
+        if (attempts.count >= this.options.maxVerificationAttempts) {
+          pendingTerminalWorkflowEvent = {
+            type: "VerificationLimitReached",
+            limit: this.options.maxVerificationAttempts,
+            taskId: assignment.taskId,
+          };
+        } else {
+          correction = assignment;
+        }
       },
       endWorkflow: (terminal) => {
         pendingTerminalWorkflowEvent = terminal;

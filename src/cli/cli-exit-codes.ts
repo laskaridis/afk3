@@ -8,6 +8,7 @@ export const EXIT_CODES = {
   executionError: 3,
   iterationLimit: 4,
   timeout: 5,
+  verificationLimit: 6,
   interrupted: 130,
 } as const;
 
@@ -18,6 +19,7 @@ const EXIT_CODE_MEANINGS: Record<keyof typeof EXIT_CODES, string> = {
   executionError: "the agent failed to execute twice in a row",
   iterationLimit: "the iteration limit was reached without reported completion",
   timeout: "a session exceeded --session-timeout",
+  verificationLimit: "verification rejected the same task too many times",
   interrupted: "interrupted by the user (Ctrl+C)",
 };
 
@@ -41,6 +43,8 @@ export function exitCodeFor(result: TerminalWorkflowEvent): number {
       return EXIT_CODES.executionError;
     case "MaxIterationsReached":
       return EXIT_CODES.iterationLimit;
+    case "VerificationLimitReached":
+      return EXIT_CODES.verificationLimit;
     case "WorkflowTimedOut":
       return EXIT_CODES.timeout;
     case "WorkflowInterrupted":
