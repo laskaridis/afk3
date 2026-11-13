@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   createFakeCodexEnvironment,
   expectedSessionPrompt,
+  PASSED,
   snapshotTree,
   startAfk,
   type Step,
@@ -11,9 +12,18 @@ import {
 
 const AGENT_NAMES = ["codex", "claude"];
 
-const complete: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
-const repeat: Step[] = [{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }];
-const blocked: Step[] = [{ finalMessage: '{"outcome":"blocked","blocker_text":"need key"}' }, { exit: 0 }];
+const complete: Step[] = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
+const repeat: Step[] = [
+  { finalMessage: '{"outcome":"task_implemented","task_id":"T-1","task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
+const blocked: Step[] = [
+  { finalMessage: '{"outcome":"blocked","blocker_text":"need key","task_id":"T-1","task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 const crash: Step[] = [{ exit: 7 }];
 
 async function until(condition: () => boolean, timeoutMs = 5000) {
@@ -121,7 +131,7 @@ describe.each(AGENT_NAMES)("no files created or changed: %s", (agent) => {
     { name: "complete", sessions: [complete], args: [], exitCode: 0 },
     { name: "blocked", sessions: [blocked], args: [], exitCode: 1 },
     { name: "execution error", sessions: [crash, crash], args: [], exitCode: 3 },
-    { name: "iteration limit", sessions: [repeat], args: ["--max-iterations", "1"], exitCode: 4 },
+    { name: "iteration limit", sessions: [repeat, PASSED], args: ["--max-iterations", "1"], exitCode: 4 },
     {
       name: "timeout",
       sessions: [[{ ignoreSignals: true }, { sleepMs: 30000 }]],

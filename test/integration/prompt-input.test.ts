@@ -2,9 +2,12 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk } from "./support/helpers.js";
+import { createFakeCodexEnvironment, IMPLEMENTED, PASSED, startAfk } from "./support/helpers.js";
 
-const COMPLETE = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
+const COMPLETE = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 
 async function afk(args: string[], stdin?: string, setup?: (workspace: string) => void) {
   const fake = createFakeCodexEnvironment(COMPLETE);
@@ -58,7 +61,7 @@ describe("launch prompt sources", () => {
 describe("--cwd", () => {
   it("runs every session in the selected directory", async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [[{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }], COMPLETE],
+      sessions: [IMPLEMENTED, PASSED, COMPLETE],
     });
     const target = join(fake.workspace, "other");
     mkdirSync(target);
@@ -70,7 +73,7 @@ describe("--cwd", () => {
 
     expect(result.exitCode).toBe(0);
     const invocations = fake.invocations();
-    expect(invocations).toHaveLength(2);
+    expect(invocations).toHaveLength(3);
     for (const invocation of invocations) {
       expect(invocation.cwd).toBe(target);
       expect(invocation.argv[invocation.argv.indexOf("-C") + 1]).toBe(target);

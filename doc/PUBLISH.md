@@ -72,7 +72,7 @@ npm pack --dry-run
 ```
 
 The file list should contain `package.json`, `README.md`, and files under `dist/` (including `dist/cli.js` and
-`dist/workflow/steps/coding-step.md`), and nothing else.
+`dist/workflow/steps/coding-step.md` and `dist/workflow/steps/verification-step.md`), and nothing else.
 
 ### 4. Merge the version bump
 

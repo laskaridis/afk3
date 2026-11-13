@@ -11,7 +11,7 @@ import {
 } from "./support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
-const COMPLETE = say({ outcome: "complete" });
+const COMPLETE = say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" });
 const CRASH: Step[] = [{ exit: 7 }];
 
 describe("afk execution errors", () => {
@@ -27,13 +27,15 @@ describe("afk execution errors", () => {
 
   it("treats a valid complete response with exit status 1 as an execution error", async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [[{ finalMessage: '{"outcome":"complete"}' }, { exit: 1 }]],
+      sessions: [
+        [{ finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' }, { exit: 1 }],
+      ],
     });
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
 
     expect(run.exitCode).toBe(3);
     expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).not.toContain("feature complete");
+    expect(run.stderr).not.toContain("no more tasks");
     expect(run.stderr).toContain("agent exited unsuccessfully with exit code 1");
   });
 

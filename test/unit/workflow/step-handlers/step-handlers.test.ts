@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { WorkflowStepBlockedHandler } from "../../../../src/workflow/step-handlers/workflow-step-blocked-handler.js";
-import { WorkflowStepContinueHandler } from "../../../../src/workflow/step-handlers/workflow-step-continue-handler.js";
-import { WorkflowStepFailedHandler } from "../../../../src/workflow/step-handlers/workflow-step-failed-handler.js";
-import { WorkflowStepFinishedHandler } from "../../../../src/workflow/step-handlers/workflow-step-finished-handler.js";
+import { WorkflowStepFeatureVerifiedHandler } from "../../../../src/workflow/step-handlers/workflow-step-feature-verified-handler.js";
+import { WorkflowStepVerificationFailedHandler } from "../../../../src/workflow/step-handlers/workflow-step-verification-failed-handler.js";
+import { WorkflowStepVerificationPassedHandler } from "../../../../src/workflow/step-handlers/workflow-step-verification-passed-handler.js";
 import { WorkflowStepInterruptedHandler } from "../../../../src/workflow/step-handlers/workflow-step-interrupted-handler.js";
+import { WorkflowStepNoMoreTasksHandler } from "../../../../src/workflow/step-handlers/workflow-step-no-more-tasks-handler.js";
 import { WorkflowStepSessionFailedHandler } from "../../../../src/workflow/step-handlers/workflow-step-session-failed-handler.js";
+import { WorkflowStepTaskImplementedHandler } from "../../../../src/workflow/step-handlers/workflow-step-task-implemented-handler.js";
 import { WorkflowStepTimeoutHandler } from "../../../../src/workflow/step-handlers/workflow-step-timeout-handler.js";
 import type { WorkflowStepHandlerContext } from "../../../../src/workflow/step-handlers/workflow-step-handler-context.js";
 import type { WorkflowEvent } from "../../../../src/workflow/workflow-event.js";
@@ -15,6 +17,7 @@ function setup(sessionTimeoutSeconds?: number) {
   const ended: unknown[] = [];
   const retried: unknown[] = [];
   const continued: unknown[] = [];
+  const corrections: unknown[] = [];
   const context: WorkflowStepHandlerContext = {
     iteration: 0,
     stepName: "coding",
@@ -26,38 +29,62 @@ function setup(sessionTimeoutSeconds?: number) {
     continueWorkflow: () => void continued.push(true),
     endWorkflow: (terminal) => void ended.push(terminal),
     retryLastStep: (failure) => void retried.push(failure),
+    requestCorrection: (assignment) => void corrections.push(assignment),
   };
-  return { context, events, ended, retried, continued };
+  return { context, events, ended, retried, continued, corrections };
 }
 
 const task = { task_id: "T-1", task_plan_file: "p.json" };
 
 describe("workflow step handlers", () => {
-  it("Continue reports the step finished and leaves the run going", () => {
+  it("TaskImplemented reports the step finished and leaves the run going", () => {
     const { context, events, ended, retried, continued } = setup();
-    new WorkflowStepContinueHandler().handle({ type: "Continue", ...task }, context);
+    new WorkflowStepTaskImplementedHandler().handle({ type: "TaskImplemented", revision: "9f3c2ab", ...task }, context);
     expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
     expect(ended).toEqual([]);
     expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
   });
 
-  it("Finished reports the step finished and ends the run", () => {
-    const { context, events, ended } = setup();
-    new WorkflowStepFinishedHandler().handle({ type: "Finished", ...task }, context);
-    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
-    expect(ended).toEqual([{ type: "WorkflowFinished", task }]);
-  });
-
-  it("StepFailed reports the failure and leaves the run going", () => {
-    const { context, events, ended, retried, continued } = setup();
-    new WorkflowStepFailedHandler().handle({ type: "StepFailed", failureSummary: "broke", ...task }, context);
+  it("VerificationPassed reports the verdict and leaves the run going", () => {
+    const { context, events, ended, continued } = setup();
+    new WorkflowStepVerificationPassedHandler().handle({ type: "VerificationPassed", ...task }, context);
     expect(events).toEqual([
-      { type: "StepExecutionFailed", iteration: 0, stepName: "coding", failureSummary: "broke", task },
+      { type: "StepExecutionFinished", iteration: 0, stepName: "coding", task },
+      { type: "VerificationPassed", iteration: 0, task },
     ]);
     expect(ended).toEqual([]);
-    expect(retried).toEqual([]);
     expect(continued).toHaveLength(1);
+  });
+
+  it("FeatureVerified reports the verdict and ends the run as completed", () => {
+    const { context, events, ended } = setup();
+    new WorkflowStepFeatureVerifiedHandler().handle({ type: "FeatureVerified", ...task }, context);
+    expect(events).toEqual([
+      { type: "StepExecutionFinished", iteration: 0, stepName: "coding", task },
+      { type: "VerificationPassed", iteration: 0, task },
+    ]);
+    expect(ended).toEqual([{ type: "WorkflowCompleted", task }]);
+  });
+
+  it("VerificationFailed reports the step finished and requests a correction for the rejected task", () => {
+    const { context, events, ended, corrections } = setup();
+    new WorkflowStepVerificationFailedHandler().handle(
+      { type: "VerificationFailed", failureSummary: "bad", findingsFile: "f.verify.md", ...task },
+      context,
+    );
+    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
+    expect(corrections).toEqual([
+      { taskId: "T-1", taskPlanFile: "p.json", findingsFile: "f.verify.md", failureSummary: "bad" },
+    ]);
+    expect(ended).toEqual([]);
+  });
+
+  it("NoMoreTasks reports the step finished and ends the run", () => {
+    const { context, events, ended } = setup();
+    new WorkflowStepNoMoreTasksHandler().handle({ type: "NoMoreTasks", ...task }, context);
+    expect(events).toEqual([{ type: "StepExecutionFinished", iteration: 0, stepName: "coding", task }]);
+    expect(ended).toEqual([{ type: "WorkflowFinished", task }]);
   });
 
   it("Blocked reports the blocker and ends the run", () => {

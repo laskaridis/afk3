@@ -3,12 +3,12 @@ import type { WorkflowStepResult } from "../workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 import { taskOf } from "./task-of.js";
 
-/** The feature is complete: reports the step as finished and ends the run. */
-export class WorkflowStepFinishedHandler implements WorkflowStepHandler<
-  Extract<WorkflowStepResult, { type: "Finished" }>
+/** The agent found no pending task: reports the step as finished and ends the run successfully. */
+export class WorkflowStepNoMoreTasksHandler implements WorkflowStepHandler<
+  Extract<WorkflowStepResult, { type: "NoMoreTasks" }>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "Finished" }>, context: WorkflowStepHandlerContext): void {
+  handle(result: Extract<WorkflowStepResult, { type: "NoMoreTasks" }>, context: WorkflowStepHandlerContext): void {
     context.publish({
       type: "StepExecutionFinished",
       iteration: context.iteration,

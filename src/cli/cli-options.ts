@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import type { AgentRegistry } from "../agents/registry.js";
-import { DEFAULT_MAX_ITERATIONS } from "../workflow/workflow-executor.js";
+import { DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_VERIFICATION_ATTEMPTS } from "../workflow/workflow-executor.js";
 import { EXIT_CODES, formatExitCodeHelp } from "./cli-exit-codes.js";
 
 const MAX_TIMER_MS = 2 ** 31 - 1;
@@ -12,7 +12,7 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 export interface CliOptions {
   /** Name of the agent to run, one of the registry's names. */
   agent: string;
-  /** Maximum number of agent sessions to launch; a positive integer. */
+  /** Maximum number of coding iterations, corrections included; verification sessions do not count. A positive integer. */
   maxIterations: number;
   /** Per-session timeout in seconds; no timeout when omitted. */
   sessionTimeout?: number;
@@ -24,6 +24,12 @@ export interface CliOptions {
   model?: string;
   /** Reasoning effort passed to the agent unchanged. */
   reasoningEffort?: string;
+  /** How many times verification may reject one task before the run stops; a positive integer. */
+  maxVerificationAttempts: number;
+  /** Model for verification sessions, passed to the agent unchanged. */
+  verifyModel?: string;
+  /** Reasoning effort for verification sessions, passed to the agent unchanged. */
+  verifyReasoningEffort?: string;
   /** Positional prompt arguments. */
   positional: string[];
 }
@@ -31,7 +37,7 @@ export interface CliOptions {
 /** Either the options to run with, or the exit code of a run that ended while parsing (help, version, error). */
 export type ParsedOptions = { kind: "run"; options: CliOptions } | { kind: "exit"; code: number };
 
-function parseMaxIterations(value: string): number {
+function parsePositiveInteger(value: string): number {
   if (!/^[1-9]\d*$/.test(value)) {
     throw new InvalidArgumentError("must be a positive integer.");
   }
@@ -103,8 +109,8 @@ export function parseOptions(argv: string[], registry: AgentRegistry): ParsedOpt
     .option("--cwd <directory>", "workspace directory for every session (default: current directory)", parseCwd)
     .option(
       "--max-iterations <count>",
-      "maximum number of agent sessions to launch",
-      parseMaxIterations,
+      "maximum number of coding iterations, corrections included",
+      parsePositiveInteger,
       DEFAULT_MAX_ITERATIONS,
     )
     .option(
@@ -120,6 +126,22 @@ export function parseOptions(argv: string[], registry: AgentRegistry): ParsedOpt
     .option(
       "--reasoning-effort <level>",
       "reasoning effort for every session, passed to the agent unchanged (default: the agent's configuration)",
+      parseNonEmpty,
+    )
+    .option(
+      "--max-verification-attempts <count>",
+      "stop the run after verification rejects the same task this many times",
+      parsePositiveInteger,
+      DEFAULT_MAX_VERIFICATION_ATTEMPTS,
+    )
+    .option(
+      "--verify-model <name>",
+      "model for verification sessions, passed to the agent unchanged (default: as for coding sessions)",
+      parseNonEmpty,
+    )
+    .option(
+      "--verify-reasoning-effort <level>",
+      "reasoning effort for verification sessions, passed to the agent unchanged (default: as for coding sessions)",
       parseNonEmpty,
     )
     .addHelpText("after", formatExitCodeHelp())

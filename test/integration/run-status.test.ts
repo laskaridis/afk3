@@ -2,10 +2,16 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, statSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import { createFakeCodexEnvironment, PASSED, startAfk, type Step } from "./support/helpers.js";
 
-const complete: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
-const repeat: Step[] = [{ finalMessage: '{"outcome":"repeat"}' }, { exit: 0 }];
+const complete: Step[] = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
+const repeat: Step[] = [
+  { finalMessage: '{"outcome":"task_implemented","task_id":"T-1","task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 
 /** Every path under a directory with its size and mtime, to detect creation or modification. */
 function snapshot(dir: string, prefix = ""): string[] {
@@ -47,7 +53,14 @@ const scenarios: Scenario[] = [
   { name: "complete", sessions: [complete], exitCode: 0, status: ["Run complete"], completionWording: true },
   {
     name: "blocked",
-    sessions: [[{ finalMessage: '{"outcome":"blocked","blocker_text":"need API key"}' }, { exit: 0 }]],
+    sessions: [
+      [
+        {
+          finalMessage: '{"outcome":"blocked","blocker_text":"need API key","task_id":"T-1","task_plan_file":"p.json"}',
+        },
+        { exit: 0 },
+      ],
+    ],
     exitCode: 1,
     status: ["Run blocked: need API key"],
     completionWording: false,
@@ -62,7 +75,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: "execution error: exit status",
-    sessions: [[{ finalMessage: '{"outcome":"complete"}' }, { exit: 7 }]],
+    sessions: [[{ finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' }, { exit: 7 }]],
     exitCode: 3,
     status: ["Execution error: agent exited unsuccessfully with exit code 7"],
     completionWording: false,
@@ -83,7 +96,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: "iteration limit",
-    sessions: [repeat],
+    sessions: [repeat, PASSED, repeat, PASSED],
     args: ["--max-iterations", "2"],
     exitCode: 4,
     status: ["Run stopped: iteration limit of 2"],
@@ -109,7 +122,7 @@ const scenarios: Scenario[] = [
 
 describe("run progress", () => {
   it("announces each iteration with its number and the limit, and retries distinctly", async () => {
-    const fake = createFakeCodexEnvironment({ sessions: [repeat, [{ exit: 1 }], repeat, complete] });
+    const fake = createFakeCodexEnvironment({ sessions: [repeat, PASSED, [{ exit: 1 }], repeat, PASSED, complete] });
     const afk = startAfk({ args: ["do it", "--max-iterations", "5"], cwd: fake.workspace, env: fake.env });
     const run = await afk.done;
 
@@ -158,7 +171,7 @@ describe("final status per stop reason", () => {
       expect(run.exitCode).toBe(scenario.exitCode);
       for (const text of scenario.status) expect(run.stderr).toContain(text);
       expect(run.stdout).not.toContain("[afk]");
-      expect(/feature complete/i.test(run.stderr)).toBe(scenario.completionWording);
+      expect(/no more tasks/i.test(run.stderr)).toBe(scenario.completionWording);
       expect(run.exitCode === 0).toBe(scenario.completionWording);
 
       // No harness-created files, and the workspace content is untouched.

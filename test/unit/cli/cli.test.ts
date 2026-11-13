@@ -100,6 +100,12 @@ describe("CLI entrypoint", () => {
     ["--session-timeout", "2147484"],
     ["--model", "   "],
     ["--reasoning-effort", ""],
+    ["--max-verification-attempts", "0"],
+    ["--max-verification-attempts", "1.5"],
+    ["--max-verification-attempts", "01"],
+    ["--max-verification-attempts", "abc"],
+    ["--verify-model", "  "],
+    ["--verify-reasoning-effort", ""],
     ["--agent", "unknown"],
     ["--cwd", "/definitely/missing/afk-directory"],
     ["--cwd", "package.json"],
@@ -108,10 +114,20 @@ describe("CLI entrypoint", () => {
     expect(mocks.run).not.toHaveBeenCalled();
   });
 
+  it("defaults the verification attempt limit to 2 with no verification overrides", async () => {
+    mocks.run.mockResolvedValue({ type: "WorkflowBlocked", blockerText: "x", task: {} });
+    await launch(["prompt"]);
+    expect(mocks.construct).toHaveBeenCalledWith(
+      expect.objectContaining({ maxVerificationAttempts: 2, verifyModel: undefined, verifyEffort: undefined }),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it("wires the workflow executor from validated options and subscribes a console reporter", async () => {
     process.env.AFK_TERMINATION_GRACE_MS = "25";
     mocks.subscribe.mockImplementation((observer: { onEvent(event: unknown): void }) => {
-      observer.onEvent({ type: "StepExecutionFailed", iteration: 1, failureSummary: "test failed", task: {} });
+      observer.onEvent({ type: "WorkflowBlocked", blockerText: "test failed", task: {} });
     });
     mocks.run.mockResolvedValue({ type: "WorkflowBlocked", blockerText: "need key", task: {} });
     expect(
@@ -128,6 +144,12 @@ describe("CLI entrypoint", () => {
         "my-model",
         "--reasoning-effort",
         "high",
+        "--max-verification-attempts",
+        "4",
+        "--verify-model",
+        "strong-model",
+        "--verify-reasoning-effort",
+        "max",
         "prompt",
       ]),
     ).toBe(1);
@@ -137,6 +159,9 @@ describe("CLI entrypoint", () => {
         model: "my-model",
         effort: "high",
         maxIterations: 3,
+        maxVerificationAttempts: 4,
+        verifyModel: "strong-model",
+        verifyEffort: "max",
         sessionTimeoutSeconds: 2.5,
         cwd: process.cwd(),
       }),
@@ -144,7 +169,7 @@ describe("CLI entrypoint", () => {
       expect.anything(),
     );
     expect(mocks.factory).toHaveBeenCalledWith(expect.objectContaining({ aborted: false }), 2.5, 25);
-    expect(stderr).toBe("[afk] Task failure: test failed\n");
+    expect(stderr).toBe("[afk] Run blocked: test failed\n");
     expect(stdout).toBe("");
   });
 

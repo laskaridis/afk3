@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
-const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
+const COMPLETE: Step[] = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 
 describe("afk --help", () => {
   for (const flag of ["--help", "-h"]) {
@@ -23,6 +26,9 @@ describe("afk --help", () => {
         "seconds",
         "--model",
         "--reasoning-effort",
+        "--max-verification-attempts",
+        "--verify-model",
+        "--verify-reasoning-effort",
         "--help",
         "Exit codes",
       ]) {
@@ -31,13 +37,27 @@ describe("afk --help", () => {
     });
   }
 
+  it("documents the verification attempt default of 2", async () => {
+    const fake = createFakeCodexEnvironment(COMPLETE);
+    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
+    expect(run.stdout.replace(/\s+/g, " ")).toMatch(/--max-verification-attempts <count>.*\(default: 2\)/);
+  });
+
+  it("describes --max-iterations as counting coding iterations only", async () => {
+    const fake = createFakeCodexEnvironment(COMPLETE);
+    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
+    expect(run.stdout.replace(/\s+/g, " ")).toMatch(
+      /--max-iterations <count> maximum number of coding iterations, corrections included \(default: 10\)/,
+    );
+  });
+
   it("lists exactly the exit codes the CLI maps", async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
     const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
 
     const section = run.stdout.split("Exit codes:")[1] ?? "";
     const listed = [...section.matchAll(/^\s+(\d+)\s+\S/gm)].map((match) => Number(match[1]));
-    expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 130]);
+    expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 130]);
   });
 
   it("takes precedence over invalid options and prompt input", async () => {

@@ -9,6 +9,7 @@ describe("exit codes", () => {
     [{ type: "WorkflowFailed", detail: "failed", stderrTail: [] }, EXIT_CODES.executionError],
     [{ type: "MaxIterationsReached", limit: 3 }, EXIT_CODES.iterationLimit],
     [{ type: "WorkflowTimedOut", seconds: 7 }, EXIT_CODES.timeout],
+    [{ type: "VerificationLimitReached", limit: 2, taskId: "T-1" }, EXIT_CODES.verificationLimit],
     [{ type: "WorkflowInterrupted" }, EXIT_CODES.interrupted],
   ];
 
@@ -24,6 +25,7 @@ describe("exit codes", () => {
       executionError: 3,
       iterationLimit: 4,
       timeout: 5,
+      verificationLimit: 6,
       interrupted: 130,
     });
   });
