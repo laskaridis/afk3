@@ -61,6 +61,10 @@ describe("ConsoleReporter", () => {
       { type: "MaxIterationsReached", limit: 3 },
       "[afk] Run stopped: iteration limit of 3 reached without reported completion\n",
     ],
+    [
+      { type: "VerificationLimitReached", limit: 2, taskId: "T-1" },
+      "[afk] Run stopped: verification limit of 2 reached for T-1\n",
+    ],
     [{ type: "WorkflowTimedOut", seconds: 7 }, "[afk] Run stopped: agent session timed out after 7 seconds\n"],
     [{ type: "WorkflowInterrupted" }, "[afk] Run interrupted by user\n"],
     [{ type: "WorkflowFailed", detail: "bad", stderrTail: ["t"] }, ""],

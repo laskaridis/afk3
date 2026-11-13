@@ -529,6 +529,25 @@ describe("WorkflowExecutor two-phase loop", () => {
     expect(attempts).toEqual([1, 2, 1]);
   });
 
+  it("stops with VerificationLimitReached, without a correction, once the attempt limit is reached", async () => {
+    const { workflow, events, calls } = setup([CONTINUE, REJECTED, CONTINUE, REJECTED, CONTINUE]);
+    const result = await workflow.run();
+    expect(result).toEqual({ type: "VerificationLimitReached", limit: 2, taskId: "T-1" });
+    expect(calls).toHaveLength(4);
+    expect(events.at(-1)).toBe(result);
+  });
+
+  it("honours a configured attempt limit of 1", async () => {
+    const { workflow, calls } = setup([CONTINUE, REJECTED, CONTINUE], { maxVerificationAttempts: 1 });
+    expect(await workflow.run()).toEqual({ type: "VerificationLimitReached", limit: 1, taskId: "T-1" });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("prefers the verification limit over the iteration limit when both are reached at once", async () => {
+    const { workflow } = setup([CONTINUE, REJECTED, CONTINUE, REJECTED], { maxIterations: 2 });
+    expect(await workflow.run()).toMatchObject({ type: "VerificationLimitReached" });
+  });
+
   it("neither a blocked outcome nor an execution error increments the attempt count", async () => {
     const { workflow, events } = setup([CONTINUE, ERROR, REJECTED, CONTINUE, ERROR, REJECTED, FINISHED]);
     await workflow.run();

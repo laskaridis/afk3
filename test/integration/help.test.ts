@@ -49,7 +49,7 @@ describe("afk --help", () => {
 
     const section = run.stdout.split("Exit codes:")[1] ?? "";
     const listed = [...section.matchAll(/^\s+(\d+)\s+\S/gm)].map((match) => Number(match[1]));
-    expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 130]);
+    expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 130]);
   });
 
   it("takes precedence over invalid options and prompt input", async () => {

@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   createFakeCodexEnvironment,
@@ -131,6 +132,37 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
     const { result, invocations } = await run(agent, [IMPLEMENTED, REJECTED], ["--max-iterations", "1"]);
     expect(result.exitCode).toBe(4);
     expect(invocations).toHaveLength(2);
+  });
+
+  it("stops with exit 6 at the default verification limit and launches no correction", async () => {
+    const { result, invocations } = await run(agent, [IMPLEMENTED, REJECTED, IMPLEMENTED, REJECTED, IMPLEMENTED]);
+    expect(result.exitCode).toBe(6);
+    expect(invocations).toHaveLength(4);
+    expect(lines(result.stderr).at(-1)).toBe("[afk] Run stopped: verification limit of 2 reached for T-1");
+  });
+
+  it("stops at a configured verification limit", async () => {
+    const { result, invocations } = await run(
+      agent,
+      [IMPLEMENTED, REJECTED, IMPLEMENTED],
+      ["--max-verification-attempts", "1"],
+    );
+    expect(result.exitCode).toBe(6);
+    expect(invocations).toHaveLength(2);
+    expect(lines(result.stderr).at(-1)).toBe("[afk] Run stopped: verification limit of 1 reached for T-1");
+  });
+
+  it("exits 6 rather than 4 when both limits are reached at once", async () => {
+    const { result } = await run(agent, [IMPLEMENTED, REJECTED, IMPLEMENTED, REJECTED], ["--max-iterations", "2"]);
+    expect(result.exitCode).toBe(6);
+  });
+
+  it("leaves the workspace unchanged when stopping at the verification limit", async () => {
+    const fake = createFakeCodexEnvironment({ sessions: [IMPLEMENTED, REJECTED, IMPLEMENTED, REJECTED] }, agent);
+    const before = readdirSync(fake.workspace, { recursive: true }).sort();
+    const result = await startAfk({ args: ["--agent", agent, "build X"], cwd: fake.workspace, env: fake.env }).done;
+    expect(result.exitCode).toBe(6);
+    expect(readdirSync(fake.workspace, { recursive: true }).sort()).toEqual(before);
   });
 
   it("ends with exit 0 when the last allowed iteration is verified as the finished feature", async () => {
