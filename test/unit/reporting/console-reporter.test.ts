@@ -25,10 +25,6 @@ describe("ConsoleReporter", () => {
       "[afk] Iteration 2/5: retrying agent session after execution error\n",
     ],
     [
-      { type: "StepExecutionFailed", iteration: 1, stepName: "coding", failureSummary: "tests broke", task: {} },
-      "[afk] Task failure: tests broke\n",
-    ],
-    [
       { type: "SessionExecutionErrorOccurred", iteration: 1, detail: "bad status", stderrTail: ["first", "last"] },
       "[afk] Execution error: bad status\nfirst\nlast\n",
     ],
@@ -36,7 +32,7 @@ describe("ConsoleReporter", () => {
       { type: "SessionExecutionErrorOccurred", iteration: 1, detail: "bad status", stderrTail: [] },
       "[afk] Execution error: bad status\n",
     ],
-    [{ type: "WorkflowFinished", task: {} }, "[afk] Run complete: feature complete\n"],
+    [{ type: "WorkflowFinished", task: {} }, "[afk] Run complete: no more tasks\n"],
     [{ type: "WorkflowBlocked", blockerText: "need key", task: {} }, "[afk] Run blocked: need key\n"],
     [
       { type: "MaxIterationsReached", limit: 3 },
@@ -49,7 +45,7 @@ describe("ConsoleReporter", () => {
     [{ type: "StepExecutionStarted", iteration: 1, stepName: "coding" }, ""],
     [{ type: "StepExecutionFinished", iteration: 1, stepName: "coding", task: {} }, ""],
     [{ type: "StepExecutionBlocked", iteration: 1, stepName: "coding", blockerText: "x", task: {} }, ""],
-    [{ type: "IterationFinished", iteration: 1, outcome: "Continue" }, ""],
+    [{ type: "IterationFinished", iteration: 1, outcome: "TaskImplemented" }, ""],
   ];
 
   it.each(cases)("renders %j", (event, expected) => {

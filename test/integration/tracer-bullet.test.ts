@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createFakeCodexEnvironment, expectedSessionPrompt, startAfk, withoutNonce } from "./support/helpers.js";
 
-const COMPLETE = { finalMessage: '{"outcome":"complete"}' };
+const COMPLETE = { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' };
 
 describe("afk <prompt> with a single Codex session", () => {
   it("launches codex exec once with automatic review, the workspace, and the prompt read from stdin", async () => {

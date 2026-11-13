@@ -21,20 +21,11 @@ export type StepExecutionStarted = {
   readonly stepName: string;
 };
 
-/** The step reported the feature complete; `task` is the task it worked on. */
+/** The step ended with a valid outcome that lets the run go on or ends it successfully; `task` is the task it reported. */
 export type StepExecutionFinished = {
   readonly type: "StepExecutionFinished";
   readonly iteration: number;
   readonly stepName: string;
-  readonly task: Readonly<TaskMetadata>;
-};
-
-/** The step reported a task failure, summarised in `failureSummary`; the run goes on. */
-export type StepExecutionFailed = {
-  readonly type: "StepExecutionFailed";
-  readonly iteration: number;
-  readonly stepName: string;
-  readonly failureSummary: string;
   readonly task: Readonly<TaskMetadata>;
 };
 
@@ -71,7 +62,7 @@ export type IterationFinished = {
   readonly outcome: string;
 };
 
-/** Terminal: the feature was reported complete. */
+/** Terminal: the coding agent reported no pending task. */
 export type WorkflowFinished = {
   readonly type: "WorkflowFinished";
   readonly task: Readonly<TaskMetadata>;
@@ -118,7 +109,6 @@ export type WorkflowEvent =
   | IterationStarted
   | StepExecutionStarted
   | StepExecutionFinished
-  | StepExecutionFailed
   | StepExecutionBlocked
   | StepExecutionRetried
   | SessionExecutionErrorOccurred

@@ -3,7 +3,10 @@ import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpe
 
 const AGENT_NAMES = ["codex", "claude"];
 
-const complete: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
+const complete: Step[] = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 
 function isRunning(pid: number): boolean {
   try {

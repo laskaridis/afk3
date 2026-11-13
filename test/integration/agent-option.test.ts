@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
 
-const COMPLETE: Step[] = [{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }];
+const COMPLETE: Step[] = [
+  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+  { exit: 0 },
+];
 const CRASH: Step[] = [{ exit: 7 }];
 
 describe("afk --agent", () => {

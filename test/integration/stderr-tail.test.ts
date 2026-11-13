@@ -31,7 +31,13 @@ describe("agent stderr tail", () => {
   });
 
   it("never shows stderr for a valid response, a timeout, or an interruption", async () => {
-    const complete = await run([[{ stderr: lines(1, 3) }, { finalMessage: '{"outcome":"complete"}' }, { exit: 0 }]]);
+    const complete = await run([
+      [
+        { stderr: lines(1, 3) },
+        { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
+        { exit: 0 },
+      ],
+    ]);
     expect(complete.join("\n")).not.toContain("err 1");
     const timeout = await run([[{ stderr: lines(1, 3) }, { sleepMs: 30000 }]], ["--session-timeout", "1"]);
     expect(timeout.join("\n")).not.toContain("err 1");

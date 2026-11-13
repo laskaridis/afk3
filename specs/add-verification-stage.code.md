@@ -43,3 +43,25 @@
   - test/integration/agent-option.test.ts touched: its help assertion broke on re-wrapping. Delegated review skipped (small option-parsing change).
 - Follow up needed: none
 ---
+
+## 2026-11-13 (TASK-003)
+- Task id: TASK-003
+- What was implemented:
+  - `parseResultBlock` now validates the coding vocabulary only (task_implemented with optional revision, no_more_tasks, blocked); task_id/task_plan_file required, null rules enforced; findings_file/revision-elsewhere rejected as unsupported fields.
+  - Step results `TaskImplemented` (carries revision) and `NoMoreTasks` replace Continue/Finished; StepFailed, its handler, the StepExecutionFailed event and the "Task failure" line are removed. no_more_tasks ends the run via WorkflowFinished, printed as "Run complete: no more tasks". Interim: TaskImplemented continues to the next coding session.
+  - coding-step.md rewritten for the new vocabulary, candidate commits, progress entry per candidate, harness-supplied (correction) assignment, no delegated review.
+- Files changed:
+  - src/workflow/{result-block,workflow-event,workflow-executor,workflow-step-result}.ts, src/workflow/steps/{coding-step.ts,coding-step.md}, src/workflow/step-handlers/* (renamed continue->task-implemented, finished->no-more-tasks, failed handler deleted), src/reporting/console-reporter.ts
+  - tests: unit result-block, coding-step, step-handlers, executor, reporter, cli; all integration suites migrated to the new vocabulary
+  - specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
+- Verification:
+  - `pnpm check` passes (533 tests, typecheck, lint, prettier, depcheck).
+  - Criteria: parser vocabulary/null/revision/findings_file rules covered by unit + integration (final-response) tests; violations follow the one-retry policy (integration "execution error twice"); no_more_tasks incl. last iteration (unit + integration); blocked unchanged; coding-step.md content pinned by unit tests; failure line/result removed (grep of src/ clean).
+  - Delegated read-only review: no findings.
+- Learnings for future iterations:
+  - Integration tests use `{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}` as the "run ends" block and task_implemented with T-1 as "continue".
+  - TASK-004 must add the verification vocabulary to the parser (phase-aware) and a feature-complete wording for workflow_finished; WorkflowFinished currently prints "no more tasks".
+- Scope deviations:
+  - None beyond migrating existing tests to the new contract (required by the spec).
+- Follow up needed: none
+---

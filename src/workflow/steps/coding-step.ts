@@ -16,16 +16,14 @@ function buildSessionPrompt(launchPrompt: string, nonce: string): string {
 }
 
 function toStepResult(block: ResultBlock): WorkflowStepResult {
-  const metadata: TaskMetadata = {};
-  if (block.task_id !== undefined) metadata.task_id = block.task_id;
-  if (block.task_plan_file !== undefined) metadata.task_plan_file = block.task_plan_file;
+  const metadata: TaskMetadata = { task_id: block.task_id, task_plan_file: block.task_plan_file };
   switch (block.outcome) {
-    case "repeat":
-      return { type: "Continue", ...metadata };
-    case "complete":
-      return { type: "Finished", ...metadata };
-    case "fail":
-      return { type: "StepFailed", failureSummary: block.failure_summary, ...metadata };
+    case "task_implemented":
+      return block.revision === undefined
+        ? { type: "TaskImplemented", ...metadata }
+        : { type: "TaskImplemented", revision: block.revision, ...metadata };
+    case "no_more_tasks":
+      return { type: "NoMoreTasks", ...metadata };
     case "blocked":
       return { type: "Blocked", blockerText: block.blocker_text, ...metadata };
   }
