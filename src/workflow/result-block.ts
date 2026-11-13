@@ -6,17 +6,20 @@ export type TaskMetadata = {
   task_plan_file?: string | null;
 };
 
-/** The validated JSON object an agent reports at the end of a session, discriminated by `outcome`. */
-export type ResultBlock = TaskMetadata &
-  /** The task is done but the feature is not: run another session. */
+/** The validated JSON object a coding session reports at the end of a session, discriminated by `outcome`. */
+export type ResultBlock = {
+  /** Identifier of the task the session worked on; `null` only with `no_more_tasks` or `blocked`. */
+  task_id: string | null;
+  /** Path of the file holding the task's plan; `null` only with `blocked`. */
+  task_plan_file: string | null;
+} &
+  /** A candidate was committed and is ready for verification; `revision` optionally names its commit. */
   (
-    | { outcome: "repeat" }
-    /** The feature is complete. */
-    | { outcome: "complete" }
+    | { outcome: "task_implemented"; revision?: string | null }
+    /** No pending task exists; nothing was implemented. */
+    | { outcome: "no_more_tasks" }
     /** No progress is possible without outside help; `blocker_text` says why. */
     | { outcome: "blocked"; blocker_text: string }
-    /** The task failed; `failure_summary` says how. */
-    | { outcome: "fail"; failure_summary: string }
   );
 
 /** Why a final message does not satisfy the result-block contract, as a user-facing fragment. */
@@ -35,13 +38,26 @@ function extractResultBody(text: string, nonce: string): string | undefined {
   return body;
 }
 
-const TEXT_FIELD_BY_OUTCOME = {
-  blocked: "blocker_text",
-  fail: "failure_summary",
-} as const;
+function isTextOrNull(value: unknown): value is string | null {
+  return value === null || (typeof value === "string" && value.trim() !== "");
+}
+
+/** The contract violation for how `task_id` and `task_plan_file` combine with the outcome, if there is one. */
+function taskMetadataViolation(outcome: string, taskId: string | null, taskPlanFile: string | null) {
+  if (taskId === null && outcome === "task_implemented") {
+    return 'a null "task_id" requires outcome "no_more_tasks" or "blocked" because no task was implemented';
+  }
+  if (taskId !== null && outcome === "no_more_tasks") {
+    return 'outcome "no_more_tasks" requires a null "task_id" because no task was selected';
+  }
+  if (taskPlanFile === null && outcome !== "blocked") {
+    return 'a null "task_plan_file" requires outcome "blocked" because no task list was available';
+  }
+  return undefined;
+}
 
 /**
- * Finds and validates the result block in an agent's final message.
+ * Finds and validates the result block in a coding session's final message.
  *
  * Only the last complete block carrying `nonce` counts. Never throws: a missing message, a missing block, malformed
  * JSON or a field that breaks the contract is returned as a `ContractViolation`.
@@ -72,42 +88,43 @@ export function parseResultBlock(text: string | undefined, nonce: string): Resul
   }
 
   const fields = value as Record<string, unknown>;
-  const metadata: TaskMetadata = {};
+  const { outcome } = fields;
   for (const key of ["task_id", "task_plan_file"] as const) {
-    if (!Object.hasOwn(fields, key)) continue;
-    const detail = fields[key];
-    if (detail !== null && (typeof detail !== "string" || detail.trim() === "")) {
-      return { violation: `"${key}" must be a non-empty string or null` };
-    }
-    metadata[key] = detail;
+    if (!Object.hasOwn(fields, key)) return { violation: `"${key}" is required` };
+    if (!isTextOrNull(fields[key])) return { violation: `"${key}" must be a non-empty string or null` };
   }
-  const outcomeKeys = Object.keys(fields).filter((key) => key !== "task_id" && key !== "task_plan_file");
-  const outcome = fields.outcome;
-  if (metadata.task_id === null && outcome !== "blocked") {
-    return { violation: 'a null "task_id" requires outcome "blocked" because no task could be selected' };
+  const taskId = fields.task_id as string | null;
+  const taskPlanFile = fields.task_plan_file as string | null;
+  if (outcome !== "task_implemented" && outcome !== "no_more_tasks" && outcome !== "blocked") {
+    return { violation: 'missing or unsupported "outcome" (expected task_implemented, no_more_tasks, or blocked)' };
   }
-  if (outcome === "repeat" || outcome === "complete") {
-    const extra = outcomeKeys.filter((key) => key !== "outcome");
-    if (extra.length > 0) {
-      return { violation: `outcome "${outcome}" must have no additional fields, found: ${extra.join(", ")}` };
-    }
-    return { outcome, ...metadata };
+  const metadataViolation = taskMetadataViolation(outcome, taskId, taskPlanFile);
+  if (metadataViolation !== undefined) return { violation: metadataViolation };
+
+  const allowed = ["outcome", "task_id", "task_plan_file"];
+  if (outcome === "task_implemented") allowed.push("revision");
+  if (outcome === "blocked") allowed.push("blocker_text");
+  const extra = Object.keys(fields).filter((key) => !allowed.includes(key));
+  if (extra.length > 0) {
+    return { violation: `outcome "${outcome}" has unsupported fields: ${extra.join(", ")}` };
   }
-  if (outcome === "blocked" || outcome === "fail") {
-    const field = TEXT_FIELD_BY_OUTCOME[outcome];
-    const extra = outcomeKeys.filter((key) => key !== "outcome" && key !== field);
-    if (extra.length > 0) {
-      return { violation: `outcome "${outcome}" has unsupported fields: ${extra.join(", ")}` };
+
+  const metadata = { task_id: taskId, task_plan_file: taskPlanFile };
+  switch (outcome) {
+    case "no_more_tasks":
+      return { outcome, ...metadata };
+    case "task_implemented": {
+      const { revision } = fields;
+      if (revision === undefined) return { outcome, ...metadata };
+      if (!isTextOrNull(revision)) return { violation: '"revision" must be a non-empty string or null' };
+      return { outcome, revision, ...metadata };
     }
-    const detail = fields[field];
-    if (typeof detail !== "string" || detail.trim() === "") {
-      return { violation: `outcome "${outcome}" requires a non-empty string "${field}"` };
+    case "blocked": {
+      const detail = fields.blocker_text;
+      if (typeof detail !== "string" || detail.trim() === "") {
+        return { violation: 'outcome "blocked" requires a non-empty string "blocker_text"' };
+      }
+      return { outcome, blocker_text: detail, ...metadata };
     }
-    return outcome === "blocked"
-      ? { outcome, blocker_text: detail, ...metadata }
-      : { outcome, failure_summary: detail, ...metadata };
   }
-  return {
-    violation: `missing or unsupported "outcome" (expected repeat, complete, blocked, or fail)`,
-  };
 }

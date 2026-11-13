@@ -46,7 +46,7 @@
     {
       "id": "TASK-003",
       "objective": "Move the coding session to its own outcome vocabulary so a coding session commits a candidate and reports it without ever declaring a task or the feature complete.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-002"],
       "acceptance_criteria_addressed": [
         "AC-010",

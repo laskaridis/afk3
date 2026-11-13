@@ -16,14 +16,11 @@ export class ConsoleReporter implements Reporter {
       case "StepExecutionRetried":
         this.line(`Iteration ${event.iteration}/${event.limit}: retrying agent session after execution error`);
         break;
-      case "StepExecutionFailed":
-        this.line(`Task failure: ${event.failureSummary}`);
-        break;
       case "SessionExecutionErrorOccurred":
         this.line(`Execution error: ${event.detail}`, event.stderrTail);
         break;
       case "WorkflowFinished":
-        this.line("Run complete: feature complete");
+        this.line("Run complete: no more tasks");
         break;
       case "WorkflowBlocked":
         this.line(`Run blocked: ${event.blockerText}`);

@@ -7,7 +7,7 @@ const AGENT_NAMES = ["codex", "claude"];
 
 /** `finalMessage` is rendered by each agent's fake in that agent's own output format. */
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
-const COMPLETE = say({ outcome: "complete" });
+const COMPLETE = say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" });
 const stderrLines = (n: number) => Array.from({ length: n }, (_, i) => `err ${i + 1}`).join("\n") + "\n";
 
 async function until(condition: () => boolean, timeoutMs = 5000) {
@@ -33,7 +33,7 @@ const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
 const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
 const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting agent session";
 const LIMIT_1 = "[afk] Run stopped: iteration limit of 1 reached without reported completion";
-const COMPLETE_LINE = "[afk] Run complete: feature complete";
+const COMPLETE_LINE = "[afk] Run complete: no more tasks";
 const MISSING = "[afk] Execution error: agent exited without a final response";
 const INVALID =
   "[afk] Execution error: agent final response is invalid: the result block body is not a single JSON object (found prose, Markdown fences, or malformed JSON)";
@@ -44,8 +44,8 @@ const scenarios: Scenario[] = [
   {
     name: "task metadata survives a full coding loop",
     sessions: [
-      say({ outcome: "repeat", task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" }),
-      say({ outcome: "complete", task_id: "TASK-012", task_plan_file: "specs/feature.plan.json" }),
+      say({ outcome: "task_implemented", task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" }),
+      say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "specs/feature.plan.json" }),
     ],
     exitCode: 0,
     invocations: 2,
@@ -53,26 +53,14 @@ const scenarios: Scenario[] = [
   },
   {
     name: "blocked",
-    sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
+    sessions: [say({ outcome: "blocked", blocker_text: "need key", task_id: "T-1", task_plan_file: "p.json" })],
     exitCode: 1,
     invocations: 1,
     transcript: [ITERATION_1, "[afk] Run blocked: need key"],
   },
   {
-    name: "fail then complete",
-    sessions: [say({ outcome: "fail", failure_summary: "tests broke" }), COMPLETE],
-    exitCode: 0,
-    invocations: 2,
-    transcript: [
-      ITERATION_1,
-      "[afk] Task failure: tests broke",
-      "[afk] Iteration 2/10: starting agent session",
-      COMPLETE_LINE,
-    ],
-  },
-  {
     name: "iteration limit",
-    sessions: [say({ outcome: "repeat" })],
+    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
     args: ["--max-iterations", "2"],
     exitCode: 4,
     invocations: 2,
@@ -165,29 +153,18 @@ const scenarios: Scenario[] = [
   },
   {
     name: "retry allowance resets after a valid repeat",
-    sessions: [[{ exit: 7 }], say({ outcome: "repeat" }), [{ exit: 7 }], COMPLETE],
-    exitCode: 0,
-    invocations: 4,
-    transcript: [
-      ITERATION_1,
-      EXIT_7,
-      RETRY_2,
-      "[afk] Iteration 3/10: starting agent session",
-      EXIT_7,
-      "[afk] Iteration 4/10: retrying agent session after execution error",
-      COMPLETE_LINE,
+    sessions: [
+      [{ exit: 7 }],
+      say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" }),
+      [{ exit: 7 }],
+      COMPLETE,
     ],
-  },
-  {
-    name: "a valid fail is not an execution error",
-    sessions: [[{ exit: 7 }], say({ outcome: "fail", failure_summary: "tests broke" }), [{ exit: 7 }], COMPLETE],
     exitCode: 0,
     invocations: 4,
     transcript: [
       ITERATION_1,
       EXIT_7,
       RETRY_2,
-      "[afk] Task failure: tests broke",
       "[afk] Iteration 3/10: starting agent session",
       EXIT_7,
       "[afk] Iteration 4/10: retrying agent session after execution error",
@@ -204,19 +181,11 @@ const scenarios: Scenario[] = [
   },
   {
     name: "last iteration: repeat",
-    sessions: [say({ outcome: "repeat" })],
+    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
     args: ["--max-iterations", "1"],
     exitCode: 4,
     invocations: 1,
     transcript: [ITERATION_1_OF_1, LIMIT_1],
-  },
-  {
-    name: "last iteration: fail",
-    sessions: [say({ outcome: "fail", failure_summary: "tests broke" })],
-    args: ["--max-iterations", "1"],
-    exitCode: 4,
-    invocations: 1,
-    transcript: [ITERATION_1_OF_1, "[afk] Task failure: tests broke", LIMIT_1],
   },
   {
     name: "last iteration: complete",
@@ -228,7 +197,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: "last iteration: blocked",
-    sessions: [say({ outcome: "blocked", blocker_text: "need key" })],
+    sessions: [say({ outcome: "blocked", blocker_text: "need key", task_id: "T-1", task_plan_file: "p.json" })],
     args: ["--max-iterations", "1"],
     exitCode: 1,
     invocations: 1,
@@ -236,7 +205,7 @@ const scenarios: Scenario[] = [
   },
   {
     name: "default iteration limit of 10",
-    sessions: [say({ outcome: "repeat" })],
+    sessions: [say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" })],
     exitCode: 4,
     invocations: 10,
     transcript: [

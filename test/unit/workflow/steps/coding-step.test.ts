@@ -26,6 +26,8 @@ function stub(...results: Scripted[]) {
   return { step: new CodingStep(executor), inputs, nonces };
 }
 
+const IMPLEMENTED = { outcome: "task_implemented", task_id: "TASK-011", task_plan_file: "p.json" };
+
 const reply =
   (message: object): Scripted =>
   (nonce) => ({
@@ -36,7 +38,7 @@ const reply =
 
 describe("CodingStep session prompt", () => {
   it("passes the launch prompt, a blank line, ---, coding-step.md with the nonce and a trailing newline", async () => {
-    const { step, inputs, nonces } = stub(reply({ outcome: "repeat" }));
+    const { step, inputs, nonces } = stub(reply(IMPLEMENTED));
     await step.execute("  build X\nnow ", OPTIONS);
     expect(inputs[0]!.prompt).toBe(`  build X\nnow \n\n---\n${harness.replaceAll("{{NONCE}}", nonces[0]!)}\n`);
     expect(inputs[0]!.prompt).not.toContain("{{NONCE}}");
@@ -44,7 +46,7 @@ describe("CodingStep session prompt", () => {
   });
 
   it("generates a fresh nonce on every execution", async () => {
-    const { step, nonces } = stub(reply({ outcome: "repeat" }));
+    const { step, nonces } = stub(reply(IMPLEMENTED));
     await step.execute("p", OPTIONS);
     await step.execute("p", OPTIONS);
     await step.execute("p", OPTIONS);
@@ -58,24 +60,56 @@ describe("CodingStep session prompt", () => {
 
 describe("CodingStep result mapping", () => {
   const META = { task_id: "TASK-011", task_plan_file: "specs/feature.plan.json" };
-  const mapped: Array<[string, object, object]> = [
-    ["repeat", { outcome: "repeat" }, { type: "Continue" }],
-    ["complete", { outcome: "complete" }, { type: "Finished" }],
-    ["fail", { outcome: "fail", failure_summary: "broke" }, { type: "StepFailed", failureSummary: "broke" }],
-    ["blocked", { outcome: "blocked", blocker_text: "need key" }, { type: "Blocked", blockerText: "need key" }],
-  ];
 
-  it.each(mapped)("maps a %s block, carrying task metadata as parsed", async (_name, block, expected) => {
-    expect(await stub(reply(block)).step.execute("p", OPTIONS)).toEqual(expected);
-    expect(await stub(reply({ ...block, ...META })).step.execute("p", OPTIONS)).toEqual({ ...expected, ...META });
-    const nulls = { ...block, task_id: null, task_plan_file: null };
-    if (_name === "blocked") {
-      expect(await stub(reply(nulls)).step.execute("p", OPTIONS)).toEqual({
-        ...expected,
-        task_id: null,
-        task_plan_file: null,
-      });
-    }
+  it("maps task_implemented, carrying task metadata", async () => {
+    expect(await stub(reply({ outcome: "task_implemented", ...META })).step.execute("p", OPTIONS)).toEqual({
+      type: "TaskImplemented",
+      ...META,
+    });
+  });
+
+  it.each(["9f3c2ab", null])("maps task_implemented carrying the revision %j", async (revision) => {
+    expect(await stub(reply({ outcome: "task_implemented", revision, ...META })).step.execute("p", OPTIONS)).toEqual({
+      type: "TaskImplemented",
+      revision,
+      ...META,
+    });
+  });
+
+  it("maps no_more_tasks, carrying task metadata", async () => {
+    const meta = { task_id: null, task_plan_file: META.task_plan_file };
+    expect(await stub(reply({ outcome: "no_more_tasks", ...meta })).step.execute("p", OPTIONS)).toEqual({
+      type: "NoMoreTasks",
+      ...meta,
+    });
+  });
+
+  it.each([META, { task_id: null, task_plan_file: null }])("maps blocked, carrying task metadata %j", async (meta) => {
+    expect(
+      await stub(reply({ outcome: "blocked", blocker_text: "need key", ...meta })).step.execute("p", OPTIONS),
+    ).toEqual({ type: "Blocked", blockerText: "need key", ...meta });
+  });
+
+  it.each(["repeat", "complete", "fail", "workflow_finished"])(
+    "reports the former or foreign outcome %s as an invalid response",
+    async (outcome) => {
+      const result = await stub(reply({ outcome, ...META })).step.execute("p", OPTIONS);
+      expect(result).toMatchObject({ type: "SessionFailed" });
+      expect((result as { detail: string }).detail).toContain(
+        "agent final response is invalid: missing or unsupported",
+      );
+    },
+  );
+
+  it("reports a block omitting task_id as an invalid response", async () => {
+    const result = await stub(reply({ outcome: "task_implemented", task_plan_file: "p.json" })).step.execute(
+      "p",
+      OPTIONS,
+    );
+    expect(result).toMatchObject({
+      type: "SessionFailed",
+      detail: 'agent final response is invalid: "task_id" is required',
+    });
   });
 
   it("maps timed out and interrupted sessions", async () => {
@@ -125,7 +159,7 @@ describe("CodingStep result mapping", () => {
   it("ignores a block carrying another nonce", async () => {
     const stale: SessionResult = {
       kind: "success",
-      finalMessage: '<afk-harness-result nonce="cafebabe">\n{"outcome":"complete"}\n</afk-harness-result>',
+      finalMessage: `<afk-harness-result nonce="cafebabe">\n${JSON.stringify(IMPLEMENTED)}\n</afk-harness-result>`,
       stderrTail: [],
     };
     expect(await stub(stale).step.execute("p", OPTIONS)).toMatchObject({ type: "SessionFailed" });
@@ -135,12 +169,52 @@ describe("CodingStep result mapping", () => {
     const result = (nonce: string): SessionResult => ({
       kind: "success",
       finalMessage: [
-        `<afk-harness-result nonce="${nonce}">\n{"outcome":"repeat"}\n</afk-harness-result>`,
-        `<afk-harness-result nonce="deadbeef">\n{"outcome":"complete"}\n</afk-harness-result>`,
-        `<afk-harness-result nonce="${nonce}">\n{"outcome":"complete"}\n</afk-harness-result>`,
+        `<afk-harness-result nonce="${nonce}">\n${JSON.stringify(IMPLEMENTED)}\n</afk-harness-result>`,
+        `<afk-harness-result nonce="deadbeef">\n${JSON.stringify(IMPLEMENTED)}\n</afk-harness-result>`,
+        `<afk-harness-result nonce="${nonce}">\n${JSON.stringify({ ...IMPLEMENTED, task_id: "TASK-012" })}\n</afk-harness-result>`,
       ].join("\n"),
       stderrTail: [],
     });
-    expect(await stub(result).step.execute("p", OPTIONS)).toEqual({ type: "Finished" });
+    expect(await stub(result).step.execute("p", OPTIONS)).toEqual({
+      type: "TaskImplemented",
+      task_id: "TASK-012",
+      task_plan_file: "p.json",
+    });
+  });
+});
+
+describe("coding-step.md contract", () => {
+  it("documents the coding vocabulary only, in its example block, rules and stop conditions", () => {
+    for (const outcome of ["task_implemented", "no_more_tasks", "blocked"]) expect(harness).toContain(`"${outcome}"`);
+    for (const former of ["repeat", "complete", "fail", "workflow_finished", "verification_passed"]) {
+      expect(harness).not.toContain(`\`${former}\``);
+      expect(harness).not.toContain(`"outcome":"${former}"`);
+    }
+    expect(harness).not.toContain("failure_summary");
+    expect(harness).toContain('<afk-harness-result nonce="{{NONCE}}">');
+  });
+
+  it("states that a session commits a candidate, never marks a task complete, and documents revision", () => {
+    expect(harness).toContain("Do NOT mark the task as complete");
+    expect(harness).toContain("Commit the candidate");
+    expect(harness).toContain("`revision`");
+  });
+
+  it("requires a progress entry for every committed candidate and keeps the findings file out of the notes", () => {
+    expect(harness).toContain("Every committed candidate must have a matching progress entry");
+    expect(harness).toContain("including a candidate committed in a correction iteration");
+    expect(harness).toContain("Never rely on the verification agent's findings file for your own notes");
+  });
+
+  it("extends explicit-assignment rules to a harness-supplied assignment and drops the delegated review", () => {
+    expect(harness).toContain("harness-supplied assignment");
+    expect(harness).toContain("`findings_file`");
+    expect(harness).toContain("`spec_path`");
+    expect(harness).not.toContain("delegate a read-only review");
+  });
+
+  it("keeps a validation task that finds a defect recording a follow-up and reporting task_implemented", () => {
+    expect(harness).toContain("record a follow-up fix task");
+    expect(harness).toMatch(/follow-up fix task[^\n]*`task_implemented`/);
   });
 });

@@ -127,7 +127,7 @@ describe("CLI entrypoint", () => {
   it("wires the workflow executor from validated options and subscribes a console reporter", async () => {
     process.env.AFK_TERMINATION_GRACE_MS = "25";
     mocks.subscribe.mockImplementation((observer: { onEvent(event: unknown): void }) => {
-      observer.onEvent({ type: "StepExecutionFailed", iteration: 1, failureSummary: "test failed", task: {} });
+      observer.onEvent({ type: "WorkflowBlocked", blockerText: "test failed", task: {} });
     });
     mocks.run.mockResolvedValue({ type: "WorkflowBlocked", blockerText: "need key", task: {} });
     expect(
@@ -169,7 +169,7 @@ describe("CLI entrypoint", () => {
       expect.anything(),
     );
     expect(mocks.factory).toHaveBeenCalledWith(expect.objectContaining({ aborted: false }), 2.5, 25);
-    expect(stderr).toBe("[afk] Task failure: test failed\n");
+    expect(stderr).toBe("[afk] Run blocked: test failed\n");
     expect(stdout).toBe("");
   });
 

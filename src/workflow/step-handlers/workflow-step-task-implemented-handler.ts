@@ -3,12 +3,12 @@ import type { WorkflowStepResult } from "../workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 import { taskOf } from "./task-of.js";
 
-/** The task is done but the feature is not: reports the step as finished and lets the run go on. */
-export class WorkflowStepContinueHandler implements WorkflowStepHandler<
-  Extract<WorkflowStepResult, { type: "Continue" }>
+/** A candidate was committed: reports the step as finished and lets the run go on. */
+export class WorkflowStepTaskImplementedHandler implements WorkflowStepHandler<
+  Extract<WorkflowStepResult, { type: "TaskImplemented" }>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "Continue" }>, context: WorkflowStepHandlerContext): void {
+  handle(result: Extract<WorkflowStepResult, { type: "TaskImplemented" }>, context: WorkflowStepHandlerContext): void {
     context.publish({
       type: "StepExecutionFinished",
       iteration: context.iteration,

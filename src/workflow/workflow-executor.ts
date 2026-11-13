@@ -25,8 +25,8 @@ const MAX_RETRIES = 1;
  * but overlapping calls to run() are rejected. Each invocation has independent retry, iteration, and terminal state.
  * Every iteration uses a fresh CodingStep and session.
  *
- * - Continue and StepFailed advance to the next iteration.
- * - Finished, Blocked, Timeout and Interrupted end the invocation.
+ * - TaskImplemented advances to the next iteration (interim: verification is not yet wired in).
+ * - NoMoreTasks, Blocked, Timeout and Interrupted end the invocation.
  * - SessionFailed is retried up to MAX_RETRIES times in a row; another outcome resets the retry allowance.
  * - Reaching maxIterations without a terminal outcome returns MaxIterationsReached.
  *

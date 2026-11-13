@@ -12,10 +12,14 @@ const ADAPTER = { name: "fake" } as unknown as AgentAdapter;
 /** A scripted session: a raw session result, or the agent's result block (the nonce is read from the prompt). */
 type Script = SessionResult | { block: Record<string, unknown> };
 
-const CONTINUE: Script = { block: { outcome: "repeat", task_id: "T-1", task_plan_file: "p.json" } };
-const FINISHED: Script = { block: { outcome: "complete", task_id: "T-9", task_plan_file: "p.json" } };
-const BLOCKED: Script = { block: { outcome: "blocked", blocker_text: "need key", task_id: "T-2" } };
-const FAILED: Script = { block: { outcome: "fail", failure_summary: "tests broke" } };
+const CONTINUE: Script = { block: { outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" } };
+const FINISHED: Script = { block: { outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" } };
+const BLOCKED: Script = {
+  block: { outcome: "blocked", blocker_text: "need key", task_id: "T-2", task_plan_file: "p.json" },
+};
+const INVALID: Script = {
+  block: { outcome: "fail", failure_summary: "tests broke", task_id: "T-1", task_plan_file: "p.json" },
+};
 const ERROR: Script = { kind: "exited-unsuccessfully", detail: "exit 1", stderrTail: ["tail"] };
 const TIMED_OUT: Script = { kind: "timed-out" };
 const INTERRUPTED: Script = { kind: "interrupted" };
@@ -88,10 +92,10 @@ describe("WorkflowExecutor policy and events", () => {
     ]);
   });
 
-  it("complete: repeat then complete", async () => {
+  it("no_more_tasks: task_implemented then no_more_tasks", async () => {
     const { workflow, events } = setup([CONTINUE, FINISHED]);
     const result = await workflow.run();
-    expect(result).toEqual({ type: "WorkflowFinished", task: { task_id: "T-9", task_plan_file: "p.json" } });
+    expect(result).toEqual({ type: "WorkflowFinished", task: { task_id: null, task_plan_file: "p.json" } });
     expect(events.at(-1)).toBe(result);
     expect(types(events)).toEqual([
       "WorkflowStarted",
@@ -114,7 +118,7 @@ describe("WorkflowExecutor policy and events", () => {
       stepName: "coding",
       task: { task_id: "T-1", task_plan_file: "p.json" },
     });
-    expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "Continue" });
+    expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "TaskImplemented" });
     expect(events[7]).toMatchObject({ type: "StepExecutionFinished", stepName: "coding" });
   });
 
@@ -123,24 +127,24 @@ describe("WorkflowExecutor policy and events", () => {
     expect(await workflow.run()).toEqual({
       type: "WorkflowBlocked",
       blockerText: "need key",
-      task: { task_id: "T-2", task_plan_file: undefined },
+      task: { task_id: "T-2", task_plan_file: "p.json" },
     });
     expect(calls).toHaveLength(1);
     expect(types(events).slice(3)).toEqual(["StepExecutionBlocked", "IterationFinished", "WorkflowBlocked"]);
     expect(events[3]).toMatchObject({ stepName: "coding", blockerText: "need key", task: { task_id: "T-2" } });
   });
 
-  it("fail then complete: the failure is published and the run continues", async () => {
-    const { workflow, events, calls } = setup([FAILED, FINISHED]);
+  it("a former outcome is an invalid response and is retried once", async () => {
+    const { workflow, events, calls } = setup([INVALID, FINISHED]);
     expect((await workflow.run()).type).toBe("WorkflowFinished");
     expect(calls).toHaveLength(2);
-    expect(events[3]).toMatchObject({
-      type: "StepExecutionFailed",
-      iteration: 1,
-      stepName: "coding",
-      failureSummary: "tests broke",
-    });
-    expect(events[4]).toEqual({ type: "IterationFinished", iteration: 1, outcome: "StepFailed" });
+    expect(events[3]).toMatchObject({ type: "SessionExecutionErrorOccurred", iteration: 1 });
+    expect((events[3] as { detail: string }).detail).toContain("agent final response is invalid");
+  });
+
+  it("no_more_tasks on the last allowed iteration still ends the run successfully", async () => {
+    const { workflow } = setup([FINISHED], { maxIterations: 1 });
+    expect((await workflow.run()).type).toBe("WorkflowFinished");
   });
 
   it("iteration limit: ends with MaxIterationsReached after the last iteration", async () => {
@@ -197,7 +201,7 @@ describe("WorkflowExecutor policy and events", () => {
   });
 
   it("any other outcome resets the retry allowance, and retries count toward the limit", async () => {
-    const { workflow, calls } = setup([ERROR, FAILED, ERROR, ERROR]);
+    const { workflow, calls } = setup([ERROR, CONTINUE, ERROR, ERROR]);
     expect((await workflow.run()).type).toBe("WorkflowFailed");
     expect(calls).toHaveLength(4);
     const limited = setup([CONTINUE, ERROR, ERROR], { maxIterations: 3 });

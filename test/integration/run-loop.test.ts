@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createFakeCodexEnvironment, startAfk, withoutNonce, type Step } from "./support/helpers.js";
 
 const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
-const REPEAT = say({ outcome: "repeat" });
+const REPEAT = say({ outcome: "task_implemented", task_id: "T-1", task_plan_file: "p.json" });
 
 describe("afk run loop", () => {
-  it("launches repeat, fail, complete as three separate identical codex exec processes", async () => {
+  it("launches task_implemented, task_implemented, no_more_tasks as three separate identical codex exec processes", async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [REPEAT, say({ outcome: "fail", failure_summary: "tests broke" }), say({ outcome: "complete" })],
+      sessions: [REPEAT, REPEAT, say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" })],
     });
 
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
@@ -22,12 +22,15 @@ describe("afk run loop", () => {
       expect(cwd).toBe(fake.workspace);
       expect(withoutNonce(stdin)).toBe(withoutNonce(invocations[0]!.stdin));
     }
-    expect(run.stderr).toContain("tests broke");
+    expect(run.stderr).toContain("Run complete: no more tasks");
   });
 
   it("prints the blocker and exits 1 after exactly one launch", async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [say({ outcome: "blocked", blocker_text: "need API key" }), say({ outcome: "complete" })],
+      sessions: [
+        say({ outcome: "blocked", blocker_text: "need API key", task_id: "T-1", task_plan_file: "p.json" }),
+        say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }),
+      ],
     });
 
     const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
@@ -38,7 +41,7 @@ describe("afk run loop", () => {
   });
 
   it.each(["0", "-1", "1.5", "abc"])("rejects --max-iterations %s with exit 2 and no launch", async (value) => {
-    const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
+    const fake = createFakeCodexEnvironment(say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }));
 
     const run = await startAfk({ args: ["build X", "--max-iterations", value], cwd: fake.workspace, env: fake.env })
       .done;
@@ -55,7 +58,7 @@ describe("afk run loop", () => {
     ["--verify-model", ""],
     ["--verify-reasoning-effort", "  "],
   ])("rejects %s %j with exit 2 and no launch", async (option, value) => {
-    const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
+    const fake = createFakeCodexEnvironment(say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }));
 
     const run = await startAfk({ args: ["build X", option, value], cwd: fake.workspace, env: fake.env }).done;
 
@@ -65,7 +68,7 @@ describe("afk run loop", () => {
   });
 
   it("accepts the verification options and runs", async () => {
-    const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
+    const fake = createFakeCodexEnvironment(say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" }));
     const args = [
       "build X",
       "--max-verification-attempts",
