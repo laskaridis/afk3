@@ -48,6 +48,40 @@ describe("afk run loop", () => {
     expect(fake.invocations()).toHaveLength(0);
   });
 
+  it.each([
+    ["--max-verification-attempts", "0"],
+    ["--max-verification-attempts", "1.5"],
+    ["--max-verification-attempts", "abc"],
+    ["--verify-model", ""],
+    ["--verify-reasoning-effort", "  "],
+  ])("rejects %s %j with exit 2 and no launch", async (option, value) => {
+    const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
+
+    const run = await startAfk({ args: ["build X", option, value], cwd: fake.workspace, env: fake.env }).done;
+
+    expect(run.exitCode).toBe(2);
+    expect(run.stderr).toContain(option);
+    expect(fake.invocations()).toHaveLength(0);
+  });
+
+  it("accepts the verification options and runs", async () => {
+    const fake = createFakeCodexEnvironment(say({ outcome: "complete" }));
+    const args = [
+      "build X",
+      "--max-verification-attempts",
+      "3",
+      "--verify-model",
+      "m",
+      "--verify-reasoning-effort",
+      "high",
+    ];
+
+    const run = await startAfk({ args, cwd: fake.workspace, env: fake.env }).done;
+
+    expect(run.exitCode).toBe(0);
+    expect(fake.invocations()).toHaveLength(1);
+  });
+
   it("gives each run a fresh budget and stops with the iteration limit (exit 4)", async () => {
     const fake = createFakeCodexEnvironment(REPEAT);
     const args = ["build X", "--max-iterations", "2"];

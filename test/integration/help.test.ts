@@ -23,6 +23,9 @@ describe("afk --help", () => {
         "seconds",
         "--model",
         "--reasoning-effort",
+        "--max-verification-attempts",
+        "--verify-model",
+        "--verify-reasoning-effort",
         "--help",
         "Exit codes",
       ]) {
@@ -30,6 +33,12 @@ describe("afk --help", () => {
       }
     });
   }
+
+  it("documents the verification attempt default of 2", async () => {
+    const fake = createFakeCodexEnvironment(COMPLETE);
+    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
+    expect(run.stdout.replace(/\s+/g, " ")).toMatch(/--max-verification-attempts <count>.*\(default: 2\)/);
+  });
 
   it("lists exactly the exit codes the CLI maps", async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);

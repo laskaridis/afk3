@@ -26,7 +26,7 @@
     {
       "id": "TASK-002",
       "objective": "Accept and validate the three verification options on the command line so a run can be configured with a verification attempt limit, model and reasoning effort.",
-      "status": "pending",
+      "status": "completed",
       "stories_enabled": ["US-004", "US-005"],
       "acceptance_criteria_addressed": ["AC-024", "AC-033"],
       "completion_criteria": [

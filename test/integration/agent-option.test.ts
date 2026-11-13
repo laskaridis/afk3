@@ -38,7 +38,8 @@ describe("afk --agent", () => {
 
       expect(run.stdout).toContain("--agent <name>");
       for (const name of ["codex", "claude"]) expect(run.stdout).toContain(name);
-      expect(run.stdout).toContain("default: codex");
+      // Help wraps at the terminal width, so compare with collapsed whitespace.
+      expect(run.stdout.replace(/\s+/g, " ")).toContain("default: codex");
     });
   }
 

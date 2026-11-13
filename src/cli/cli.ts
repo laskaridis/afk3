@@ -50,6 +50,9 @@ export class CLI {
       model: options.model,
       effort: options.reasoningEffort,
       maxIterations: options.maxIterations,
+      maxVerificationAttempts: options.maxVerificationAttempts,
+      verifyModel: options.verifyModel,
+      verifyEffort: options.verifyReasoningEffort,
       sessionTimeoutSeconds: options.sessionTimeout,
       cwd: options.cwd,
     };
