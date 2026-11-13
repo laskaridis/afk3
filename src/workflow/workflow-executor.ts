@@ -12,6 +12,9 @@ import type { WorkflowStepResult } from "./workflow-step-result.js";
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;
 
+/** Verification attempt limit used when the user does not set one. */
+export const DEFAULT_MAX_VERIFICATION_ATTEMPTS = 2;
+
 /** How many times in a row a failed step is retried before the run fails. Internal: not user-configurable yet. */
 const MAX_RETRIES = 1;
 

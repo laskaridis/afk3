@@ -45,7 +45,15 @@ function setup(scripts: Script[], overrides: Partial<WorkflowOptions> = {}) {
     },
   } as unknown as SessionExecutorFactory;
   const workflow = new WorkflowExecutor(
-    { adapter: ADAPTER, model: "m", effort: "high", maxIterations: 10, cwd: "/work", ...overrides },
+    {
+      adapter: ADAPTER,
+      model: "m",
+      effort: "high",
+      maxIterations: 10,
+      maxVerificationAttempts: 2,
+      cwd: "/work",
+      ...overrides,
+    },
     { text: "launch" },
     sessions,
   );
