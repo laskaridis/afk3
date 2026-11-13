@@ -346,6 +346,43 @@ describe("WorkflowExecutor policy and events", () => {
   });
 });
 
+describe("WorkflowExecutor verification model and effort", () => {
+  const phaseOptions = async (overrides: Partial<WorkflowOptions>) => {
+    const { workflow, calls } = setup([CONTINUE, PASSED, FINISHED], overrides);
+    await workflow.run();
+    return calls.map(({ model, effort }) => ({ model, effort }));
+  };
+
+  it("uses --verify-model and --verify-reasoning-effort for verification only", async () => {
+    expect(await phaseOptions({ model: "m", effort: "low", verifyModel: "vm", verifyEffort: "high" })).toEqual([
+      { model: "m", effort: "low" },
+      { model: "vm", effort: "high" },
+      { model: "m", effort: "low" },
+    ]);
+  });
+
+  it("resolves each verification override independently, falling back to the coding value", async () => {
+    expect(await phaseOptions({ model: "m", effort: "low", verifyModel: "vm" })).toEqual([
+      { model: "m", effort: "low" },
+      { model: "vm", effort: "low" },
+      { model: "m", effort: "low" },
+    ]);
+    expect(await phaseOptions({ model: undefined, effort: "low", verifyEffort: "high" })).toEqual([
+      { model: undefined, effort: "low" },
+      { model: undefined, effort: "high" },
+      { model: undefined, effort: "low" },
+    ]);
+  });
+
+  it("verification resolves like a coding session when no override is supplied", async () => {
+    expect(await phaseOptions({ model: "m", effort: "low" })).toEqual([
+      { model: "m", effort: "low" },
+      { model: "m", effort: "low" },
+      { model: "m", effort: "low" },
+    ]);
+  });
+});
+
 describe("WorkflowExecutor two-phase loop", () => {
   const prompts = (calls: Array<{ prompt: string }>) => calls.map((call) => call.prompt);
 

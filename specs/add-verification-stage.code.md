@@ -108,3 +108,21 @@
   - None. Delegated review skipped: small policy change fully covered by tests.
 - Follow up needed: none
 ---
+
+## 2026-11-13 (TASK-006)
+- Task id: TASK-006
+- What was implemented:
+  - Verification sessions now run with `verifyModel ?? model` and `verifyEffort ?? effort` (resolved independently per field); coding sessions are untouched. Values are passed through unchanged; both phases use the one adapter.
+- Files changed:
+  - src/workflow/workflow-executor.ts
+  - test/unit/workflow/workflow-executor.test.ts, test/integration/verification-model-overrides.test.ts (new)
+  - specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
+- Verification:
+  - `pnpm check` passes (tests, typecheck, lint, prettier, depcheck).
+  - Criteria: unit tests cover override, per-field fallback and no-override resolution; the integration test asserts the argv each of the three sessions receives for all 16 combinations of the four options, for codex and claude; both phases launched via the single `--agent` adapter (parity of invocation count/agent in those runs).
+- Learnings for future iterations:
+  - Fake-agent argv assertions: codex uses `--model`/`--config model_reasoning_effort="x"`, claude uses `--model`/`--effort`.
+- Scope deviations:
+  - None. Delegated review skipped: one-line policy change fully covered by tests.
+- Follow up needed: none
+---
