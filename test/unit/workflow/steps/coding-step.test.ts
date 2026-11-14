@@ -4,6 +4,7 @@ import type { SessionExecutor } from "../../../../src/session/session-executor.j
 import type { SessionInput } from "../../../../src/session/session-input.js";
 import type { SessionResult } from "../../../../src/session/session-result.js";
 import type { CorrectionAssignment } from "../../../../src/workflow/assignment.js";
+import { WorkflowStep } from "../../../../src/workflow/workflow-step.js";
 import { CodingStep } from "../../../../src/workflow/steps/coding-step.js";
 
 const harness = readFileSync(new URL("../../../../src/workflow/steps/coding-step.md", import.meta.url), "utf8");
@@ -64,6 +65,10 @@ describe("CodingStep session prompt", () => {
 
   it("is named coding", () => {
     expect(stub().step.name).toBe("coding");
+  });
+
+  it("uses the shared workflow step lifecycle", () => {
+    expect(stub().step).toBeInstanceOf(WorkflowStep);
   });
 });
 
