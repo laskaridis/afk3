@@ -1,35 +1,41 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "ddd": {
       "source": "laskaridis/skills",
       "sourceType": "github",
       "skillPath": "skills/ddd/SKILL.md",
-      "computedHash": "d8432e58b7e92a88a0e6a498c966397f9ccc3ab20f832c74e7057d0054191a0d"
+      "computedHash": "d39fbe342020e5672d7fad86e4096d72df2c89cc36dff8e8b5c445d874bcd3f9"
     },
     "doc-gardening": {
       "source": "laskaridis/skills",
       "sourceType": "github",
       "skillPath": "skills/doc-gardening/SKILL.md",
-      "computedHash": "e1657157a5700962a8c1a05a1270081df5af2a7224171f99dccf1f4340880dfa"
+      "computedHash": "9226ebd9e8df71befdba8e61dca62669bdd49839d7f31032c2202e2b5b91e4b9"
+    },
+    "gh-review-pr": {
+      "source": "laskaridis/skills",
+      "sourceType": "github",
+      "skillPath": "skills/gh-review-pr/SKILL.md",
+      "computedHash": "6a1f087175374ecc8c78f76ef629ecd20f889a3981ec2d6d440b6ea04d9a5864"
     },
     "plan": {
       "source": "laskaridis/skills",
       "sourceType": "github",
       "skillPath": "skills/plan/SKILL.md",
-      "computedHash": "d8c022459ff9e5f580f2994a8730caa806242efe8e4b44898a6c356cfa145a39"
+      "computedHash": "5dc1e08e67101e1d450800807624a1580801834cd45cc431bde0b15d6cb3a6d1"
     },
     "specify": {
       "source": "laskaridis/skills",
       "sourceType": "github",
       "skillPath": "skills/specify/SKILL.md",
-      "computedHash": "ab7f6f67b6067737e6469c62d76cb51c1c0037457495b282ce7b50823b85b911"
+      "computedHash": "afa659fd4fc49cf60755da11ade59e07468305e9fbc5222d6890356d5050de98"
     },
     "tdd": {
       "source": "laskaridis/skills",
       "sourceType": "github",
       "skillPath": "skills/tdd/SKILL.md",
-      "computedHash": "47d453fb4755785b2c09d6518e3f368215f7aa0c238b8cd572352daa139ad668"
+      "computedHash": "2a22486ad901aff7d85ba8a1e95111ae1b081224bc3b1d259d524ad4e859862b"
     }
   }
 }

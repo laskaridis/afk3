@@ -1,0 +1,4 @@
+interface:
+  display_name: "gh-review-pr"
+  short_description: "Review a GitHub PR and post the findings as inline review comments."
+  default_prompt: "Use $gh-review-pr to review the open pull request for this branch."
