@@ -147,7 +147,11 @@ export class WorkflowExecutor {
      * Runs one session of `step` and applies its result through the handlers. `retry` is true when it repeats the
      * previous session of the same iteration after an execution error. Returns the result.
      */
-    const runStep = async (step: WorkflowStep, options: WorkflowStepOptions, retry: boolean) => {
+    const runStep = async <Block extends { outcome: string; task_id: string | null }>(
+      step: WorkflowStep<Block>,
+      options: WorkflowStepOptions,
+      retry: boolean,
+    ) => {
       currentError = undefined;
       currentStepName = step.name;
       if (retry) {

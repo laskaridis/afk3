@@ -183,15 +183,14 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Uses `workflow/WorkflowStepHandler`s to handle `workflow/WorkflowStepResult`s.
 - Uses `workflow/WorkflowOptions`
 
-### `workflow/WorkflowStep` (interface)
+### `workflow/WorkflowStep` (abstract class)
 
 **Responsibilities:**
 
-- Controls the execution of a single step in the workflow, including prompt markdown, the `<afk-harness-result>`
-  block format and nonce generation.
-- Builds the agent prompt for the specific step.
-- Executes the step using the specified `session/SessionExecutor` providing the necessary prompt.
-- Parsing the final result of the `session/SessionExecutor` into a `workflow/WorkflowStepResult`
+- Runs one session with a fresh nonce and maps session failures, timeouts, interruptions, and contract violations to a
+  `WorkflowStepResult`.
+- Specifies how to build the prompt of each concrete step.
+- Specifies how to marshall the step results into a `WorkflowStepResult`
 
 **Collaborators:**
 
@@ -202,7 +201,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Concrete implementations:**
 
 - `CodingStep`
-- `VerificationStep` (runs inside the iteration of the candidate it verifies; both steps share `executeStepSession`)
+- `VerificationStep`
 
 ### `workflow/WorkflowStepHandler` (interface)
 
