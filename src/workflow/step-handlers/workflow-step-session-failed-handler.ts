@@ -1,5 +1,5 @@
 import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
-import type { WorkflowStepResult } from "../workflow-step-result.js";
+import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 
 /** The session produced no valid result: reports the error and asks the executor to retry the iteration. */

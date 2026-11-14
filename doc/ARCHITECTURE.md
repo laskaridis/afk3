@@ -40,7 +40,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Responsibilities:**
 
 - Controls the iterative workflow: iteration policy, retries, limits, and interpretation of each step's result.
-- Builds the agent prompt for each step and parses the agent's final response (`<afk-harness-result>` block) into a step result.
+- Each concrete step builds its agent prompt and validates its final response (`<afk-harness-result>` block) into a step result.
 - Publishes `WorkflowEvent`s to `WorkflowObserver`s and returns the terminal event.
 
 **Afferent dependencies:**
@@ -152,8 +152,8 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Responsibilities:**
 
 - Controls the entire workflow execution as a sequence of iterative steps.
-- Executes `workflow/WorkflowStep`s in the correct order using a `session/SessionExecutor`
-- Dispatches each `workflow/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
+- Executes `workflow/steps/WorkflowStep`s in the correct order using a `session/SessionExecutor`
+- Dispatches each `workflow/steps/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
 - Is serially re-entrant but not parallelizable: the same instance may be run again after completion, but overlapping `run()` calls are rejected. The active-run guard is released even when execution fails.
 - Creates a separate `workflow/step-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. Retry and terminal state is invocation-local.
 - Publishes `workflow/WorkflowEvent`s:
@@ -178,36 +178,35 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Collaborators:**
 
-- Creates `workflow/WorkflowStep`s.
-- Creates `session/SessionExecutor`s with the appropriate `agents/AgentAdapter` and uses them to execute `workflow/WorkflowStep`s.
-- Uses `workflow/WorkflowStepHandler`s to handle `workflow/WorkflowStepResult`s.
+- Creates `workflow/steps/WorkflowStep`s.
+- Creates `session/SessionExecutor`s with the appropriate `agents/AgentAdapter` and uses them to execute `workflow/steps/WorkflowStep`s.
+- Uses `workflow/WorkflowStepHandler`s to handle `workflow/steps/WorkflowStepResult`s.
 - Uses `workflow/WorkflowOptions`
 
-### `workflow/WorkflowStep` (abstract class)
+### `workflow/steps/WorkflowStep` (abstract class)
 
 **Responsibilities:**
 
 - Runs one session with a fresh nonce and maps session failures, timeouts, interruptions, and contract violations to a
   `WorkflowStepResult`.
-- Specifies how to build the prompt of each concrete step.
-- Specifies how to marshall the step results into a `WorkflowStepResult`
+- Requires each concrete step to build its prompt and parse the final agent message according to that step's result-block contract.
 
 **Collaborators:**
 
 - Created by `workflow/WorkflowExecutor`
 - Uses `session/SessionExecutor`
-- Creates `workflow/WorkflowStepResult` and passes it back to `workflow/WorkflowExecutor`
+- Creates `workflow/steps/WorkflowStepResult` and passes it back to `workflow/WorkflowExecutor`
 
 **Concrete implementations:**
 
-- `CodingStep`
-- `VerificationStep`
+- `CodingStep` owns the coding prompt, accepted outcomes, result-block validation, task assignment check, and mapping to a `WorkflowStepResult`.
+- `VerificationStep` owns the corresponding verification behavior.
 
 ### `workflow/WorkflowStepHandler` (interface)
 
 **Responsibilities:**
 
-- Handles a `workflow/WorkflowStepResult`.
+- Handles a `workflow/steps/WorkflowStepResult`.
 - Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()`, `requestCorrection()` or `endWorkflow()`.
 
 **Collaborators:**
@@ -239,7 +238,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Created by `workflow/WorkflowExecutor.run()` for each invocation.
 - Used by `workflow/step-handlers/WorkflowStepHandler` implementations.
 
-### `workflow/WorkflowStepResult` (value class)
+### `workflow/steps/WorkflowStepResult` (value class)
 
 **Responsibilities:**
 
@@ -263,7 +262,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Collaborators:**
 
-- Created by concrete `workflow/WorkflowStep`
+- Created by concrete `workflow/steps/WorkflowStep`
 - Used by `workflow/WorkflowExecutor`
 
 ### `workflow/WorkflowObserver` (interface)
@@ -287,7 +286,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Carries everything observers need to react without calling back into the executor, as relevant to the event type:
   - Iteration number and the configured iteration limit.
   - Name of the step being executed.
-  - Step outcome details from the `workflow/WorkflowStepResult`: task ID, failure details, unblocking condition,
+  - Step outcome details from the `workflow/steps/WorkflowStepResult`: task ID, failure details, unblocking condition,
     and the task list plan file path.
   - Session failure details, for `SessionExecutionErrorOccurred`.
   - Timeout and interruption details, for `WorkflowTimedOut` and `WorkflowInterrupted`.
@@ -297,7 +296,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - Created and published by `workflow/WorkflowExecutor`
 - Delivered to `workflow/WorkflowObserver`s
-- Carries data taken from `workflow/WorkflowStepResult`
+- Carries data taken from `workflow/steps/WorkflowStepResult`
 
 ### `session/SessionExecutorFactory` (concrete class)
 
@@ -316,13 +315,13 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Responsibilities:**
 
-- Abstracts the execution of a `workflow/WorkflowStep`s prompt against a physical coding agent
+- Abstracts the execution of a `workflow/steps/WorkflowStep`s prompt against a physical coding agent
 - Encapsulates all the implementation details surrounding the agent's execution, such as forking the system process, running the appropriate coding agent based on the selected `agents/AgentAdapter` with the correct arguments, managing stdio streams including any buffering, temp files used by agents, handling timeouts, SIGTERM and SIGKILL.
 
 **Collaborators:**
 
 - Created by `workflow/WorkflowExecutor` via `session/SessionExecutorFactory`
-- Used by `workflow/WorkflowStep`
+- Used by `workflow/steps/WorkflowStep`
 - Uses `agents/AgentAdapter` to understand which agent to invoke and retrieve the final message.
 
 ### `session/SessionResult` (value class)
@@ -343,7 +342,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Collaborators:**
 
 - Created by `session/SessionExecutor`
-- Used by concrete `workflow/WorkflowStep`
+- Used by concrete `workflow/steps/WorkflowStep`
 
 ### `agents/AgentAdapter` (interface)
 
@@ -392,7 +391,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - `cli` includes code related to the CLI layer: option parsing, launch-prompt resolution, wiring, signal handling and exit codes (`src/cli.ts` is the thin entry point that imports only `src/cli/`).
 - `agents` includes code related to concrete `agents/AgentAdapter`s and `agents/AgentRegistry`.
-- `workflow` includes code related to workflow execution layer, including concrete `workflow/WorkflowStep`s and their prompts.
+- `workflow` includes code related to workflow execution layer, including concrete `workflow/steps/WorkflowStep`s and their prompts.
 - `session` includes code related to session execution layer.
 - `reporting` includes code related to progress reporting layer.
 

@@ -2,7 +2,7 @@ import type { SessionExecutorFactory } from "../session/session-executor-factory
 import type { CorrectionAssignment, VerificationAssignment } from "./assignment.js";
 import { CodingStep } from "./steps/coding-step.js";
 import { VerificationStep } from "./steps/verification-step.js";
-import type { WorkflowStep } from "./workflow-step.js";
+import type { WorkflowStep } from "./steps/workflow-step.js";
 import type { WorkflowStepOptions } from "./workflow-step-options.js";
 import type { WorkflowStepHandler } from "./step-handlers/workflow-step-handler.js";
 import type { WorkflowStepHandlerContext } from "./step-handlers/workflow-step-handler-context.js";
@@ -11,7 +11,7 @@ import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
 import type { WorkflowObserver } from "./workflow-observer.js";
 import type { LaunchPrompt } from "./launch-prompt.js";
 import type { WorkflowOptions } from "./workflow-options.js";
-import type { WorkflowStepResult } from "./workflow-step-result.js";
+import type { WorkflowStepResult } from "./steps/workflow-step-result.js";
 
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;
@@ -147,11 +147,7 @@ export class WorkflowExecutor {
      * Runs one session of `step` and applies its result through the handlers. `retry` is true when it repeats the
      * previous session of the same iteration after an execution error. Returns the result.
      */
-    const runStep = async <Block extends { outcome: string; task_id: string | null }>(
-      step: WorkflowStep<Block>,
-      options: WorkflowStepOptions,
-      retry: boolean,
-    ) => {
+    const runStep = async (step: WorkflowStep, options: WorkflowStepOptions, retry: boolean) => {
       currentError = undefined;
       currentStepName = step.name;
       if (retry) {
