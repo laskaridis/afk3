@@ -1,4 +1,4 @@
-import type { WorkflowStepResult } from "../workflow-step-result.js";
+import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
 import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
 
 /**

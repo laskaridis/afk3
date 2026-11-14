@@ -1,7 +1,16 @@
-import type { TaskMetadata } from "./result-block.js";
+/** Which task a step reported on. Field names match the agent's result block. */
+export type TaskMetadata = {
+  /** Identifier of the task; `null` when no task could be selected. */
+  task_id?: string | null;
+  /** Path of the file holding the task's plan; `null` when there is none. */
+  task_plan_file?: string | null;
+};
 
 /** The task a step reports on; both fields are always present for the outcomes that carry it. */
-type ReportedTask = { task_id: string; task_plan_file: string };
+type ReportedTask = {
+  task_id: string;
+  task_plan_file: string;
+};
 
 /** What one workflow step ended as, for the executor. Task metadata is carried as parsed. */
 export type WorkflowStepResult =

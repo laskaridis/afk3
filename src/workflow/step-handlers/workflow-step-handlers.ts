@@ -1,4 +1,4 @@
-import type { WorkflowStepResult } from "../workflow-step-result.js";
+import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
 import { WorkflowStepBlockedHandler } from "./workflow-step-blocked-handler.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
 import { WorkflowStepFeatureVerifiedHandler } from "./workflow-step-feature-verified-handler.js";

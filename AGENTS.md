@@ -24,7 +24,8 @@ pnpm build && pnpm vitest run test/integration/<file>.test.ts   # one file; rebu
 | `README.md`                               | User-facing usage, options, supported agents and how each is launched                    |
 | `src/cli.ts`                              | Thin entry point: shebang, runs the CLI, exits with its code                             |
 | `src/cli/`                                | CLI: options (commander), launch prompt, wiring, signals, `EXIT_CODES`                   |
-| `src/workflow/`                           | `WorkflowExecutor` (iteration policy, events), result-block parser, `steps/`             |
+| `src/workflow/`                           | `WorkflowExecutor` (iteration policy, events), step handlers                             |
+| `src/workflow/steps/`                     | `WorkflowStep`, `WorkflowStepResult`, coding and verification steps and prompts          |
 | `src/session/`                            | `SessionExecutorFactory`, `SessionExecutor` (one agent process), `SessionResult`         |
 | `src/agents/`                             | `AgentAdapter`, one adapter per agent, `AgentRegistry`                                   |
 | `src/reporting/`                          | `ConsoleReporter`: `[afk]` status lines from workflow events                             |

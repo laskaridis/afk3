@@ -1,14 +1,13 @@
 import { randomBytes } from "node:crypto";
-import type { SessionExecutor } from "../session/session-executor.js";
-import type { ContractViolation } from "./result-block.js";
-import type { WorkflowStepOptions } from "./workflow-step-options.js";
+import type { SessionExecutor } from "../../session/session-executor.js";
+import type { WorkflowStepOptions } from "../workflow-step-options.js";
 import type { WorkflowStepResult } from "./workflow-step-result.js";
 
 /**
  * One session of work in the workflow. Subclasses supply the prompt and interpretation of a valid result block;
  * the executor owns the policy built on top of the result (retries, limits, events).
  */
-export abstract class WorkflowStep<Block extends { outcome: string; task_id: string | null }> {
+export abstract class WorkflowStep {
   /** Short, stable identifier of the step (e.g. `coding`). */
   abstract readonly name: string;
 
@@ -18,14 +17,11 @@ export abstract class WorkflowStep<Block extends { outcome: string; task_id: str
   /** Builds the session prompt for this step and nonce. */
   protected abstract buildPrompt(launchPrompt: string, nonce: string): string;
 
-  /** Validates the final message against this step's outcome vocabulary. */
-  protected abstract parse(finalMessage: string | undefined, nonce: string): Block | ContractViolation;
-
-  /** The task assigned to this session, if any. */
-  protected abstract get assignedTaskId(): string | undefined;
-
-  /** Maps a valid result block to the outcome the workflow executor handles. */
-  protected abstract toResult(block: Block): WorkflowStepResult;
+  /** Parses the agent's final message into this step's result or a contract violation. */
+  protected abstract parseFinalAgentMessage(
+    finalMessage: string,
+    nonce: string,
+  ): WorkflowStepResult | { violation: string };
 
   /**
    * Runs the step once, in a fresh session. Expected failures (a failed session, timeout, interruption, or invalid
@@ -55,25 +51,16 @@ export abstract class WorkflowStep<Block extends { outcome: string; task_id: str
       case "invalid-final-message":
         return { type: "SessionFailed", detail: session.detail, stderrTail: session.stderrTail };
       case "success": {
-        const block = this.parse(session.finalMessage, nonce);
-        const violation = "violation" in block ? block.violation : this.wrongTask(block);
-        if (violation !== undefined) {
+        const result = this.parseFinalAgentMessage(session.finalMessage, nonce);
+        if ("violation" in result) {
           return {
             type: "SessionFailed",
-            detail: `agent final response is invalid: ${violation}`,
+            detail: `agent final response is invalid: ${result.violation}`,
             stderrTail: session.stderrTail,
           };
         }
-        return this.toResult(block as Block);
+        return result;
       }
     }
-  }
-
-  /** The contract violation for a block naming another task; blocked with a null id is exempt. */
-  private wrongTask(block: Block): string | undefined {
-    const assigned = this.assignedTaskId;
-    if (assigned === undefined || block.task_id === assigned) return undefined;
-    if (block.outcome === "blocked" && block.task_id === null) return undefined;
-    return `"task_id" is ${JSON.stringify(block.task_id)} but the assigned task is ${JSON.stringify(assigned)}`;
   }
 }
