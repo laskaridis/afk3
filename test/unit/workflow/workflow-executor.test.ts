@@ -425,10 +425,10 @@ describe("WorkflowExecutor two-phase loop", () => {
     expect(events.find((event) => event.type === "VerificationFailed")).toEqual({
       type: "VerificationFailed",
       iteration: 1,
-      attempt: 1,
-      limit: 2,
+      currentVerificationAttempt: 1,
+      maxVerificationAttempts: 2,
       failureSummary: "AC-1 not met",
-      findingsFile: "f.verify.md",
+      verificationFindingsFile: "f.verify.md",
       task: { task_id: "T-1", task_plan_file: "p.json" },
     });
   });
@@ -562,7 +562,9 @@ describe("WorkflowExecutor two-phase loop", () => {
       { maxVerificationAttempts: 5 },
     );
     await workflow.run();
-    const attempts = events.flatMap((event) => (event.type === "VerificationFailed" ? [event.attempt] : []));
+    const attempts = events.flatMap((event) =>
+      event.type === "VerificationFailed" ? [event.currentVerificationAttempt] : [],
+    );
     expect(attempts).toEqual([1, 2, 1]);
   });
 
@@ -588,7 +590,9 @@ describe("WorkflowExecutor two-phase loop", () => {
   it("neither a blocked outcome nor an execution error increments the attempt count", async () => {
     const { workflow, events } = setup([CONTINUE, ERROR, REJECTED, CONTINUE, ERROR, REJECTED, FINISHED]);
     await workflow.run();
-    const attempts = events.flatMap((event) => (event.type === "VerificationFailed" ? [event.attempt] : []));
+    const attempts = events.flatMap((event) =>
+      event.type === "VerificationFailed" ? [event.currentVerificationAttempt] : [],
+    );
     expect(attempts).toEqual([1, 2]);
   });
 
@@ -607,7 +611,9 @@ describe("WorkflowExecutor two-phase loop", () => {
     ]);
     await workflow.run();
     await workflow.run();
-    const attempts = events.flatMap((event) => (event.type === "VerificationFailed" ? [event.attempt] : []));
+    const attempts = events.flatMap((event) =>
+      event.type === "VerificationFailed" ? [event.currentVerificationAttempt] : [],
+    );
     expect(attempts).toEqual([1, 1]);
   });
 
@@ -628,7 +634,9 @@ describe("WorkflowExecutor two-phase loop", () => {
       { maxVerificationAttempts: 5 },
     );
     await workflow.run();
-    const attempts = events.flatMap((event) => (event.type === "VerificationFailed" ? [event.attempt] : []));
+    const attempts = events.flatMap((event) =>
+      event.type === "VerificationFailed" ? [event.currentVerificationAttempt] : [],
+    );
     expect(attempts).toEqual([1, 1]);
   });
 });

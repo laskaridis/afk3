@@ -38,10 +38,10 @@ describe("ConsoleReporter", () => {
       {
         type: "VerificationFailed",
         iteration: 2,
-        attempt: 1,
-        limit: 2,
+        currentVerificationAttempt: 1,
+        maxVerificationAttempts: 2,
         failureSummary: "AC-002 not met",
-        findingsFile: "f.verify.md",
+        verificationFindingsFile: "f.verify.md",
         task: {},
       },
       "[afk] Verification failed (attempt 1/2): AC-002 not met\n",

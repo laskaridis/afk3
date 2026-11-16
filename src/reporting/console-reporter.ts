@@ -28,7 +28,9 @@ export class ConsoleReporter implements Reporter {
         this.line("Verification passed");
         break;
       case "VerificationFailed":
-        this.line(`Verification failed (attempt ${event.attempt}/${event.limit}): ${event.failureSummary}`);
+        this.line(
+          `Verification failed (attempt ${event.currentVerificationAttempt}/${event.maxVerificationAttempts}): ${event.failureSummary}`,
+        );
         break;
       case "SessionExecutionErrorOccurred":
         this.line(`Execution error: ${event.detail}`, event.stderrTail);

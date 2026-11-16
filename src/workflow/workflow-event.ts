@@ -63,14 +63,14 @@ export type VerificationPassed = {
   readonly task: Readonly<TaskMetadata>;
 };
 
-/** The verification session rejected the candidate of `iteration`; this was verification attempt `attempt` of `limit` for the task. */
+/** The verification session rejected the candidate of `iteration`; this was verification attempt `currentVerificationAttempt` of `maxVerificationAttempts` for the task. */
 export type VerificationFailed = {
   readonly type: "VerificationFailed";
   readonly iteration: number;
-  readonly attempt: number;
-  readonly limit: number;
+  readonly currentVerificationAttempt: number;
+  readonly maxVerificationAttempts: number;
   readonly failureSummary: string;
-  readonly findingsFile: string;
+  readonly verificationFindingsFile: string;
   readonly task: Readonly<TaskMetadata>;
 };
 
