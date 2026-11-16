@@ -3,11 +3,11 @@ import { createFakeCodexEnvironment, promptNonce, startAfk, type Step } from "./
 
 const AGENT_NAMES = ["codex", "claude"];
 
-const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
-const VERIFY_1 = "[afk] Iteration 1/10: starting verification session";
+const ITERATION_1 = "[afk] Iteration 1/10: starting coding step";
+const VERIFY_1 = "[afk] Iteration 1/10: starting verification step";
 const VERIFIED = "[afk] Verification passed";
 const PASSED_BODY = '{"outcome":"verification_passed","task_id":"T-1","task_plan_file":"p.json"}';
-const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
+const RETRY_2 = "[afk] Iteration 2/10: retrying coding step after execution error";
 const COMPLETE_LINE = "[afk] Run complete: no more tasks";
 
 /** A result block; `{{NONCE}}` is replaced by the fake agent with the session's nonce. */
@@ -267,8 +267,8 @@ describe.each(AGENT_NAMES)("valid final responses: %s", (agent) => {
       args: ["--max-iterations", "1"],
       exitCode: 4,
       transcript: [
-        "[afk] Iteration 1/1: starting agent session",
-        "[afk] Iteration 1/1: starting verification session",
+        "[afk] Iteration 1/1: starting coding step",
+        "[afk] Iteration 1/1: starting verification step",
         VERIFIED,
         "[afk] Run stopped: iteration limit of 1 reached without reported completion",
       ],
@@ -285,7 +285,7 @@ describe.each(AGENT_NAMES)("valid final responses: %s", (agent) => {
         raw(complete),
       ],
       exitCode: 0,
-      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting coding step", COMPLETE_LINE],
     },
     {
       name: "task_implemented with a null revision",
@@ -295,14 +295,14 @@ describe.each(AGENT_NAMES)("valid final responses: %s", (agent) => {
         raw(complete),
       ],
       exitCode: 0,
-      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+      transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting coding step", COMPLETE_LINE],
     },
     {
       name: "no_more_tasks on the last allowed iteration",
       sessions: [raw(complete)],
       args: ["--max-iterations", "1"],
       exitCode: 0,
-      transcript: ["[afk] Iteration 1/1: starting agent session", COMPLETE_LINE],
+      transcript: ["[afk] Iteration 1/1: starting coding step", COMPLETE_LINE],
     },
     {
       name: "blocked with both task fields null",

@@ -29,12 +29,12 @@ interface Scenario {
   transcript: string[];
 }
 
-const ITERATION_1 = "[afk] Iteration 1/10: starting agent session";
-const RETRY_2 = "[afk] Iteration 2/10: retrying agent session after execution error";
-const VERIFY_1 = "[afk] Iteration 1/10: starting verification session";
-const VERIFY_1_OF_1 = "[afk] Iteration 1/1: starting verification session";
+const ITERATION_1 = "[afk] Iteration 1/10: starting coding step";
+const RETRY_2 = "[afk] Iteration 2/10: retrying coding step after execution error";
+const VERIFY_1 = "[afk] Iteration 1/10: starting verification step";
+const VERIFY_1_OF_1 = "[afk] Iteration 1/1: starting verification step";
 const VERIFIED = "[afk] Verification passed";
-const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting agent session";
+const ITERATION_1_OF_1 = "[afk] Iteration 1/1: starting coding step";
 const LIMIT_1 = "[afk] Run stopped: iteration limit of 1 reached without reported completion";
 const COMPLETE_LINE = "[afk] Run complete: no more tasks";
 const MISSING = "[afk] Execution error: agent exited without a final response";
@@ -53,7 +53,7 @@ const scenarios: Scenario[] = [
     ],
     exitCode: 0,
     invocations: 3,
-    transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting agent session", COMPLETE_LINE],
+    transcript: [ITERATION_1, VERIFY_1, VERIFIED, "[afk] Iteration 2/10: starting coding step", COMPLETE_LINE],
   },
   {
     name: "blocked",
@@ -69,11 +69,11 @@ const scenarios: Scenario[] = [
     exitCode: 4,
     invocations: 4,
     transcript: [
-      "[afk] Iteration 1/2: starting agent session",
-      "[afk] Iteration 1/2: starting verification session",
+      "[afk] Iteration 1/2: starting coding step",
+      "[afk] Iteration 1/2: starting verification step",
       VERIFIED,
-      "[afk] Iteration 2/2: starting agent session",
-      "[afk] Iteration 2/2: starting verification session",
+      "[afk] Iteration 2/2: starting coding step",
+      "[afk] Iteration 2/2: starting verification step",
       VERIFIED,
       "[afk] Run stopped: iteration limit of 2 reached without reported completion",
     ],
@@ -168,11 +168,11 @@ const scenarios: Scenario[] = [
       ITERATION_1,
       EXIT_7,
       RETRY_2,
-      "[afk] Iteration 2/10: starting verification session",
+      "[afk] Iteration 2/10: starting verification step",
       VERIFIED,
-      "[afk] Iteration 3/10: starting agent session",
+      "[afk] Iteration 3/10: starting coding step",
       EXIT_7,
-      "[afk] Iteration 4/10: retrying agent session after execution error",
+      "[afk] Iteration 4/10: retrying coding step after execution error",
       COMPLETE_LINE,
     ],
   },
@@ -215,8 +215,8 @@ const scenarios: Scenario[] = [
     invocations: 20,
     transcript: [
       ...Array.from({ length: 10 }, (_, i) => [
-        `[afk] Iteration ${i + 1}/10: starting agent session`,
-        `[afk] Iteration ${i + 1}/10: starting verification session`,
+        `[afk] Iteration ${i + 1}/10: starting coding step`,
+        `[afk] Iteration ${i + 1}/10: starting verification step`,
         VERIFIED,
       ]).flat(),
       "[afk] Run stopped: iteration limit of 10 reached without reported completion",

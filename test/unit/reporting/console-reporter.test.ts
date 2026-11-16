@@ -17,21 +17,21 @@ describe("ConsoleReporter", () => {
   const cases: Array<[WorkflowEvent, string]> = [
     [
       { type: "StepExecutionStarted", iteration: 2, stepName: "coding", limit: 5, retry: false },
-      "[afk] Iteration 2/5: starting agent session\n",
+      "[afk] Iteration 2/5: starting coding step\n",
     ],
     [
       { type: "StepExecutionStarted", iteration: 2, stepName: "verification", limit: 5, retry: false },
-      "[afk] Iteration 2/5: starting verification session\n",
+      "[afk] Iteration 2/5: starting verification step\n",
     ],
     [{ type: "StepExecutionStarted", iteration: 2, stepName: "coding", limit: 5, retry: true }, ""],
     [{ type: "StepExecutionStarted", iteration: 2, stepName: "verification", limit: 5, retry: true }, ""],
     [
       { type: "StepExecutionRetried", iteration: 2, stepName: "coding", limit: 5, previousError: "boom" },
-      "[afk] Iteration 2/5: retrying agent session after execution error\n",
+      "[afk] Iteration 2/5: retrying coding step after execution error\n",
     ],
     [
       { type: "StepExecutionRetried", iteration: 2, stepName: "verification", limit: 5, previousError: "boom" },
-      "[afk] Iteration 2/5: retrying verification session after execution error\n",
+      "[afk] Iteration 2/5: retrying verification step after execution error\n",
     ],
     [{ type: "VerificationPassed", iteration: 2, task: {} }, "[afk] Verification passed\n"],
     [

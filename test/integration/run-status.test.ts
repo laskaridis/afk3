@@ -128,11 +128,11 @@ describe("run progress", () => {
 
     expect(run.exitCode).toBe(0);
     const lines = run.stderr.split("\n");
-    expect(lines).toContain("[afk] Iteration 1/5: starting agent session");
-    expect(lines).toContain("[afk] Iteration 3/5: retrying agent session after execution error");
-    expect(lines).toContain("[afk] Iteration 2/5: starting agent session");
-    expect(lines).not.toContain("[afk] Iteration 3/5: starting agent session");
-    expect(lines).toContain("[afk] Iteration 4/5: starting agent session");
+    expect(lines).toContain("[afk] Iteration 1/5: starting coding step");
+    expect(lines).toContain("[afk] Iteration 3/5: retrying coding step after execution error");
+    expect(lines).toContain("[afk] Iteration 2/5: starting coding step");
+    expect(lines).not.toContain("[afk] Iteration 3/5: starting coding step");
+    expect(lines).toContain("[afk] Iteration 4/5: starting coding step");
   });
 });
 

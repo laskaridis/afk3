@@ -2,11 +2,6 @@ import type { WorkflowEvent } from "../workflow/workflow-event.js";
 import type { ReporterOutputSink } from "./reporter-output-sink.js";
 import type { Reporter } from "./reporter.js";
 
-/** How a step's session is called in status lines; agent-neutral. */
-function sessionName(stepName: string): string {
-  return stepName === "verification" ? "verification session" : "agent session";
-}
-
 /** Writes today's `[afk]` status lines for workflow events to its sink. WorkflowFailed has no final line. */
 export class ConsoleReporter implements Reporter {
   /** @param sink Where the status lines are written. */
@@ -16,13 +11,10 @@ export class ConsoleReporter implements Reporter {
   onEvent(event: WorkflowEvent): void {
     switch (event.type) {
       case "StepExecutionStarted":
-        if (!event.retry)
-          this.line(`Iteration ${event.iteration}/${event.limit}: starting ${sessionName(event.stepName)}`);
+        if (!event.retry) this.line(`Iteration ${event.iteration}/${event.limit}: starting ${event.stepName} step`);
         break;
       case "StepExecutionRetried":
-        this.line(
-          `Iteration ${event.iteration}/${event.limit}: retrying ${sessionName(event.stepName)} after execution error`,
-        );
+        this.line(`Iteration ${event.iteration}/${event.limit}: retrying ${event.stepName} step after execution error`);
         break;
       case "VerificationPassed":
         this.line("Verification passed");

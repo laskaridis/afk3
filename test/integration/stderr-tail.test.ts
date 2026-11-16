@@ -20,7 +20,7 @@ describe("agent stderr tail", () => {
       expect(out.slice(i + 1, i + 21)).toEqual(tail);
       expect(out[i]).toBe("[afk] Execution error: agent exited unsuccessfully with exit code 7");
     }
-    expect(out.indexOf("[afk] Iteration 2/10: retrying agent session after execution error")).toBe(errorLines[0]! + 21);
+    expect(out.indexOf("[afk] Iteration 2/10: retrying coding step after execution error")).toBe(errorLines[0]! + 21);
     expect(out).not.toContain("err 10");
   });
 
