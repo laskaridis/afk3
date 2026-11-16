@@ -168,7 +168,6 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
   - `VerificationFailed`
   - `IterationFinished`
   - `WorkflowFinished`
-  - `WorkflowCompleted`
   - `WorkflowInterrupted`
   - `WorkflowBlocked`
   - `WorkflowFailed`

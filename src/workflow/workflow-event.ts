@@ -81,15 +81,9 @@ export type IterationFinished = {
   readonly outcome: string;
 };
 
-/** Terminal: the coding agent reported no pending task. */
+/** Terminal: coding or verification reported no pending task. */
 export type WorkflowFinished = {
   readonly type: "WorkflowFinished";
-  readonly task: Readonly<TaskMetadata>;
-};
-
-/** Terminal: the verification agent accepted the last candidate and reported that no task remains. */
-export type WorkflowCompleted = {
-  readonly type: "WorkflowCompleted";
   readonly task: Readonly<TaskMetadata>;
 };
 
@@ -134,7 +128,6 @@ export type VerificationLimitReached = {
 /** The one event that ends a run; it is both published and returned by `WorkflowExecutor.run()`. */
 export type TerminalWorkflowEvent =
   | WorkflowFinished
-  | WorkflowCompleted
   | WorkflowBlocked
   | WorkflowFailed
   | WorkflowTimedOut

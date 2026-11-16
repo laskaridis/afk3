@@ -86,7 +86,7 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
       "[afk] Iteration 1/10: starting coding step",
       "[afk] Iteration 1/10: starting verification step",
       "[afk] Verification passed",
-      "[afk] Run complete: feature complete",
+      "[afk] Run complete: no more tasks",
     ]);
   });
 

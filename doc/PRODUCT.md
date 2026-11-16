@@ -37,7 +37,7 @@ Use these terms in code, tests, and messages; don't invent synonyms.
 - Coding outcomes: `task_implemented` → verify the candidate; `no_more_tasks` → `[afk] Run complete: no more tasks`, stop
   successfully without verification; `blocked` → print the blocker, stop.
 - Verification outcomes: `verification_passed` → next coding session with the launch prompt alone; `workflow_finished` →
-  `[afk] Run complete: feature complete`, stop successfully; `verification_failed` → `[afk] Verification failed (attempt k/n): …`
+  `[afk] Run complete: no more tasks`, stop successfully; `verification_failed` → `[afk] Verification failed (attempt k/n): …`
   and a correction iteration for the same task (counts against `--max-iterations`); `blocked` → print the blocker, stop.
 - A session given an assignment that answers with a different `task_id` (except `blocked` with `null`) is an invalid response.
 - The rejection count is per task, held in memory for the run only, incremented only by `verification_failed` and reset

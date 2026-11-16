@@ -16,6 +16,6 @@ export class WorkflowStepFeatureVerifiedHandler implements WorkflowStepHandler<
       task: taskOf(result),
     });
     context.publish({ type: "VerificationPassed", iteration: context.iteration, task: taskOf(result) });
-    context.endWorkflow({ type: "WorkflowCompleted", task: taskOf(result) });
+    context.endWorkflow({ type: "WorkflowFinished", task: taskOf(result) });
   }
 }
