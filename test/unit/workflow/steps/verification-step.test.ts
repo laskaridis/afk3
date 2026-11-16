@@ -105,13 +105,13 @@ describe("VerificationStep result mapping", () => {
 
   it("maps blocked, including a blocked response with a null task", async () => {
     expect(await run({ outcome: "blocked", blocker_text: "x", ...META })).toEqual({
-      type: "Blocked",
+      type: "VerificationBlocked",
       blockerText: "x",
       ...META,
     });
     const none = { task_id: null, task_plan_file: null };
     expect(await run({ outcome: "blocked", blocker_text: "x", ...none })).toEqual({
-      type: "Blocked",
+      type: "VerificationBlocked",
       blockerText: "x",
       ...none,
     });

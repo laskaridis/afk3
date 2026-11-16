@@ -26,6 +26,8 @@ export type WorkflowStepResult =
   | ({ type: "VerificationFailed"; failureSummary: string; findingsFile: string } & ReportedTask)
   /** The agent cannot proceed without outside help; the run ends. */
   | ({ type: "Blocked"; blockerText: string } & TaskMetadata)
+  /** The verification agent cannot proceed without outside help; the run ends. */
+  | ({ type: "VerificationBlocked"; blockerText: string } & TaskMetadata)
   /** The session did not produce a valid result; `stderrTail` holds the last stderr lines, if any. */
   | { type: "SessionFailed"; detail: string; stderrTail: string[] }
   /** The session exceeded its time limit. */
