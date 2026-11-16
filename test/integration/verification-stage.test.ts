@@ -53,10 +53,10 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
     );
     expect(invocations[2]!.stdin).toBe(expectedSessionPrompt("build X", invocations[2]!.stdin));
     expect(lines(result.stderr)).toEqual([
-      "[afk] Iteration 1/10: starting agent session",
-      "[afk] Iteration 1/10: starting verification session",
+      "[afk] Iteration 1/10: starting coding step",
+      "[afk] Iteration 1/10: starting verification step",
       "[afk] Verification passed",
-      "[afk] Iteration 2/10: starting agent session",
+      "[afk] Iteration 2/10: starting coding step",
       "[afk] Run complete: no more tasks",
     ]);
   });
@@ -83,8 +83,8 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
     expect(result.exitCode).toBe(0);
     expect(invocations).toHaveLength(2);
     expect(lines(result.stderr)).toEqual([
-      "[afk] Iteration 1/10: starting agent session",
-      "[afk] Iteration 1/10: starting verification session",
+      "[afk] Iteration 1/10: starting coding step",
+      "[afk] Iteration 1/10: starting verification step",
       "[afk] Verification passed",
       "[afk] Run complete: feature complete",
     ]);
@@ -104,13 +104,13 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
     expect(invocations[2]!.stdin).not.toContain("build X");
     expect(invocations[4]!.stdin).toBe(expectedSessionPrompt("build X", invocations[4]!.stdin));
     expect(lines(result.stderr)).toEqual([
-      "[afk] Iteration 1/10: starting agent session",
-      "[afk] Iteration 1/10: starting verification session",
+      "[afk] Iteration 1/10: starting coding step",
+      "[afk] Iteration 1/10: starting verification step",
       "[afk] Verification failed (attempt 1/2): AC-1 not met",
-      "[afk] Iteration 2/10: starting agent session",
-      "[afk] Iteration 2/10: starting verification session",
+      "[afk] Iteration 2/10: starting coding step",
+      "[afk] Iteration 2/10: starting verification step",
       "[afk] Verification passed",
-      "[afk] Iteration 3/10: starting agent session",
+      "[afk] Iteration 3/10: starting coding step",
       "[afk] Run complete: no more tasks",
     ]);
   });
@@ -189,8 +189,8 @@ describe.each(AGENT_NAMES)("two-phase loop: %s", (agent) => {
     const mask = (prompt: string) => prompt.replaceAll(nonce(prompt), "<nonce>");
     expect(mask(invocations[2]!.stdin)).toBe(mask(invocations[1]!.stdin));
     expect(nonce(invocations[2]!.stdin)).not.toBe(nonce(invocations[1]!.stdin));
-    expect(lines(result.stderr)).toContain("[afk] Iteration 1/10: retrying verification session after execution error");
-    expect(lines(result.stderr).filter((line) => line.includes("starting verification session"))).toHaveLength(1);
+    expect(lines(result.stderr)).toContain("[afk] Iteration 1/10: retrying verification step after execution error");
+    expect(lines(result.stderr).filter((line) => line.includes("starting verification step"))).toHaveLength(1);
   });
 
   it("ends the run with exit 3 after two consecutive verification execution errors", async () => {

@@ -50,7 +50,7 @@ describe.each(AGENT_NAMES)("timeout escalation: %s", (agent) => {
     expect(isRunning(fake.invocations()[0]!.pid)).toBe(false);
     expect(run.stdout).toBe("");
     expect(run.stderr).toBe(
-      "[afk] Iteration 1/10: starting agent session\n" + "[afk] Run stopped: agent session timed out after 1 seconds\n",
+      "[afk] Iteration 1/10: starting coding step\n" + "[afk] Run stopped: agent session timed out after 1 seconds\n",
     );
   }, 15000);
 });
@@ -69,7 +69,7 @@ describe.each(AGENT_NAMES)("agent stderr visibility: %s", (agent) => {
     expect(run.stdout).toBe("");
     expect(run.stderr).not.toContain("err one");
     expect(run.stderr).not.toContain("err two");
-    expect(run.stderr).toBe("[afk] Iteration 1/10: starting agent session\n[afk] Run interrupted by user\n");
+    expect(run.stderr).toBe("[afk] Iteration 1/10: starting coding step\n[afk] Run interrupted by user\n");
   });
 
   const kinds: { name: string; steps: Step[]; reason: string }[] = [
@@ -97,7 +97,7 @@ describe.each(AGENT_NAMES)("agent stderr visibility: %s", (agent) => {
 
     expect(first).toBeGreaterThan(0);
     expect(lines.slice(first + 1, first + 3)).toEqual(["err one", "err two"]);
-    expect(lines[first + 3]).toBe("[afk] Iteration 2/10: retrying agent session after execution error");
+    expect(lines[first + 3]).toBe("[afk] Iteration 2/10: retrying coding step after execution error");
   });
 });
 
@@ -113,6 +113,6 @@ describe.each(AGENT_NAMES)("termination signals sent to afk: %s", (agent) => {
     expect(fake.invocations()).toHaveLength(1);
     expect(isRunning(pid)).toBe(false);
     expect(run.stdout).toBe("");
-    expect(run.stderr).toBe("[afk] Iteration 1/10: starting agent session\n[afk] Run interrupted by user\n");
+    expect(run.stderr).toBe("[afk] Iteration 1/10: starting coding step\n[afk] Run interrupted by user\n");
   });
 });
