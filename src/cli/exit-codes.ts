@@ -1,4 +1,4 @@
-import type {TerminalWorkflowEvent} from '../workflow/workflow-event.js';
+import type {TerminalWorkflowEvent} from '../workflow/event.js';
 
 export const EXIT_CODES = {
   complete: 0,

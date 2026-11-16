@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {CodexAdapter} from '../../../src/agents/codex.js';
-import {SessionExecutor} from '../../../src/session/session-executor.js';
-import {SessionExecutorFactory} from '../../../src/session/session-executor-factory.js';
+import {SessionExecutor} from '../../../src/session/executor.js';
+import {SessionExecutorFactory} from '../../../src/session/executor-factory.js';
 
 describe('SessionExecutorFactory', () => {
   it("creates executors that all share the factory's signal, timeout and grace period", async () => {

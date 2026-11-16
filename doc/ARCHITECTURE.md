@@ -155,7 +155,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - Executes `workflow/steps/WorkflowStep`s in the correct order using a `session/SessionExecutor`
 - Dispatches each `workflow/steps/WorkflowStepResult` to the `workflow/WorkflowStepHandler` for its type, and enforces the iteration policy (iteration limit, one retry per consecutive session failure) on what the handlers ask for.
 - Is serially re-entrant but not parallelizable: the same instance may be run again after completion, but overlapping `run()` calls are rejected. The active-run guard is released even when execution fails.
-- Creates a separate `workflow/step-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. Retry and terminal state is invocation-local.
+- Creates a separate `workflow/result-handlers/WorkflowStepHandlerContext` for each `run()` invocation, exposing iteration, timeout information, event publication, and transition requests. Retry and terminal state is invocation-local.
 - Publishes `workflow/WorkflowEvent`s:
   - `WorkflowStarted`
   - `IterationStarted`
@@ -210,10 +210,10 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 **Collaborators:**
 
-- Receives `workflow/step-handlers/WorkflowStepHandlerContext` instead of the concrete executor. The dependency-cruiser rules reject handler-to-executor dependencies and all circular imports, including type-only cycles.
+- Receives `workflow/result-handlers/WorkflowStepHandlerContext` instead of the concrete executor. The dependency-cruiser rules reject handler-to-executor dependencies and all circular imports, including type-only cycles.
 - Used by `workflow/WorkflowExecutor`
 
-**Concrete implementations (`workflow/step-handlers/`):**
+**Concrete implementations (`workflow/result-handlers/`):**
 
 - `WorkflowStepTaskImplementedHandler`
 - `WorkflowStepNoMoreTasksHandler`
@@ -225,7 +225,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 - `WorkflowStepTimeoutHandler`
 - `WorkflowStepInterruptedHandler`
 
-### `workflow/step-handlers/WorkflowStepHandlerContext` (interface)
+### `workflow/result-handlers/WorkflowStepHandlerContext` (interface)
 
 **Responsibilities:**
 
@@ -235,7 +235,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Collaborators:**
 
 - Created by `workflow/WorkflowExecutor.run()` for each invocation.
-- Used by `workflow/step-handlers/WorkflowStepHandler` implementations.
+- Used by `workflow/result-handlers/WorkflowStepHandler` implementations.
 
 ### `workflow/steps/WorkflowStepResult` (value class)
 

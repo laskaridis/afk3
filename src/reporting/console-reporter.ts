@@ -1,4 +1,4 @@
-import type {WorkflowEvent} from '../workflow/workflow-event.js';
+import type {WorkflowEvent} from '../workflow/event.js';
 import type {ReporterOutputSink} from './reporter-output-sink.js';
 import type {Reporter} from './reporter.js';
 

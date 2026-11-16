@@ -19,7 +19,7 @@ module.exports = {
       comment:
         'Step-result handlers depend on WorkflowStepHandlerContext, not the concrete WorkflowExecutor.',
       severity: 'error',
-      from: {path: '^src/workflow/step-handlers/'},
+      from: {path: '^src/workflow/result-handlers/'},
       to: {path: '^src/workflow/workflow-executor\\.ts$'},
     },
     {
@@ -59,10 +59,7 @@ module.exports = {
       from: {path: '^src/reporting/'},
       to: {
         path: '^src/',
-        pathNot: [
-          '^src/reporting/',
-          '^src/workflow/workflow-(event|observer)\\.ts$',
-        ],
+        pathNot: ['^src/reporting/', '^src/workflow/(event|observer)\\.ts$'],
       },
     },
     {

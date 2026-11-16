@@ -3,8 +3,8 @@ import {
   EXIT_CODES,
   exitCodeFor,
   formatExitCodeHelp,
-} from '../../../src/cli/cli-exit-codes.js';
-import type {TerminalWorkflowEvent} from '../../../src/workflow/workflow-event.js';
+} from '../../../src/cli/exit-codes.js';
+import type {TerminalWorkflowEvent} from '../../../src/workflow/event.js';
 
 describe('exit codes', () => {
   const results: Array<[TerminalWorkflowEvent, number]> = [

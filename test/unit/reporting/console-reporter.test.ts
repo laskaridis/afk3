@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {ConsoleReporter} from '../../../src/reporting/console-reporter.js';
-import type {WorkflowEvent} from '../../../src/workflow/workflow-event.js';
+import type {WorkflowEvent} from '../../../src/workflow/event.js';
 
 function render(event: WorkflowEvent): string {
   let out = '';

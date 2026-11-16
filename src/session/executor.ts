@@ -3,8 +3,8 @@ import {mkdtemp, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import type {AgentAdapter} from '../agents/adapter.js';
-import type {SessionInput} from './session-input.js';
-import type {SessionResult} from './session-result.js';
+import type {SessionInput} from './input.js';
+import type {SessionResult} from './result.js';
 
 /** Default wait between termination escalation steps (SIGINT, SIGTERM, SIGKILL). */
 export const DEFAULT_TERMINATION_GRACE_MS = 5000;

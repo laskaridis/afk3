@@ -1,10 +1,10 @@
 import {describe, expect, it} from 'vitest';
-import type {SessionExecutor} from '../../../../src/session/session-executor.js';
-import type {SessionInput} from '../../../../src/session/session-input.js';
-import type {SessionResult} from '../../../../src/session/session-result.js';
+import type {SessionExecutor} from '../../../../src/session/executor.js';
+import type {SessionInput} from '../../../../src/session/input.js';
+import type {SessionResult} from '../../../../src/session/result.js';
 import {CodingStep} from '../../../../src/workflow/steps/coding-step.js';
 import {VerificationStep} from '../../../../src/workflow/steps/verification-step.js';
-import type {WorkflowStepResult} from '../../../../src/workflow/steps/workflow-step-result.js';
+import type {WorkflowStepResult} from '../../../../src/workflow/steps/result.js';
 
 const PLAN = 'specs/feature.plan.json';
 const TASK = {task_id: 'TASK-011', task_plan_file: PLAN};

@@ -1,10 +1,10 @@
 import {readFileSync} from 'node:fs';
 import {describe, expect, it} from 'vitest';
-import type {SessionExecutor} from '../../../../src/session/session-executor.js';
-import type {SessionInput} from '../../../../src/session/session-input.js';
-import type {SessionResult} from '../../../../src/session/session-result.js';
+import type {SessionExecutor} from '../../../../src/session/executor.js';
+import type {SessionInput} from '../../../../src/session/input.js';
+import type {SessionResult} from '../../../../src/session/result.js';
 import type {CorrectionAssignment} from '../../../../src/workflow/assignment.js';
-import {WorkflowStep} from '../../../../src/workflow/steps/workflow-step.js';
+import {WorkflowStep} from '../../../../src/workflow/steps/step.js';
 import {CodingStep} from '../../../../src/workflow/steps/coding-step.js';
 
 const harness = readFileSync(

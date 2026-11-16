@@ -1,4 +1,4 @@
-import type {TaskMetadata} from '../steps/workflow-step-result.js';
+import type {TaskMetadata} from '../steps/result.js';
 
 /** An immutable copy of just the task fields of a step result, safe to embed in published events. */
 export function taskOf(result: TaskMetadata): TaskMetadata {
