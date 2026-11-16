@@ -35,7 +35,7 @@ const MAX_RETRIES = 1;
  * - VerificationFailed makes the next iteration a correction iteration for the same task, unless the task has
  *   been rejected maxVerificationAttempts times, which ends the run with VerificationLimitReached (taking
  *   precedence over the iteration limit).
- * - FeatureVerified, NoMoreTasks, Blocked, Timeout and Interrupted end the invocation.
+ * - FeatureVerified, NoMoreTasks, Blocked, VerificationBlocked, Timeout and Interrupted end the invocation.
  * - SessionFailed is retried up to MAX_RETRIES times in a row, in either phase; another outcome resets the retry
  *   allowance. A coding retry uses an iteration; a verification retry re-runs inside the same one.
  * - Reaching maxIterations without a terminal outcome returns MaxIterationsReached.

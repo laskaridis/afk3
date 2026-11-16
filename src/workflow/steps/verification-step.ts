@@ -78,7 +78,7 @@ export class VerificationStep extends WorkflowStep {
         };
       case "blocked":
         return {
-          type: "Blocked",
+          type: "VerificationBlocked",
           blockerText: block.blocker_text,
           task_id: block.task_id,
           task_plan_file: block.task_plan_file,

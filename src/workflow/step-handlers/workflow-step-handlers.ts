@@ -20,6 +20,7 @@ export const STEP_HANDLERS: {
   FeatureVerified: new WorkflowStepFeatureVerifiedHandler(),
   VerificationFailed: new WorkflowStepVerificationFailedHandler(),
   Blocked: new WorkflowStepBlockedHandler(),
+  VerificationBlocked: new WorkflowStepBlockedHandler(),
   SessionFailed: new WorkflowStepSessionFailedHandler(),
   Timeout: new WorkflowStepTimeoutHandler(),
   Interrupted: new WorkflowStepInterruptedHandler(),
