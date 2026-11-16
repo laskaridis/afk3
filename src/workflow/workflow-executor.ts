@@ -90,7 +90,7 @@ export class WorkflowExecutor {
     let currentError: string | undefined;
     let pendingTerminalWorkflowEvent: TerminalWorkflowEvent | undefined;
     let correction: CorrectionAssignment | undefined;
-    let attempts: { taskId: string; count: number } | undefined;
+    let postVerificationFixAttempts: { taskId: string; count: number } | undefined;
 
     const context: WorkflowStepHandlerContext = {
       get iteration() {
@@ -115,20 +115,21 @@ export class WorkflowExecutor {
       },
       fixVerificationFindings: (assignment) => {
         // Counts are per task: a different task id starts a fresh count.
-        attempts = {
+        postVerificationFixAttempts = {
           taskId: assignment.taskId,
-          count: (attempts?.taskId === assignment.taskId ? attempts.count : 0) + 1,
+          count:
+            (postVerificationFixAttempts?.taskId === assignment.taskId ? postVerificationFixAttempts.count : 0) + 1,
         };
         this.publish({
           type: "VerificationFailed",
           iteration,
-          attempt: attempts.count,
+          attempt: postVerificationFixAttempts.count,
           limit: this.options.maxVerificationAttempts,
           failureSummary: assignment.failureSummary,
           findingsFile: assignment.findingsFile,
           task: Object.freeze({ task_id: assignment.taskId, task_plan_file: assignment.taskPlanFile }),
         });
-        if (attempts.count >= this.options.maxVerificationAttempts) {
+        if (postVerificationFixAttempts.count >= this.options.maxVerificationAttempts) {
           pendingTerminalWorkflowEvent = {
             type: "VerificationLimitReached",
             limit: this.options.maxVerificationAttempts,
@@ -162,7 +163,8 @@ export class WorkflowExecutor {
       this.publish({ type: "StepExecutionStarted", iteration, stepName: currentStepName, limit: maxIterations, retry });
       const result = await step.execute(this.launchPrompt.text, options);
       // Observing a different task than the one being counted starts a fresh count.
-      if ("task_id" in result && result.task_id && attempts?.taskId !== result.task_id) attempts = undefined;
+      if ("task_id" in result && result.task_id && postVerificationFixAttempts?.taskId !== result.task_id)
+        postVerificationFixAttempts = undefined;
       this.handle(result, context);
       // Only an accepted session failure carries over and consumes retry allowance; a valid outcome resets it.
       previousError = currentError;
