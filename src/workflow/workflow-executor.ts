@@ -123,10 +123,10 @@ export class WorkflowExecutor {
         this.publish({
           type: "VerificationFailed",
           iteration,
-          attempt: postVerificationFixAttempts.count,
-          limit: this.options.maxVerificationAttempts,
+          currentVerificationAttempt: postVerificationFixAttempts.count,
+          maxVerificationAttempts: this.options.maxVerificationAttempts,
           failureSummary: assignment.failureSummary,
-          findingsFile: assignment.findingsFile,
+          verificationFindingsFile: assignment.findingsFile,
           task: Object.freeze({ task_id: assignment.taskId, task_plan_file: assignment.taskPlanFile }),
         });
         if (postVerificationFixAttempts.count >= this.options.maxVerificationAttempts) {
