@@ -4,9 +4,10 @@
 
 - TypeScript `strict` + `noUncheckedIndexedAccess`, `module`/`moduleResolution: NodeNext`, ESM (`"type": "module"`).
   Relative imports end in `.js`; node built-ins use the `node:` prefix; type-only imports use `import type`.
-- ESLint flat config (`@eslint/js` + `typescript-eslint` recommended + prettier). Prettier: width 120, double quotes,
-  semicolons, trailing commas. Prettier also checks Markdown (`README.md`, `AGENTS.md`, `CLAUDE.md`, `doc/`), but ignores `specs/` and
-  `src/workflow/steps/coding-step.md`.
+- ESLint flat config extends `gts`, then applies project-specific Node globals, Prettier compatibility, and the `curly`
+  rule. Prettier follows the gts defaults: single quotes, no bracket spacing, trailing commas, and omitted parentheses
+  around single arrow parameters. Prettier also checks Markdown (`README.md`, `AGENTS.md`, `CLAUDE.md`, `doc/`), but ignores
+  `specs/` and `src/workflow/steps/coding-step.md`.
 
 ## Code style
 
@@ -25,6 +26,7 @@
   code.
 - Constants in `UPPER_SNAKE_CASE` (`DEFAULT_MAX_ITERATIONS`, `EXIT_CODES`); camelCase elsewhere. Protocol JSON fields
   keep their wire names (`blocker_text`, `failure_summary`).
+- Put a blank line before and after `if`, `for`, `while`, and `do` statements when another statement is adjacent.
 - Status lines go to stderr as `[afk] <Label>: <detail>`, where the detail is a lowercase, agent-neutral fragment
   (e.g. `[afk] Execution error: agent exited without a final response`). The label is capitalised, except for input
   errors, which use the lowercase `[afk] input error: <detail>`.

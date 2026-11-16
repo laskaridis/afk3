@@ -1,4 +1,4 @@
-import type { AgentAdapter } from "../agents/adapter.js";
+import type {AgentAdapter} from '../agents/adapter.js';
 
 /** Run configuration taken from the command line. */
 export interface WorkflowOptions {

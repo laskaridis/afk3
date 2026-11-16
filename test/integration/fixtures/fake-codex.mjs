@@ -19,66 +19,120 @@
 // (by invocation order; the last list repeats once exhausted).
 // Every invocation appends a record (argv, cwd, stdin, env) to FAKE_CODEX_RECORD
 // as one JSON line, and the record is written before any step runs.
-import { appendFileSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 
 const argv = process.argv.slice(2);
-const script = JSON.parse(readFileSync(process.env.FAKE_CODEX_SCRIPT, "utf8"));
+const script = JSON.parse(readFileSync(process.env.FAKE_CODEX_SCRIPT, 'utf8'));
 
-let stdin = "";
+let stdin = '';
+
 if (!process.stdin.isTTY) {
-  stdin = await new Promise((resolve) => {
-    let data = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => (data += chunk));
-    process.stdin.on("end", () => resolve(data));
-    process.stdin.on("error", () => resolve(data));
+  stdin = await new Promise(resolve => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => (data += chunk));
+    process.stdin.on('end', () => resolve(data));
+    process.stdin.on('error', () => resolve(data));
   });
 }
 
-const invocationIndex = readFileSync(process.env.FAKE_CODEX_RECORD, "utf8").split("\n").filter(Boolean).length;
-const steps = script.sessions ? script.sessions[Math.min(invocationIndex, script.sessions.length - 1)] : script.steps;
+const invocationIndex = readFileSync(process.env.FAKE_CODEX_RECORD, 'utf8')
+  .split('\n')
+  .filter(Boolean).length;
+const steps = script.sessions
+  ? script.sessions[Math.min(invocationIndex, script.sessions.length - 1)]
+  : script.steps;
 
 appendFileSync(
   process.env.FAKE_CODEX_RECORD,
-  JSON.stringify({ argv, cwd: process.cwd(), stdin, pid: process.pid, files: readdirSync(process.cwd()) }) + "\n",
+  JSON.stringify({
+    argv,
+    cwd: process.cwd(),
+    stdin,
+    pid: process.pid,
+    files: readdirSync(process.cwd()),
+  }) + '\n',
 );
 
 // The harness prompt shows the session nonce in its example result block.
 const nonce = /<afk-harness-result nonce="([^"]+)">/.exec(stdin)?.[1];
-const subst = (text) => text.replaceAll("{{NONCE}}", nonce ?? "");
-const wrap = (text) =>
-  nonce === undefined ? text : `<afk-harness-result nonce="${nonce}">\n${text}\n</afk-harness-result>`;
-const outputFileFlag = argv.indexOf("--output-last-message");
-const emitFinal = (message) => {
-  if (process.env.FAKE_AGENT_FORMAT === "claude") {
+const subst = text => text.replaceAll('{{NONCE}}', nonce ?? '');
+const wrap = text =>
+  nonce === undefined
+    ? text
+    : `<afk-harness-result nonce="${nonce}">\n${text}\n</afk-harness-result>`;
+const outputFileFlag = argv.indexOf('--output-last-message');
+const emitFinal = message => {
+  if (process.env.FAKE_AGENT_FORMAT === 'claude') {
     process.stdout.write(
-      JSON.stringify({ type: "result", subtype: "success", is_error: false, result: message }) + "\n",
+      JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        result: message,
+      }) + '\n',
     );
   } else if (outputFileFlag !== -1) {
-    writeFileSync(argv[outputFileFlag + 1], message + "\n");
+    writeFileSync(argv[outputFileFlag + 1], message + '\n');
   }
 };
 
 let ignoreSignals = false;
-for (const signal of ["SIGINT", "SIGTERM"]) {
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    appendFileSync(process.env.FAKE_CODEX_RECORD + ".signals", signal + "\n");
-    if (!ignoreSignals) process.exit(130);
+    appendFileSync(process.env.FAKE_CODEX_RECORD + '.signals', signal + '\n');
+
+    if (!ignoreSignals) {
+      process.exit(130);
+    }
   });
 }
 
 for (const step of steps) {
-  if (step.ignoreSignals) ignoreSignals = true;
-  if (step.stdout !== undefined) process.stdout.write(subst(step.stdout));
-  if (step.stderr !== undefined) process.stderr.write(step.stderr);
-  if (step.writeFile !== undefined) writeFileSync(step.writeFile, "x");
-  if (step.sleepMs !== undefined) await new Promise((r) => setTimeout(r, step.sleepMs));
-  if (step.finalMessage !== undefined) emitFinal(wrap(subst(step.finalMessage)));
-  if (step.rawFinalMessage !== undefined) emitFinal(subst(step.rawFinalMessage));
-  if (step.json !== undefined) process.stdout.write(JSON.stringify(step.json) + "\n");
+  if (step.ignoreSignals) {
+    ignoreSignals = true;
+  }
+
+  if (step.stdout !== undefined) {
+    process.stdout.write(subst(step.stdout));
+  }
+
+  if (step.stderr !== undefined) {
+    process.stderr.write(step.stderr);
+  }
+
+  if (step.writeFile !== undefined) {
+    writeFileSync(step.writeFile, 'x');
+  }
+
+  if (step.sleepMs !== undefined) {
+    await new Promise(r => setTimeout(r, step.sleepMs));
+  }
+
+  if (step.finalMessage !== undefined) {
+    emitFinal(wrap(subst(step.finalMessage)));
+  }
+
+  if (step.rawFinalMessage !== undefined) {
+    emitFinal(subst(step.rawFinalMessage));
+  }
+
+  if (step.json !== undefined) {
+    process.stdout.write(JSON.stringify(step.json) + '\n');
+  }
+
   if (step.killSelf !== undefined) {
     process.kill(process.pid, step.killSelf);
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 5000));
   }
-  if (step.exit !== undefined) process.exit(step.exit);
+
+  if (step.exit !== undefined) {
+    process.exit(step.exit);
+  }
 }

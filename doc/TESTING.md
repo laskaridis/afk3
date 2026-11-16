@@ -29,8 +29,15 @@ or `pnpm build && pnpm vitest run test/integration/<file>.test.ts`.
 **Integration** (`test/integration/`) — run the built CLI against a fake agent on `PATH`, no real agent needed:
 
 ```ts
-const fake = createFakeCodexEnvironment([{ finalMessage: '{"outcome":"complete"}' }, { exit: 0 }]); // or (steps, "claude")
-const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
+const fake = createFakeCodexEnvironment([
+  {finalMessage: '{"outcome":"complete"}'},
+  {exit: 0},
+]); // or (steps, "claude")
+const run = await startAfk({
+  args: ['build X'],
+  cwd: fake.workspace,
+  env: fake.env,
+}).done;
 expect(run.exitCode).toBe(0);
 fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
 ```

@@ -1,16 +1,19 @@
-import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
-import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
-import type { WorkflowStepHandler } from "./workflow-step-handler.js";
-import { taskOf } from "./helpers.js";
+import type {WorkflowStepHandlerContext} from './workflow-step-handler-context.js';
+import type {WorkflowStepResult} from '../steps/workflow-step-result.js';
+import type {WorkflowStepHandler} from './workflow-step-handler.js';
+import {taskOf} from './helpers.js';
 
 /** A candidate was committed: reports the step as finished and lets the run go on. */
 export class WorkflowStepTaskImplementedHandler implements WorkflowStepHandler<
-  Extract<WorkflowStepResult, { type: "TaskImplemented" }>
+  Extract<WorkflowStepResult, {type: 'TaskImplemented'}>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "TaskImplemented" }>, context: WorkflowStepHandlerContext): void {
+  handle(
+    result: Extract<WorkflowStepResult, {type: 'TaskImplemented'}>,
+    context: WorkflowStepHandlerContext,
+  ): void {
     context.publish({
-      type: "StepExecutionFinished",
+      type: 'StepExecutionFinished',
       iteration: context.iteration,
       stepName: context.stepName,
       task: taskOf(result),

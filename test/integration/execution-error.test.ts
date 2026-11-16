@@ -1,89 +1,135 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {describe, expect, it} from 'vitest';
 import {
   createFakeCodexEnvironment,
   startAfk,
   expectedSessionPrompt,
   withoutNonce,
   type Step,
-} from "./support/helpers.js";
+} from './support/helpers.js';
 
-const say = (message: object): Step[] => [{ finalMessage: JSON.stringify(message) }, { exit: 0 }];
-const COMPLETE = say({ outcome: "no_more_tasks", task_id: null, task_plan_file: "p.json" });
-const CRASH: Step[] = [{ exit: 7 }];
+const say = (message: object): Step[] => [
+  {finalMessage: JSON.stringify(message)},
+  {exit: 0},
+];
+const COMPLETE = say({
+  outcome: 'no_more_tasks',
+  task_id: null,
+  task_plan_file: 'p.json',
+});
+const CRASH: Step[] = [{exit: 7}];
 
-describe("afk execution errors", () => {
-  it("reports a non-zero exit, announces a retry, relaunches, and succeeds", async () => {
-    const fake = createFakeCodexEnvironment({ sessions: [CRASH, COMPLETE] });
-    const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
+describe('afk execution errors', () => {
+  it('reports a non-zero exit, announces a retry, relaunches, and succeeds', async () => {
+    const fake = createFakeCodexEnvironment({sessions: [CRASH, COMPLETE]});
+    const run = await startAfk({
+      args: ['build X'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
 
     expect(run.exitCode).toBe(0);
     expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).toContain("agent exited unsuccessfully with exit code 7");
-    expect(run.stderr).toContain("retrying");
+    expect(run.stderr).toContain(
+      'agent exited unsuccessfully with exit code 7',
+    );
+    expect(run.stderr).toContain('retrying');
   });
 
-  it("treats a valid complete response with exit status 1 as an execution error", async () => {
+  it('treats a valid complete response with exit status 1 as an execution error', async () => {
     const fake = createFakeCodexEnvironment({
       sessions: [
-        [{ finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' }, { exit: 1 }],
+        [
+          {
+            finalMessage:
+              '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}',
+          },
+          {exit: 1},
+        ],
       ],
     });
-    const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
-
-    expect(run.exitCode).toBe(3);
-    expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).not.toContain("no more tasks");
-    expect(run.stderr).toContain("agent exited unsuccessfully with exit code 1");
-  });
-
-  it.each([
-    ["exit status", CRASH, "exit-status", "agent exited unsuccessfully with exit code 7"],
-    ["missing response", [{ exit: 0 }] as Step[], "missing-response", "agent exited without a final response"],
-    [
-      "invalid response",
-      [{ finalMessage: "all done!" }, { exit: 0 }] as Step[],
-      "invalid-response",
-      "agent final response is invalid: ",
-    ],
-  ])("stops after exactly two launches on two consecutive %s errors", async (_name, steps, _kind, text) => {
-    const fake = createFakeCodexEnvironment({ sessions: [steps] });
-    const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
-
-    expect(run.exitCode).toBe(3);
-    expect(fake.invocations()).toHaveLength(2);
-    expect(run.stderr).toContain(text);
-  });
-
-  it("reports a launch failure, retries once, then stops when codex is not on PATH", async () => {
-    const fake = createFakeCodexEnvironment([]);
-    const emptyBin = mkdtempSync(join(tmpdir(), "afk-empty-"));
     const run = await startAfk({
-      args: ["build X"],
+      args: ['build X'],
       cwd: fake.workspace,
-      env: { ...fake.env, PATH: emptyBin },
+      env: fake.env,
     }).done;
 
     expect(run.exitCode).toBe(3);
-    expect(run.stderr).toContain("Execution error: failed to launch agent");
+    expect(fake.invocations()).toHaveLength(2);
+    expect(run.stderr).not.toContain('no more tasks');
+    expect(run.stderr).toContain(
+      'agent exited unsuccessfully with exit code 1',
+    );
+  });
+
+  it.each([
+    [
+      'exit status',
+      CRASH,
+      'exit-status',
+      'agent exited unsuccessfully with exit code 7',
+    ],
+    [
+      'missing response',
+      [{exit: 0}] as Step[],
+      'missing-response',
+      'agent exited without a final response',
+    ],
+    [
+      'invalid response',
+      [{finalMessage: 'all done!'}, {exit: 0}] as Step[],
+      'invalid-response',
+      'agent final response is invalid: ',
+    ],
+  ])(
+    'stops after exactly two launches on two consecutive %s errors',
+    async (_name, steps, _kind, text) => {
+      const fake = createFakeCodexEnvironment({sessions: [steps]});
+      const run = await startAfk({
+        args: ['build X'],
+        cwd: fake.workspace,
+        env: fake.env,
+      }).done;
+
+      expect(run.exitCode).toBe(3);
+      expect(fake.invocations()).toHaveLength(2);
+      expect(run.stderr).toContain(text);
+    },
+  );
+
+  it('reports a launch failure, retries once, then stops when codex is not on PATH', async () => {
+    const fake = createFakeCodexEnvironment([]);
+    const emptyBin = mkdtempSync(join(tmpdir(), 'afk-empty-'));
+    const run = await startAfk({
+      args: ['build X'],
+      cwd: fake.workspace,
+      env: {...fake.env, PATH: emptyBin},
+    }).done;
+
+    expect(run.exitCode).toBe(3);
+    expect(run.stderr).toContain('Execution error: failed to launch agent');
     expect(run.stderr.match(/retrying/g)).toHaveLength(1);
   });
 
-  it("keeps workspace changes from the failed attempt and reuses the same prompt", async () => {
+  it('keeps workspace changes from the failed attempt and reuses the same prompt', async () => {
     const fake = createFakeCodexEnvironment({
-      sessions: [[{ writeFile: "partial.txt" }, { exit: 1 }], COMPLETE],
+      sessions: [[{writeFile: 'partial.txt'}, {exit: 1}], COMPLETE],
     });
-    const run = await startAfk({ args: ["build X"], cwd: fake.workspace, env: fake.env }).done;
+    const run = await startAfk({
+      args: ['build X'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
 
     expect(run.exitCode).toBe(0);
     const [first, second] = fake.invocations();
-    expect(second!.files).toContain("partial.txt");
+    expect(second!.files).toContain('partial.txt');
     expect(withoutNonce(second!.stdin)).toBe(withoutNonce(first!.stdin));
-    expect(first!.stdin).toBe(expectedSessionPrompt("build X", first!.stdin));
-    expect(second!.stdin).toBe(expectedSessionPrompt("build X", second!.stdin));
-    expect(second!.argv).not.toContain("resume");
-    expect(second!.argv).not.toContain("fork");
+    expect(first!.stdin).toBe(expectedSessionPrompt('build X', first!.stdin));
+    expect(second!.stdin).toBe(expectedSessionPrompt('build X', second!.stdin));
+    expect(second!.argv).not.toContain('resume');
+    expect(second!.argv).not.toContain('fork');
   });
 });

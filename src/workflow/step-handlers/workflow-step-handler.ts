@@ -1,5 +1,5 @@
-import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
-import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
+import type {WorkflowStepResult} from '../steps/workflow-step-result.js';
+import type {WorkflowStepHandlerContext} from './workflow-step-handler-context.js';
 
 /**
  * Handles one kind of `WorkflowStepResult` using a limited workflow context.
@@ -8,7 +8,9 @@ import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context
  * asks for. It never decides what comes next on its own. It reports through `publish()`,
  * `retryLastStep()` or `endWorkflow()` (or by doing nothing, which moves on to the next iteration), and the executor applies the policy.
  */
-export interface WorkflowStepHandler<R extends WorkflowStepResult = WorkflowStepResult> {
+export interface WorkflowStepHandler<
+  R extends WorkflowStepResult = WorkflowStepResult,
+> {
   /**
    * Handles `result`, the outcome of the iteration `context.iteration`.
    *

@@ -1,5 +1,5 @@
-import type { AgentAdapter } from "../agents/adapter.js";
-import { SessionExecutor } from "./session-executor.js";
+import type {AgentAdapter} from '../agents/adapter.js';
+import {SessionExecutor} from './session-executor.js';
 
 /** Holds the run-wide session settings so every session gets the same signal, timeout and grace period. */
 export class SessionExecutorFactory {
@@ -16,6 +16,11 @@ export class SessionExecutorFactory {
 
   /** Creates a new `SessionExecutor` for `adapter` with the run-wide settings. */
   create(adapter: AgentAdapter): SessionExecutor {
-    return new SessionExecutor(adapter, this.signal, this.timeoutSeconds, this.graceMs);
+    return new SessionExecutor(
+      adapter,
+      this.signal,
+      this.timeoutSeconds,
+      this.graceMs,
+    );
   }
 }

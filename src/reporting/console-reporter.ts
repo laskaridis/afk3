@@ -1,6 +1,6 @@
-import type { WorkflowEvent } from "../workflow/workflow-event.js";
-import type { ReporterOutputSink } from "./reporter-output-sink.js";
-import type { Reporter } from "./reporter.js";
+import type {WorkflowEvent} from '../workflow/workflow-event.js';
+import type {ReporterOutputSink} from './reporter-output-sink.js';
+import type {Reporter} from './reporter.js';
 
 /** Writes today's `[afk]` status lines for workflow events to its sink. WorkflowFailed has no final line. */
 export class ConsoleReporter implements Reporter {
@@ -10,40 +10,53 @@ export class ConsoleReporter implements Reporter {
   /** Writes the status line for `event`, if it has one; other events are ignored. */
   onEvent(event: WorkflowEvent): void {
     switch (event.type) {
-      case "StepExecutionStarted":
-        if (!event.retry) this.line(`Iteration ${event.iteration}/${event.limit}: starting ${event.stepName} step`);
+      case 'StepExecutionStarted':
+        if (!event.retry) {
+          this.line(
+            `Iteration ${event.iteration}/${event.limit}: starting ${event.stepName} step`,
+          );
+        }
+
         break;
-      case "StepExecutionRetried":
-        this.line(`Iteration ${event.iteration}/${event.limit}: retrying ${event.stepName} step after execution error`);
+      case 'StepExecutionRetried':
+        this.line(
+          `Iteration ${event.iteration}/${event.limit}: retrying ${event.stepName} step after execution error`,
+        );
         break;
-      case "VerificationPassed":
-        this.line("Verification passed");
+      case 'VerificationPassed':
+        this.line('Verification passed');
         break;
-      case "VerificationFailed":
+      case 'VerificationFailed':
         this.line(
           `Verification failed (attempt ${event.currentVerificationAttempt}/${event.maxVerificationAttempts}): ${event.failureSummary}`,
         );
         break;
-      case "SessionExecutionErrorOccurred":
+      case 'SessionExecutionErrorOccurred':
         this.line(`Execution error: ${event.detail}`, event.stderrTail);
         break;
-      case "WorkflowFinished":
-        this.line("Run complete: no more tasks");
+      case 'WorkflowFinished':
+        this.line('Run complete: no more tasks');
         break;
-      case "WorkflowBlocked":
+      case 'WorkflowBlocked':
         this.line(`Run blocked: ${event.blockerText}`);
         break;
-      case "MaxIterationsReached":
-        this.line(`Run stopped: iteration limit of ${event.limit} reached without reported completion`);
+      case 'MaxIterationsReached':
+        this.line(
+          `Run stopped: iteration limit of ${event.limit} reached without reported completion`,
+        );
         break;
-      case "VerificationLimitReached":
-        this.line(`Run stopped: verification limit of ${event.limit} reached for ${event.taskId}`);
+      case 'VerificationLimitReached':
+        this.line(
+          `Run stopped: verification limit of ${event.limit} reached for ${event.taskId}`,
+        );
         break;
-      case "WorkflowTimedOut":
-        this.line(`Run stopped: agent session timed out after ${event.seconds} seconds`);
+      case 'WorkflowTimedOut':
+        this.line(
+          `Run stopped: agent session timed out after ${event.seconds} seconds`,
+        );
         break;
-      case "WorkflowInterrupted":
-        this.line("Run interrupted by user");
+      case 'WorkflowInterrupted':
+        this.line('Run interrupted by user');
         break;
       default:
         break;
@@ -51,6 +64,8 @@ export class ConsoleReporter implements Reporter {
   }
 
   private line(message: string, extra: readonly string[] = []): void {
-    this.sink.write([`[afk] ${message}`, ...extra].map((text) => `${text}\n`).join(""));
+    this.sink.write(
+      [`[afk] ${message}`, ...extra].map(text => `${text}\n`).join(''),
+    );
   }
 }

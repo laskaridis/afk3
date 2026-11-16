@@ -1,4 +1,4 @@
-import type { WorkflowEvent } from "./workflow-event.js";
+import type {WorkflowEvent} from './workflow-event.js';
 
 /**
  * A one-way listener for the events published by the `WorkflowExecutor`.
