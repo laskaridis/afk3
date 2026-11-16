@@ -1,22 +1,25 @@
-import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
-import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
-import type { WorkflowStepHandler } from "./workflow-step-handler.js";
-import { taskOf } from "./helpers.js";
+import type {WorkflowStepHandlerContext} from './workflow-step-handler-context.js';
+import type {WorkflowStepResult} from '../steps/workflow-step-result.js';
+import type {WorkflowStepHandler} from './workflow-step-handler.js';
+import {taskOf} from './helpers.js';
 
 /** The agent found no pending task: reports the step as finished and ends the run successfully. */
 export class WorkflowStepNoMoreTasksHandler implements WorkflowStepHandler<
-  Extract<WorkflowStepResult, { type: "NoMoreTasks" }>
+  Extract<WorkflowStepResult, {type: 'NoMoreTasks'}>
 > {
   /** @inheritdoc */
-  handle(result: Extract<WorkflowStepResult, { type: "NoMoreTasks" }>, context: WorkflowStepHandlerContext): void {
+  handle(
+    result: Extract<WorkflowStepResult, {type: 'NoMoreTasks'}>,
+    context: WorkflowStepHandlerContext,
+  ): void {
     context.publish({
-      type: "StepExecutionFinished",
+      type: 'StepExecutionFinished',
       iteration: context.iteration,
       stepName: context.stepName,
       task: taskOf(result),
     });
     context.endWorkflow({
-      type: "WorkflowFinished",
+      type: 'WorkflowFinished',
       task: taskOf(result),
     });
   }

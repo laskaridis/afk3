@@ -1,17 +1,20 @@
-import type { SessionExecutorFactory } from "../session/session-executor-factory.js";
-import type { CorrectionAssignment, VerificationAssignment } from "./assignment.js";
-import { CodingStep } from "./steps/coding-step.js";
-import { VerificationStep } from "./steps/verification-step.js";
-import type { WorkflowStep } from "./steps/workflow-step.js";
-import type { WorkflowStepOptions } from "./workflow-step-options.js";
-import type { WorkflowStepHandler } from "./step-handlers/workflow-step-handler.js";
-import type { WorkflowStepHandlerContext } from "./step-handlers/workflow-step-handler-context.js";
-import { STEP_HANDLERS } from "./step-handlers/workflow-step-handlers.js";
-import type { TerminalWorkflowEvent, WorkflowEvent } from "./workflow-event.js";
-import type { WorkflowObserver } from "./workflow-observer.js";
-import type { LaunchPrompt } from "./launch-prompt.js";
-import type { WorkflowOptions } from "./workflow-options.js";
-import type { WorkflowStepResult } from "./steps/workflow-step-result.js";
+import type {SessionExecutorFactory} from '../session/session-executor-factory.js';
+import type {
+  CorrectionAssignment,
+  VerificationAssignment,
+} from './assignment.js';
+import {CodingStep} from './steps/coding-step.js';
+import {VerificationStep} from './steps/verification-step.js';
+import type {WorkflowStep} from './steps/workflow-step.js';
+import type {WorkflowStepOptions} from './workflow-step-options.js';
+import type {WorkflowStepHandler} from './step-handlers/workflow-step-handler.js';
+import type {WorkflowStepHandlerContext} from './step-handlers/workflow-step-handler-context.js';
+import {STEP_HANDLERS} from './step-handlers/workflow-step-handlers.js';
+import type {TerminalWorkflowEvent, WorkflowEvent} from './workflow-event.js';
+import type {WorkflowObserver} from './workflow-observer.js';
+import type {LaunchPrompt} from './launch-prompt.js';
+import type {WorkflowOptions} from './workflow-options.js';
+import type {WorkflowStepResult} from './steps/workflow-step-result.js';
 
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;
@@ -60,7 +63,11 @@ export class WorkflowExecutor {
   /** Freezes the event and delivers it to every observer in subscription order. */
   publish<T extends WorkflowEvent>(event: T): T {
     const frozen = Object.freeze(event) as T;
-    for (const observer of this.observers) observer.onEvent(frozen);
+
+    for (const observer of this.observers) {
+      observer.onEvent(frozen);
+    }
+
     return frozen;
   }
 
@@ -70,8 +77,9 @@ export class WorkflowExecutor {
    */
   async run(): Promise<TerminalWorkflowEvent> {
     if (this.running) {
-      throw new Error("WorkflowExecutor is already running");
+      throw new Error('WorkflowExecutor is already running');
     }
+
     this.running = true;
     try {
       return await this.executeWorkflow();
@@ -81,16 +89,17 @@ export class WorkflowExecutor {
   }
 
   private async executeWorkflow(): Promise<TerminalWorkflowEvent> {
-    const { maxIterations } = this.options;
+    const {maxIterations} = this.options;
     // Each invocation starts with fresh iteration, retry, attempt, and terminal state.
     let previousError: string | undefined;
     let retriesUsed = 0;
     let iteration = 0;
-    let currentStepName = "";
+    let currentStepName = '';
     let currentError: string | undefined;
     let pendingTerminalWorkflowEvent: TerminalWorkflowEvent | undefined;
     let correction: CorrectionAssignment | undefined;
-    let postVerificationFixAttempts: { taskId: string; count: number } | undefined;
+    let postVerificationFixAttempts:
+      {taskId: string; count: number} | undefined;
 
     const context: WorkflowStepHandlerContext = {
       get iteration() {
@@ -102,10 +111,10 @@ export class WorkflowExecutor {
       sessionTimeoutSeconds: this.options.sessionTimeoutSeconds,
       publish: <T extends WorkflowEvent>(event: T): T => this.publish(event),
       continueWorkflow: () => {},
-      retryLastStep: (failure) => {
+      retryLastStep: failure => {
         if (retriesUsed >= MAX_RETRIES) {
           pendingTerminalWorkflowEvent = {
-            type: "WorkflowFailed",
+            type: 'WorkflowFailed',
             detail: failure.detail,
             stderrTail: failure.stderrTail,
           };
@@ -113,25 +122,34 @@ export class WorkflowExecutor {
           currentError = failure.detail;
         }
       },
-      fixVerificationFindings: (assignment) => {
+      fixVerificationFindings: assignment => {
         // Counts are per task: a different task id starts a fresh count.
         postVerificationFixAttempts = {
           taskId: assignment.taskId,
           count:
-            (postVerificationFixAttempts?.taskId === assignment.taskId ? postVerificationFixAttempts.count : 0) + 1,
+            (postVerificationFixAttempts?.taskId === assignment.taskId
+              ? postVerificationFixAttempts.count
+              : 0) + 1,
         };
         this.publish({
-          type: "VerificationFailed",
+          type: 'VerificationFailed',
           iteration,
           currentVerificationAttempt: postVerificationFixAttempts.count,
           maxVerificationAttempts: this.options.maxVerificationAttempts,
           failureSummary: assignment.failureSummary,
           verificationFindingsFile: assignment.findingsFile,
-          task: Object.freeze({ task_id: assignment.taskId, task_plan_file: assignment.taskPlanFile }),
+          task: Object.freeze({
+            task_id: assignment.taskId,
+            task_plan_file: assignment.taskPlanFile,
+          }),
         });
-        if (postVerificationFixAttempts.count >= this.options.maxVerificationAttempts) {
+
+        if (
+          postVerificationFixAttempts.count >=
+          this.options.maxVerificationAttempts
+        ) {
           pendingTerminalWorkflowEvent = {
-            type: "VerificationLimitReached",
+            type: 'VerificationLimitReached',
             limit: this.options.maxVerificationAttempts,
             taskId: assignment.taskId,
           };
@@ -139,7 +157,7 @@ export class WorkflowExecutor {
           correction = assignment;
         }
       },
-      endWorkflow: (terminal) => {
+      endWorkflow: terminal => {
         pendingTerminalWorkflowEvent = terminal;
       },
     };
@@ -148,23 +166,42 @@ export class WorkflowExecutor {
      * Runs one session of `step` and applies its result through the handlers. `retry` is true when it repeats the
      * previous session of the same iteration after an execution error. Returns the result.
      */
-    const runStep = async (step: WorkflowStep, options: WorkflowStepOptions, retry: boolean) => {
+    const runStep = async (
+      step: WorkflowStep,
+      options: WorkflowStepOptions,
+      retry: boolean,
+    ) => {
       currentError = undefined;
       currentStepName = step.name;
+
       if (retry) {
         this.publish({
-          type: "StepExecutionRetried",
+          type: 'StepExecutionRetried',
           iteration,
           stepName: currentStepName,
           limit: maxIterations,
           previousError: previousError!,
         });
       }
-      this.publish({ type: "StepExecutionStarted", iteration, stepName: currentStepName, limit: maxIterations, retry });
+
+      this.publish({
+        type: 'StepExecutionStarted',
+        iteration,
+        stepName: currentStepName,
+        limit: maxIterations,
+        retry,
+      });
       const result = await step.execute(this.launchPrompt.text, options);
+
       // Observing a different task than the one being counted starts a fresh count.
-      if ("task_id" in result && result.task_id && postVerificationFixAttempts?.taskId !== result.task_id)
+      if (
+        'task_id' in result &&
+        result.task_id &&
+        postVerificationFixAttempts?.taskId !== result.task_id
+      ) {
         postVerificationFixAttempts = undefined;
+      }
+
       this.handle(result, context);
       // Only an accepted session failure carries over and consumes retry allowance; a valid outcome resets it.
       previousError = currentError;
@@ -173,7 +210,9 @@ export class WorkflowExecutor {
     };
 
     /** Verifies the candidate of this iteration; an execution error re-runs the session without using an iteration. */
-    const verify = async (candidate: Extract<WorkflowStepResult, { type: "TaskImplemented" }>) => {
+    const verify = async (
+      candidate: Extract<WorkflowStepResult, {type: 'TaskImplemented'}>,
+    ) => {
       const assignment: VerificationAssignment = {
         taskId: candidate.task_id,
         taskPlanFile: candidate.task_plan_file,
@@ -187,40 +226,66 @@ export class WorkflowExecutor {
       correction = undefined;
       let result: WorkflowStepResult;
       let retry = false;
+
       do {
         result = await runStep(
-          new VerificationStep(this.sessions.create(this.options.adapter), assignment),
+          new VerificationStep(
+            this.sessions.create(this.options.adapter),
+            assignment,
+          ),
           options,
           retry,
         );
         retry = currentError !== undefined;
       } while (retry && pendingTerminalWorkflowEvent === undefined);
+
       return result;
     };
 
-    this.publish({ type: "WorkflowStarted", maxIterations });
+    this.publish({type: 'WorkflowStarted', maxIterations});
+
     for (iteration = 1; iteration <= maxIterations; iteration++) {
       pendingTerminalWorkflowEvent = undefined;
-      this.publish({ type: "IterationStarted", iteration, limit: maxIterations });
-      const step = new CodingStep(this.sessions.create(this.options.adapter), correction);
+      this.publish({type: 'IterationStarted', iteration, limit: maxIterations});
+      const step = new CodingStep(
+        this.sessions.create(this.options.adapter),
+        correction,
+      );
       let result = await runStep(
         step,
-        { cwd: this.options.cwd, model: this.options.model, effort: this.options.effort },
+        {
+          cwd: this.options.cwd,
+          model: this.options.model,
+          effort: this.options.effort,
+        },
         previousError !== undefined,
       );
-      if (result.type === "TaskImplemented" && pendingTerminalWorkflowEvent === undefined) {
+
+      if (
+        result.type === 'TaskImplemented' &&
+        pendingTerminalWorkflowEvent === undefined
+      ) {
         result = await verify(result);
       }
 
-      this.publish({ type: "IterationFinished", iteration, outcome: result.type });
+      this.publish({
+        type: 'IterationFinished',
+        iteration,
+        outcome: result.type,
+      });
+
       if (pendingTerminalWorkflowEvent !== undefined) {
         return this.publish(pendingTerminalWorkflowEvent);
       }
     }
-    return this.publish({ type: "MaxIterationsReached", limit: maxIterations });
+
+    return this.publish({type: 'MaxIterationsReached', limit: maxIterations});
   }
 
-  private handle(result: WorkflowStepResult, context: WorkflowStepHandlerContext): void {
+  private handle(
+    result: WorkflowStepResult,
+    context: WorkflowStepHandlerContext,
+  ): void {
     const handler = STEP_HANDLERS[result.type] as WorkflowStepHandler;
     handler.handle(result, context);
   }

@@ -1,92 +1,131 @@
-import { spawn } from "node:child_process";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { createFakeCodexEnvironment, startAfk, type Step } from "./support/helpers.js";
+import {spawn} from 'node:child_process';
+import {join} from 'node:path';
+import {describe, expect, it} from 'vitest';
+import {
+  createFakeCodexEnvironment,
+  startAfk,
+  type Step,
+} from './support/helpers.js';
 
 const COMPLETE: Step[] = [
-  { finalMessage: '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}' },
-  { exit: 0 },
+  {
+    finalMessage:
+      '{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}',
+  },
+  {exit: 0},
 ];
 
-describe("afk --help", () => {
-  for (const flag of ["--help", "-h"]) {
+describe('afk --help', () => {
+  for (const flag of ['--help', '-h']) {
     it(`${flag} prints usage, options, and exit codes to stdout and launches nothing`, async () => {
       const fake = createFakeCodexEnvironment(COMPLETE);
-      const run = await startAfk({ args: [flag], cwd: fake.workspace, env: fake.env }).done;
+      const run = await startAfk({
+        args: [flag],
+        cwd: fake.workspace,
+        env: fake.env,
+      }).done;
 
       expect(run.exitCode).toBe(0);
       expect(fake.invocations()).toHaveLength(0);
+
       for (const text of [
-        "[prompt...]",
-        "--prompt-file",
-        "--cwd",
-        "--max-iterations",
-        "default: 10",
-        "--session-timeout",
-        "seconds",
-        "--model",
-        "--reasoning-effort",
-        "--max-verification-attempts",
-        "--verify-model",
-        "--verify-reasoning-effort",
-        "--help",
-        "Exit codes",
+        '[prompt...]',
+        '--prompt-file',
+        '--cwd',
+        '--max-iterations',
+        'default: 10',
+        '--session-timeout',
+        'seconds',
+        '--model',
+        '--reasoning-effort',
+        '--max-verification-attempts',
+        '--verify-model',
+        '--verify-reasoning-effort',
+        '--help',
+        'Exit codes',
       ]) {
         expect(run.stdout).toContain(text);
       }
     });
   }
 
-  it("documents the verification attempt default of 2", async () => {
+  it('documents the verification attempt default of 2', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
-    expect(run.stdout.replace(/\s+/g, " ")).toMatch(/--max-verification-attempts <count>.*\(default: 2\)/);
+    const run = await startAfk({
+      args: ['--help'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
+    expect(run.stdout.replace(/\s+/g, ' ')).toMatch(
+      /--max-verification-attempts <count>.*\(default: 2\)/,
+    );
   });
 
-  it("describes --max-iterations as counting coding iterations only", async () => {
+  it('describes --max-iterations as counting coding iterations only', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
-    expect(run.stdout.replace(/\s+/g, " ")).toMatch(
+    const run = await startAfk({
+      args: ['--help'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
+    expect(run.stdout.replace(/\s+/g, ' ')).toMatch(
       /--max-iterations <count> maximum number of coding iterations, corrections included \(default: 10\)/,
     );
   });
 
-  it("lists exactly the exit codes the CLI maps", async () => {
+  it('lists exactly the exit codes the CLI maps', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const run = await startAfk({ args: ["--help"], cwd: fake.workspace, env: fake.env }).done;
+    const run = await startAfk({
+      args: ['--help'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
 
-    const section = run.stdout.split("Exit codes:")[1] ?? "";
-    const listed = [...section.matchAll(/^\s+(\d+)\s+\S/gm)].map((match) => Number(match[1]));
+    const section = run.stdout.split('Exit codes:')[1] ?? '';
+    const listed = [...section.matchAll(/^\s+(\d+)\s+\S/gm)].map(match =>
+      Number(match[1]),
+    );
     expect(listed.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 130]);
   });
 
-  it("takes precedence over invalid options and prompt input", async () => {
+  it('takes precedence over invalid options and prompt input', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
     const run = await startAfk({
-      args: ["--help", "--max-iterations", "abc", "--prompt-file", "missing.txt", "x"],
+      args: [
+        '--help',
+        '--max-iterations',
+        'abc',
+        '--prompt-file',
+        'missing.txt',
+        'x',
+      ],
       cwd: fake.workspace,
       env: fake.env,
-      stdin: "some piped prompt",
+      stdin: 'some piped prompt',
     }).done;
 
     expect(run.exitCode).toBe(0);
-    expect(run.stdout).toContain("--prompt-file");
+    expect(run.stdout).toContain('--prompt-file');
     expect(fake.invocations()).toHaveLength(0);
   });
 
-  it("exits promptly without reading a stdin pipe that is never closed", async () => {
+  it('exits promptly without reading a stdin pipe that is never closed', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const child = spawn(process.execPath, [join(import.meta.dirname, "..", "..", "dist", "cli.js"), "--help"], {
-      cwd: fake.workspace,
-      env: fake.env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    const code = await new Promise<number | null>((resolveCode) => {
+    const child = spawn(
+      process.execPath,
+      [join(import.meta.dirname, '..', '..', 'dist', 'cli.js'), '--help'],
+      {
+        cwd: fake.workspace,
+        env: fake.env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      },
+    );
+    const code = await new Promise<number | null>(resolveCode => {
       const timer = setTimeout(() => {
-        child.kill("SIGKILL");
+        child.kill('SIGKILL');
         resolveCode(-1);
       }, 3000);
-      child.on("close", (exitCode) => {
+      child.on('close', exitCode => {
         clearTimeout(timer);
         resolveCode(exitCode);
       });
@@ -94,12 +133,16 @@ describe("afk --help", () => {
     expect(code).toBe(0);
   });
 
-  it("rejects an unknown option as an option error", async () => {
+  it('rejects an unknown option as an option error', async () => {
     const fake = createFakeCodexEnvironment(COMPLETE);
-    const run = await startAfk({ args: ["--full-access", "x"], cwd: fake.workspace, env: fake.env }).done;
+    const run = await startAfk({
+      args: ['--full-access', 'x'],
+      cwd: fake.workspace,
+      env: fake.env,
+    }).done;
 
     expect(run.exitCode).toBe(2);
-    expect(run.stderr).toContain("--full-access");
+    expect(run.stderr).toContain('--full-access');
     expect(fake.invocations()).toHaveLength(0);
   });
 });

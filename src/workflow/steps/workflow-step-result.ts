@@ -15,22 +15,26 @@ type ReportedTask = {
 /** What one workflow step ended as, for the executor. Task metadata is carried as parsed. */
 export type WorkflowStepResult =
   /** A candidate was committed; `revision` is its commit identifier, if the agent reported one. */
-  | ({ type: "TaskImplemented"; revision?: string | null } & ReportedTask)
+  | ({type: 'TaskImplemented'; revision?: string | null} & ReportedTask)
   /** The agent found no pending task; the run ends. */
-  | ({ type: "NoMoreTasks" } & TaskMetadata)
+  | ({type: 'NoMoreTasks'} & TaskMetadata)
   /** The verification agent accepted the candidate and tasks remain. */
-  | ({ type: "VerificationPassed" } & ReportedTask)
+  | ({type: 'VerificationPassed'} & ReportedTask)
   /** The verification agent accepted the candidate and no tasks remain; the run ends. */
-  | ({ type: "FeatureVerified" } & ReportedTask)
+  | ({type: 'FeatureVerified'} & ReportedTask)
   /** The verification agent rejected the candidate; `findingsFile` holds its notes. */
-  | ({ type: "VerificationFailed"; failureSummary: string; findingsFile: string } & ReportedTask)
+  | ({
+      type: 'VerificationFailed';
+      failureSummary: string;
+      findingsFile: string;
+    } & ReportedTask)
   /** The agent cannot proceed without outside help; the run ends. */
-  | ({ type: "Blocked"; blockerText: string } & TaskMetadata)
+  | ({type: 'Blocked'; blockerText: string} & TaskMetadata)
   /** The verification agent cannot proceed without outside help; the run ends. */
-  | ({ type: "VerificationBlocked"; blockerText: string } & TaskMetadata)
+  | ({type: 'VerificationBlocked'; blockerText: string} & TaskMetadata)
   /** The session did not produce a valid result; `stderrTail` holds the last stderr lines, if any. */
-  | { type: "SessionFailed"; detail: string; stderrTail: string[] }
+  | {type: 'SessionFailed'; detail: string; stderrTail: string[]}
   /** The session exceeded its time limit. */
-  | { type: "Timeout" }
+  | {type: 'Timeout'}
   /** The user interrupted the session. */
-  | { type: "Interrupted" };
+  | {type: 'Interrupted'};

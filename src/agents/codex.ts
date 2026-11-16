@@ -1,23 +1,32 @@
-import type { AgentAdapter, FinalMessageResult } from "./adapter.js";
-import type { AgentInput } from "./agent-input.js";
+import type {AgentAdapter, FinalMessageResult} from './adapter.js';
+import type {AgentInput} from './agent-input.js';
 
-/** Adapter for Codex, run through `codex exec` with the final message written to a file. */
 export class CodexAdapter implements AgentAdapter {
-  readonly name = "codex";
-  readonly executable = "codex";
+  readonly name = 'codex';
+  readonly executable = 'codex';
 
   /**
    * Builds `codex exec` arguments: the working directory, `--output-last-message` when an output file is given,
    * `--model` and the reasoning-effort config if given, and `-` so the prompt is read from stdin.
    */
-  buildArgs({ cwd, outputFile, model, effort }: AgentInput): string[] {
-    const args = ["exec", "--approve-for-me", "-C", cwd];
+  buildArgs({cwd, outputFile, model, effort}: AgentInput): string[] {
+    const args = ['exec', '--approve-for-me', '-C', cwd];
+
     // Stdout is a progress log; the final message is only reliable in the output file.
-    if (outputFile !== undefined) args.push("--output-last-message", outputFile);
-    if (model !== undefined) args.push("--model", model);
-    if (effort !== undefined) args.push("--config", `model_reasoning_effort=${JSON.stringify(effort)}`);
+    if (outputFile !== undefined) {
+      args.push('--output-last-message', outputFile);
+    }
+
+    if (model !== undefined) {
+      args.push('--model', model);
+    }
+
+    if (effort !== undefined) {
+      args.push('--config', `model_reasoning_effort=${JSON.stringify(effort)}`);
+    }
+
     // `-` makes Codex read the prompt from stdin.
-    args.push("-");
+    args.push('-');
     return args;
   }
 
@@ -29,7 +38,12 @@ export class CodexAdapter implements AgentAdapter {
    * The content is returned as-is. Finding the `<afk-harness-result>` block inside it is the workflow step's job.
    * No file, or a blank one, means Codex never produced a final message.
    */
-  extractFinalMessage(_stdout: string, outputFile?: string): FinalMessageResult {
-    return outputFile === undefined || outputFile.trim() === "" ? { missing: true } : { message: outputFile };
+  extractFinalMessage(
+    _stdout: string,
+    outputFile?: string,
+  ): FinalMessageResult {
+    return outputFile === undefined || outputFile.trim() === ''
+      ? {missing: true}
+      : {message: outputFile};
   }
 }

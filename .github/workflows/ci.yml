@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: ["22.13.0", "24"]
+        node-version: ['22.13.0', '24']
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -64,4 +64,4 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:javascript-typescript"
+          category: '/language:javascript-typescript'
