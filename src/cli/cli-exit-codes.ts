@@ -35,7 +35,6 @@ export function formatExitCodeHelp(): string {
 export function exitCodeFor(result: TerminalWorkflowEvent): number {
   switch (result.type) {
     case "WorkflowFinished":
-    case "WorkflowCompleted":
       return EXIT_CODES.complete;
     case "WorkflowBlocked":
       return EXIT_CODES.blocked;

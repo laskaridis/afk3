@@ -64,7 +64,7 @@ describe("workflow step handlers", () => {
       { type: "StepExecutionFinished", iteration: 0, stepName: "coding", task },
       { type: "VerificationPassed", iteration: 0, task },
     ]);
-    expect(ended).toEqual([{ type: "WorkflowCompleted", task }]);
+    expect(ended).toEqual([{ type: "WorkflowFinished", task }]);
   });
 
   it("VerificationFailed reports the step finished and requests a correction for the rejected task", () => {

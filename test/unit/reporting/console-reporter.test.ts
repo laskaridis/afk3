@@ -46,7 +46,6 @@ describe("ConsoleReporter", () => {
       },
       "[afk] Verification failed (attempt 1/2): AC-002 not met\n",
     ],
-    [{ type: "WorkflowCompleted", task: {} }, "[afk] Run complete: feature complete\n"],
     [
       { type: "SessionExecutionErrorOccurred", iteration: 1, detail: "bad status", stderrTail: ["first", "last"] },
       "[afk] Execution error: bad status\nfirst\nlast\n",

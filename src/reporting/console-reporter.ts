@@ -30,9 +30,6 @@ export class ConsoleReporter implements Reporter {
       case "WorkflowFinished":
         this.line("Run complete: no more tasks");
         break;
-      case "WorkflowCompleted":
-        this.line("Run complete: feature complete");
-        break;
       case "WorkflowBlocked":
         this.line(`Run blocked: ${event.blockerText}`);
         break;

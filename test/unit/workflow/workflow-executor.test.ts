@@ -278,7 +278,7 @@ describe("WorkflowExecutor policy and events", () => {
     const result = await workflow.run();
     expect(other).toEqual(events);
     expect(other.filter((e) => e === result)).toHaveLength(1);
-    const terminal = ["WorkflowFinished", "WorkflowCompleted", "WorkflowBlocked", "WorkflowFailed", "WorkflowTimedOut"];
+    const terminal = ["WorkflowFinished", "WorkflowBlocked", "WorkflowFailed", "WorkflowTimedOut"];
     expect(events.filter((e) => terminal.includes(e.type))).toEqual([result]);
   });
 
@@ -409,7 +409,7 @@ describe("WorkflowExecutor two-phase loop", () => {
   it("workflow_finished ends the run as completed with exit-0 semantics and no further session", async () => {
     const { workflow, events, calls } = setup([CONTINUE, VERIFIED_ALL, FINISHED]);
     const result = await workflow.run();
-    expect(result).toEqual({ type: "WorkflowCompleted", task: { task_id: "T-1", task_plan_file: "p.json" } });
+    expect(result).toEqual({ type: "WorkflowFinished", task: { task_id: "T-1", task_plan_file: "p.json" } });
     expect(calls).toHaveLength(2);
     expect(events.at(-2)).toEqual({ type: "IterationFinished", iteration: 1, outcome: "FeatureVerified" });
   });
@@ -447,7 +447,7 @@ describe("WorkflowExecutor two-phase loop", () => {
 
   it("workflow_finished after the last allowed iteration still completes", async () => {
     const { workflow } = setup([CONTINUE, VERIFIED_ALL], { maxIterations: 1 });
-    expect((await workflow.run()).type).toBe("WorkflowCompleted");
+    expect((await workflow.run()).type).toBe("WorkflowFinished");
   });
 
   it("a blocked verification ends the run without another session", async () => {
