@@ -1,7 +1,7 @@
 import type { WorkflowStepHandlerContext } from "./workflow-step-handler-context.js";
 import type { WorkflowStepResult } from "../steps/workflow-step-result.js";
 import type { WorkflowStepHandler } from "./workflow-step-handler.js";
-import { taskOf } from "./task-of.js";
+import { taskOf } from "./helpers.js";
 
 /** The candidate passed and tasks remain: reports the verdict and lets the run go on. */
 export class WorkflowStepVerificationPassedHandler implements WorkflowStepHandler<
