@@ -14,7 +14,7 @@ export interface WorkflowStepHandlerContext {
   /** Request a retry; the executor enforces the retry allowance. */
   retryLastStep(failure: { detail: string; stderrTail: readonly string[] }): void;
   /** Request a correction iteration for a rejected candidate; the executor counts the rejection and applies the limit. */
-  requestCorrection(assignment: CorrectionAssignment): void;
+  fixVerificationFindings(assignment: CorrectionAssignment): void;
   /** Request a terminal event, published after IterationFinished. */
   endWorkflow(terminal: TerminalWorkflowEvent): void;
 }
