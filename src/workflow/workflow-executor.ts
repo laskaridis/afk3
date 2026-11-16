@@ -113,7 +113,7 @@ export class WorkflowExecutor {
           currentError = failure.detail;
         }
       },
-      requestCorrection: (assignment) => {
+      fixVerificationFindings: (assignment) => {
         // Counts are per task: a different task id starts a fresh count.
         attempts = {
           taskId: assignment.taskId,

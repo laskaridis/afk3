@@ -29,7 +29,7 @@ function setup(sessionTimeoutSeconds?: number) {
     continueWorkflow: () => void continued.push(true),
     endWorkflow: (terminal) => void ended.push(terminal),
     retryLastStep: (failure) => void retried.push(failure),
-    requestCorrection: (assignment) => void corrections.push(assignment),
+    fixVerificationFindings: (assignment) => void corrections.push(assignment),
   };
   return { context, events, ended, retried, continued, corrections };
 }

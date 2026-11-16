@@ -207,7 +207,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 **Responsibilities:**
 
 - Handles a `workflow/steps/WorkflowStepResult`.
-- Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()`, `requestCorrection()` or `endWorkflow()`.
+- Is independent of any specific step. It never decides what comes next, just notifies `workflow/WorkflowExecutor` through `continueWorkflow()`, `retryLastStep()`, `fixVerificationFindings()` or `endWorkflow()`.
 
 **Collaborators:**
 

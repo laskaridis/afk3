@@ -18,7 +18,7 @@ export class WorkflowStepVerificationFailedHandler implements WorkflowStepHandle
       stepName: context.stepName,
       task: taskOf(result),
     });
-    context.requestCorrection({
+    context.fixVerificationFindings({
       taskId: result.task_id,
       taskPlanFile: result.task_plan_file,
       findingsFile: result.findingsFile,
