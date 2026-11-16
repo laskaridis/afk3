@@ -56,7 +56,7 @@ decision from it, so that no task is accepted on the sole judgement of the agent
   The coding session (nonce `c0d1`) ended with:
   ```
   <afk-harness-result nonce="c0d1">
-  {"outcome":"task_implemented","task_id":"TASK-003","task_plan_file":"specs/add-verification-stage.plan.json","revision":"9f3c2ab"}
+  {"outcome":"task_implemented","task_id":"TASK-003","task_plan_file":"specs/_done/005-add-verification-step/add-verification-stage.plan.json","revision":"9f3c2ab"}
   </afk-harness-result>
   ```
 
@@ -64,7 +64,7 @@ decision from it, so that no task is accepted on the sole judgement of the agent
   ```
   Verification Assignment:
   - task_id: TASK-003
-  - task_plan_file: specs/add-verification-stage.plan.json
+  - task_plan_file: specs/_done/005-add-verification-step/add-verification-stage.plan.json
   - revision: 9f3c2ab
   ---
   <concatenate src/workflow/steps/verification-step.md with {{NONCE}} replaced by 7b1e>

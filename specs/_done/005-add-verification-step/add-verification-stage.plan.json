@@ -1,6 +1,6 @@
 {
-  "specification_document": "specs/add-verification-stage.spec.md",
-  "design_document": "specs/add-verification-stage.design.md",
+  "specification_document": "specs/_done/005-add-verification-step/add-verification-stage.spec.md",
+  "design_document": "specs/_done/005-add-verification-step/add-verification-stage.design.md",
   "context_documents": [],
   "tasks": [
     {

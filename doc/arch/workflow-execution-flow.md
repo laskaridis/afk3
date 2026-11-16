@@ -1,7 +1,7 @@
 # Workflow execution flow
 
 How `WorkflowExecutor` runs the coding and verification steps. This is the two-phase loop proposed by
-[add-verification-stage.spec.md](../../specs/add-verification-stage.spec.md), not the current code.
+[add-verification-stage.spec.md](../../specs/_done/005-add-verification-step/add-verification-stage.spec.md), not the current code.
 `VerificationStep` is a working name for the second `WorkflowStep`. The CLI, the reporter, the session layer and the
 agent adapters are left out.
 
