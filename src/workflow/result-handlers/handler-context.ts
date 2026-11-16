@@ -1,5 +1,5 @@
 import type {CorrectionAssignment} from '../assignment.js';
-import type {TerminalWorkflowEvent, WorkflowEvent} from '../workflow-event.js';
+import type {TerminalWorkflowEvent, WorkflowEvent} from '../event.js';
 
 /** The limited workflow state and operations available to step-result handlers. */
 export interface WorkflowStepHandlerContext {

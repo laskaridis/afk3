@@ -1,8 +1,8 @@
 import {readFileSync} from 'node:fs';
-import type {SessionExecutor} from '../../session/session-executor.js';
+import type {SessionExecutor} from '../../session/executor.js';
 import type {VerificationAssignment} from '../assignment.js';
-import {WorkflowStep} from './workflow-step.js';
-import type {WorkflowStepResult} from './workflow-step-result.js';
+import {WorkflowStep} from './step.js';
+import type {WorkflowStepResult} from './result.js';
 
 // Copied next to the compiled `workflow/steps/` folder by the build script.
 const HARNESS = readFileSync(

@@ -1,15 +1,15 @@
 import {describe, expect, it} from 'vitest';
-import {WorkflowStepBlockedHandler} from '../../../../src/workflow/step-handlers/workflow-step-blocked-handler.js';
-import {WorkflowStepFeatureVerifiedHandler} from '../../../../src/workflow/step-handlers/workflow-step-feature-verified-handler.js';
-import {WorkflowStepVerificationFailedHandler} from '../../../../src/workflow/step-handlers/workflow-step-verification-failed-handler.js';
-import {WorkflowStepVerificationPassedHandler} from '../../../../src/workflow/step-handlers/workflow-step-verification-passed-handler.js';
-import {WorkflowStepInterruptedHandler} from '../../../../src/workflow/step-handlers/workflow-step-interrupted-handler.js';
-import {WorkflowStepNoMoreTasksHandler} from '../../../../src/workflow/step-handlers/workflow-step-no-more-tasks-handler.js';
-import {WorkflowStepSessionFailedHandler} from '../../../../src/workflow/step-handlers/workflow-step-session-failed-handler.js';
-import {WorkflowStepTaskImplementedHandler} from '../../../../src/workflow/step-handlers/workflow-step-task-implemented-handler.js';
-import {WorkflowStepTimeoutHandler} from '../../../../src/workflow/step-handlers/workflow-step-timeout-handler.js';
-import type {WorkflowStepHandlerContext} from '../../../../src/workflow/step-handlers/workflow-step-handler-context.js';
-import type {WorkflowEvent} from '../../../../src/workflow/workflow-event.js';
+import {WorkflowStepBlockedHandler} from '../../../../src/workflow/result-handlers/blocked-handler.js';
+import {WorkflowStepFeatureVerifiedHandler} from '../../../../src/workflow/result-handlers/feature-verified-handler.js';
+import {WorkflowStepVerificationFailedHandler} from '../../../../src/workflow/result-handlers/verification-failed-handler.js';
+import {WorkflowStepVerificationPassedHandler} from '../../../../src/workflow/result-handlers/verification-passed-handler.js';
+import {WorkflowStepInterruptedHandler} from '../../../../src/workflow/result-handlers/interrupted-handler.js';
+import {WorkflowStepNoMoreTasksHandler} from '../../../../src/workflow/result-handlers/no-more-tasks-handler.js';
+import {WorkflowStepSessionFailedHandler} from '../../../../src/workflow/result-handlers/session-failed-handler.js';
+import {WorkflowStepTaskImplementedHandler} from '../../../../src/workflow/result-handlers/task-implemented-handler.js';
+import {WorkflowStepTimeoutHandler} from '../../../../src/workflow/result-handlers/timeout-handler.js';
+import type {WorkflowStepHandlerContext} from '../../../../src/workflow/result-handlers/handler-context.js';
+import type {WorkflowEvent} from '../../../../src/workflow/event.js';
 
 /** Record the handler's output without depending on the concrete workflow executor. */
 function setup(sessionTimeoutSeconds?: number) {

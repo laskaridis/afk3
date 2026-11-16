@@ -1,7 +1,7 @@
 import {randomBytes} from 'node:crypto';
-import type {SessionExecutor} from '../../session/session-executor.js';
-import type {WorkflowStepOptions} from '../workflow-step-options.js';
-import type {WorkflowStepResult} from './workflow-step-result.js';
+import type {SessionExecutor} from '../../session/executor.js';
+import type {WorkflowStepOptions} from '../step-options.js';
+import type {WorkflowStepResult} from './result.js';
 
 /**
  * One session of work in the workflow. Subclasses supply the prompt and interpretation of a valid result block;

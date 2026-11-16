@@ -1,20 +1,20 @@
-import type {SessionExecutorFactory} from '../session/session-executor-factory.js';
+import type {SessionExecutorFactory} from '../session/executor-factory.js';
 import type {
   CorrectionAssignment,
   VerificationAssignment,
 } from './assignment.js';
 import {CodingStep} from './steps/coding-step.js';
 import {VerificationStep} from './steps/verification-step.js';
-import type {WorkflowStep} from './steps/workflow-step.js';
-import type {WorkflowStepOptions} from './workflow-step-options.js';
-import type {WorkflowStepHandler} from './step-handlers/workflow-step-handler.js';
-import type {WorkflowStepHandlerContext} from './step-handlers/workflow-step-handler-context.js';
-import {STEP_HANDLERS} from './step-handlers/workflow-step-handlers.js';
-import type {TerminalWorkflowEvent, WorkflowEvent} from './workflow-event.js';
-import type {WorkflowObserver} from './workflow-observer.js';
+import type {WorkflowStep} from './steps/step.js';
+import type {WorkflowStepOptions} from './step-options.js';
+import type {WorkflowStepHandler} from './result-handlers/handler.js';
+import type {WorkflowStepHandlerContext} from './result-handlers/handler-context.js';
+import {STEP_HANDLERS} from './result-handlers/handlers.js';
+import type {TerminalWorkflowEvent, WorkflowEvent} from './event.js';
+import type {WorkflowObserver} from './observer.js';
 import type {LaunchPrompt} from './launch-prompt.js';
-import type {WorkflowOptions} from './workflow-options.js';
-import type {WorkflowStepResult} from './steps/workflow-step-result.js';
+import type {WorkflowOptions} from './options.js';
+import type {WorkflowStepResult} from './steps/result.js';
 
 /** Iteration limit used when the user does not set one. */
 export const DEFAULT_MAX_ITERATIONS = 10;

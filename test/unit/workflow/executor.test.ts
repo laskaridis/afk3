@@ -1,11 +1,11 @@
 import {describe, expect, it} from 'vitest';
 import type {AgentAdapter} from '../../../src/agents/adapter.js';
-import type {SessionExecutorFactory} from '../../../src/session/session-executor-factory.js';
-import type {SessionExecutor} from '../../../src/session/session-executor.js';
-import type {SessionResult} from '../../../src/session/session-result.js';
-import type {WorkflowEvent} from '../../../src/workflow/workflow-event.js';
-import {WorkflowExecutor} from '../../../src/workflow/workflow-executor.js';
-import type {WorkflowOptions} from '../../../src/workflow/workflow-options.js';
+import type {SessionExecutorFactory} from '../../../src/session/executor-factory.js';
+import type {SessionExecutor} from '../../../src/session/executor.js';
+import type {SessionResult} from '../../../src/session/result.js';
+import type {WorkflowEvent} from '../../../src/workflow/event.js';
+import {WorkflowExecutor} from '../../../src/workflow/executor.js';
+import type {WorkflowOptions} from '../../../src/workflow/options.js';
 
 const ADAPTER = {name: 'fake'} as unknown as AgentAdapter;
 

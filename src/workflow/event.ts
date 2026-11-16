@@ -1,4 +1,4 @@
-import type {TaskMetadata} from './steps/workflow-step-result.js';
+import type {TaskMetadata} from './steps/result.js';
 
 /** The run began. `maxIterations` is the iteration limit. */
 export type WorkflowStarted = {

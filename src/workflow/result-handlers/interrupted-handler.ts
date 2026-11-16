@@ -1,6 +1,6 @@
-import type {WorkflowStepHandlerContext} from './workflow-step-handler-context.js';
-import type {WorkflowStepResult} from '../steps/workflow-step-result.js';
-import type {WorkflowStepHandler} from './workflow-step-handler.js';
+import type {WorkflowStepHandlerContext} from './handler-context.js';
+import type {WorkflowStepResult} from '../steps/result.js';
+import type {WorkflowStepHandler} from './handler.js';
 
 /** The user interrupted the session: ends the run. */
 export class WorkflowStepInterruptedHandler implements WorkflowStepHandler<

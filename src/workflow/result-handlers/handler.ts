@@ -1,5 +1,5 @@
-import type {WorkflowStepResult} from '../steps/workflow-step-result.js';
-import type {WorkflowStepHandlerContext} from './workflow-step-handler-context.js';
+import type {WorkflowStepResult} from '../steps/result.js';
+import type {WorkflowStepHandlerContext} from './handler-context.js';
 
 /**
  * Handles one kind of `WorkflowStepResult` using a limited workflow context.

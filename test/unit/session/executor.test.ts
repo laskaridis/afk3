@@ -10,7 +10,7 @@ import {
   DEFAULT_TERMINATION_GRACE_MS,
   SessionExecutor,
   STDERR_TAIL_LINES,
-} from '../../../src/session/session-executor.js';
+} from '../../../src/session/executor.js';
 
 vi.mock('node:child_process', () => ({spawn: vi.fn()}));
 import {spawn} from 'node:child_process';
