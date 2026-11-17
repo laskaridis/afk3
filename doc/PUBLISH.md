@@ -81,7 +81,19 @@ git commit -am "Release X.Y.Z"
 git push -u origin release-X.Y.Z
 ```
 
-Open a pull request, wait for CI to pass, and merge it into `main`.
+Open a pull request, wait for CI to pass, and merge it into `main`. The description of the PR should contain the release notes 
+with references to all PRs that are included in the release. Use the following fomat:
+```markdown
+## Major changes
+* [#<PR number>](<link to the PR in Github>) [#<commit hash>](<link to commit hash in Github>) - <description of the change - max 3 sentences>
+* <If not PR is available (implemented directly on mainline) use this style instead and place in the bottom of the list - max 3 sentences>
+
+## Minor changes
+* ...
+
+## Patch changes
+* ...
+```
 
 ### 5. Approve the exact release commit and run the workflow
 
