@@ -18,8 +18,16 @@ export default [
       curly: ['error', 'all'],
       'padding-line-between-statements': [
         'error',
-        {blankLine: 'always', prev: '*', next: ['if', 'for', 'while', 'do']},
-        {blankLine: 'always', prev: ['if', 'for', 'while', 'do'], next: '*'},
+        {
+          blankLine: 'always',
+          prev: '*',
+          next: ['if', 'for', 'while', 'do', 'switch'],
+        },
+        {
+          blankLine: 'always',
+          prev: ['if', 'for', 'while', 'do', 'switch'],
+          next: '*',
+        },
       ],
     },
   },

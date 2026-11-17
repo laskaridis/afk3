@@ -42,6 +42,7 @@ export abstract class WorkflowStep {
       model: options.model,
       effort: options.effort,
     });
+
     switch (session.kind) {
       case 'interrupted':
         return {type: 'Interrupted'};
