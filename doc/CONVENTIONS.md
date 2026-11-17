@@ -7,7 +7,7 @@
 - ESLint flat config extends `gts`, then applies project-specific Node globals, Prettier compatibility, and the `curly`
   rule. Prettier follows the gts defaults: single quotes, no bracket spacing, trailing commas, and omitted parentheses
   around single arrow parameters. Prettier also checks Markdown (`README.md`, `AGENTS.md`, `CLAUDE.md`, `doc/`), but ignores
-  `specs/` and `src/workflow/steps/coding-step.md`.
+  `specs/` and `src/workflow/steps/coding-step-prompt.md`.
 
 ## Code style
 

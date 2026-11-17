@@ -67,7 +67,7 @@ decision from it, so that no task is accepted on the sole judgement of the agent
   - task_plan_file: specs/_done/005-add-verification-step/add-verification-stage.plan.json
   - revision: 9f3c2ab
   ---
-  <concatenate src/workflow/steps/verification-step.md with {{NONCE}} replaced by 7b1e>
+  <concatenate src/workflow/steps/verification-step-prompt.md with {{NONCE}} replaced by 7b1e>
   ```
 
   When the coding session reported no `revision` (absent or `null`), the `- revision:` line is omitted from the
@@ -115,9 +115,9 @@ decision from it, so that no task is accepted on the sole judgement of the agent
   ends the run, and a valid outcome resets the retry budget. The retry is reported as
   `[afk] Iteration <n>/<limit>: retrying verification session after execution error`, with `<n>` as in AC-007.
 - **AC-009:** Given the verification instructions file, when the package is built, then it is bundled and read the same
-  way as the coding instructions: stored as `src/workflow/steps/verification-step.md`, copied to
-  `dist/workflow/steps/verification-step.md` by `scripts/dist-prepare.mjs`, listed in `.prettierignore`, included in the
-  published package, and loaded with this session's nonce substituted. Like `coding-step.md`, it contains an example
+  way as the coding instructions: stored as `src/workflow/steps/verification-step-prompt.md`, copied to
+  `dist/workflow/steps/verification-step-prompt.md` by `scripts/dist-prepare.mjs`, listed in `.prettierignore`, included in the
+  published package, and loaded with this session's nonce substituted. Like `coding-step-prompt.md`, it contains an example
   block `<afk-harness-result nonce="{{NONCE}}">`, from which the fake agents read the session nonce.
 
 ### US-002: Let the coding agent produce candidates it cannot sign off
@@ -161,7 +161,7 @@ complete, so that the completion decision belongs to the verification session al
   the blocker and exits unsuccessfully without launching a verification session.
 - **AC-015:** Given a coding session's response, when it includes a `findings_file` field, then it is a contract
   violation: that field belongs to `verification_failed` only.
-- **AC-016:** Given the bundled coding instructions (`src/workflow/steps/coding-step.md`), when they are updated for
+- **AC-016:** Given the bundled coding instructions (`src/workflow/steps/coding-step-prompt.md`), when they are updated for
   this feature, then they state that the session commits a candidate, never marks a task complete, and responds only
   with `task_implemented`, `no_more_tasks` or `blocked` (including in the example result block and the stop conditions,
   which use `repeat`, `complete` and `fail` today), and document the optional `revision` field. A validation task that
@@ -262,14 +262,14 @@ that the harness's wording, exit codes and domain language stay a single source 
 - **AC-036:** Given the product documentation (`doc/PRODUCT.md`), when this feature ships, then its domain language
   table defines candidate, verification session, correction iteration, assignment and findings file, and redefines
   "iteration" (today "one session launch, retries included") and "session prompt" (today launch prompt + `---` +
-  `coding-step.md`) for two phases; its outcome row and run policy state the two-phase loop, each phase's outcome vocabulary
+  `coding-step-prompt.md`) for two phases; its outcome row and run policy state the two-phase loop, each phase's outcome vocabulary
   (AC-010), the per-task verification limit and the per-phase outcome meanings, and replaces the statement that the parser accepts blocks that omit `task_id` and
   `task_plan_file`; and its exit code list includes `6`.
 - **AC-037:** Given the architecture documentation (`doc/ARCHITECTURE.md`) and the repository map (`AGENTS.md`), when
   this feature ships, then the flow description shows the two-phase loop, the concrete `WorkflowStep` implementations
   list the verification step, the new `WorkflowEvent`s are listed, the note that the findings file path is
   "intentionally left out" of the result block contract is replaced, and the map lists the bundled verification
-  instructions file and no longer describes `coding-step.md` as appended to every session prompt.
+  instructions file and no longer describes `coding-step-prompt.md` as appended to every session prompt.
 - **AC-038:** Given the development documentation, when this feature ships, then `doc/WORKFLOW.md` lists
   `<feature-name-slug>.verify.md` among the feature artifacts, `doc/TESTING.md` describes how tests script the coding and
   verification sessions and build the expected verification prompt, and `doc/PUBLISH.md` lists the bundled verification
@@ -286,7 +286,7 @@ that the harness's wording, exit codes and domain language stay a single source 
 - The coding agent commits the candidate before responding. Each accepted task therefore ends with at least two commits
   (candidate, plus the verification agent's bookkeeping) and more when corrections were needed. No history rewriting
   (amend, autosquash) is used.
-- `<feature-name-slug>.verify.md` is named and placed by the same convention `coding-step.md` already uses for
+- `<feature-name-slug>.verify.md` is named and placed by the same convention `coding-step-prompt.md` already uses for
   `<feature-name-slug>.code.md`: in the folder of the specification, replacing its `.spec.md` suffix (or final
   extension) with `.verify.md`. The convention is stated only in the agent instructions; the harness never derives or
   validates the path. (The archived `specs/_done/004-refactor-architecture/refactor-architecture.verify.json` predates

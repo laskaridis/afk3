@@ -55,11 +55,11 @@ fake.soleInvocation(); // { argv, cwd, stdin, pid, files }
   result on stdout instead of writing the `--output-last-message` file.
 - For timeout/interrupt tests pass `AFK_TERMINATION_GRACE_MS` (e.g. `"300"`) in `env` to keep them fast.
 - `withoutNonce(prompt)` masks the nonce announced in the prompt's result-block example when comparing prompts across sessions.
-- `expectedSessionPrompt(launchPrompt, recordedPrompt)` builds the exact prompt a coding session must receive from `dist/workflow/steps/coding-step.md`.
+- `expectedSessionPrompt(launchPrompt, recordedPrompt)` builds the exact prompt a coding session must receive from `dist/workflow/steps/coding-step-prompt.md`.
 - Every run is two-phase, so scripts alternate coding and verification sessions. `reply(message)`, `IMPLEMENTED`, `PASSED` and `REJECTED` build the scripted
   steps; `rounds(coding, verification, n)` repeats a coding/verification pair `n` times (sessions beyond the list repeat its last entry).
   `expectedVerificationPrompt(launchPrompt, assignment, recordedPrompt)` and `expectedCorrectionPrompt(assignment, recordedPrompt)` build the exact
-  verification and correction prompts from `dist/workflow/steps/verification-step.md` and `coding-step.md`. With the default limit of 2, scripts that reject a
+  verification and correction prompts from `dist/workflow/steps/verification-step-prompt.md` and `coding-step-prompt.md`. With the default limit of 2, scripts that reject a
   task twice end the run; pass `--max-verification-attempts` for more.
 
 ## Contracts the integration suite relies on
@@ -69,7 +69,7 @@ integration tests depend on these contracts. Tests import nothing from `src/`; a
 codes are literal values. If a refactoring changes one of these, update the suite in the same change.
 
 - `AFK_TERMINATION_GRACE_MS`: environment variable that shortens the SIGINT-to-SIGTERM grace period in termination scenarios.
-- `dist/workflow/steps/coding-step.md` and `dist/workflow/steps/verification-step.md`: the shipped instructions files. Session prompts are compared exactly against the launch prompt, the
+- `dist/workflow/steps/coding-step-prompt.md` and `dist/workflow/steps/verification-step-prompt.md`: the shipped instructions files. Session prompts are compared exactly against the launch prompt, the
   `---` separator, and this file with `{{NONCE}}` replaced (`expectedSessionPrompt`, `expectedVerificationPrompt` and `expectedCorrectionPrompt` in `helpers.ts`).
 - The result-block example `<afk-harness-result nonce="…">` in the session prompt: the fake agents and `withoutNonce`
   read the session nonce from it, whatever its length or alphabet.

@@ -8,7 +8,10 @@ import {WorkflowStep} from '../../../../src/workflow/steps/step.js';
 import {CodingStep} from '../../../../src/workflow/steps/coding-step.js';
 
 const harness = readFileSync(
-  new URL('../../../../src/workflow/steps/coding-step.md', import.meta.url),
+  new URL(
+    '../../../../src/workflow/steps/coding-step-prompt.md',
+    import.meta.url,
+  ),
   'utf8',
 );
 const OPTIONS = {cwd: '/work', model: 'm', effort: 'high'};
@@ -65,7 +68,7 @@ const reply =
   });
 
 describe('CodingStep session prompt', () => {
-  it('passes the launch prompt, a blank line, ---, coding-step.md with the nonce and a trailing newline', async () => {
+  it('passes the launch prompt, a blank line, ---, coding-step-prompt.md with the nonce and a trailing newline', async () => {
     const {step, inputs, nonces} = stub(reply(IMPLEMENTED));
     await step.execute('  build X\nnow ', OPTIONS);
     expect(inputs[0]!.prompt).toBe(
@@ -336,7 +339,7 @@ describe('CodingStep result mapping', () => {
   });
 });
 
-describe('coding-step.md contract', () => {
+describe('coding-step-prompt.md contract', () => {
   it('documents the coding vocabulary only, in its example block, rules and stop conditions', () => {
     for (const outcome of ['task_implemented', 'no_more_tasks', 'blocked']) {
       expect(harness).toContain(`"${outcome}"`);

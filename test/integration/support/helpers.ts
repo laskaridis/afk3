@@ -84,7 +84,7 @@ export function withoutNonce(prompt: string) {
 
 /**
  * The prompt a session must receive: the launch prompt verbatim, a blank line, `---`, then the shipped instructions
- * (`dist/workflow/steps/coding-step.md`) with `{{NONCE}}` replaced by the session's nonce, and a trailing newline.
+ * (`dist/workflow/steps/coding-step-prompt.md`) with `{{NONCE}}` replaced by the session's nonce, and a trailing newline.
  */
 export function expectedSessionPrompt(
   launchPrompt: string,
@@ -99,7 +99,7 @@ export function expectedSessionPrompt(
   }
 
   const instructions = readFileSync(
-    join(repoRoot, 'dist', 'workflow', 'steps', 'coding-step.md'),
+    join(repoRoot, 'dist', 'workflow', 'steps', 'coding-step-prompt.md'),
     'utf8',
   ).replaceAll('{{NONCE}}', nonce);
   return `${launchPrompt}\n\n---\n${instructions}\n`;
@@ -119,7 +119,7 @@ function bundledInstructions(
   }
 
   return readFileSync(
-    join(repoRoot, 'dist', 'workflow', 'steps', `${step}-step.md`),
+    join(repoRoot, 'dist', 'workflow', 'steps', `${step}-step-prompt.md`),
     'utf8',
   ).replaceAll('{{NONCE}}', nonce);
 }

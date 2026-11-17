@@ -8,7 +8,7 @@ import {VerificationStep} from '../../../../src/workflow/steps/verification-step
 
 const harness = readFileSync(
   new URL(
-    '../../../../src/workflow/steps/verification-step.md',
+    '../../../../src/workflow/steps/verification-step-prompt.md',
     import.meta.url,
   ),
   'utf8',
@@ -50,7 +50,7 @@ const reply = (message: object) => (nonce: string) =>
 const META = {task_id: 'TASK-003', task_plan_file: 'specs/f.plan.json'};
 
 describe('VerificationStep session prompt', () => {
-  it('is the launch prompt, the assignment, ---, then verification-step.md with the nonce and a trailing newline', async () => {
+  it('is the launch prompt, the assignment, ---, then verification-step-prompt.md with the nonce and a trailing newline', async () => {
     const {step, inputs, nonces} = stub(
       reply({outcome: 'verification_passed', ...META}),
     );
