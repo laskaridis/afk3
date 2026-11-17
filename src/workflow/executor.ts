@@ -12,7 +12,6 @@ import type {WorkflowStepHandlerContext} from './result-handlers/handler-context
 import {STEP_HANDLERS} from './result-handlers/handlers.js';
 import type {TerminalWorkflowEvent, WorkflowEvent} from './event.js';
 import type {WorkflowObserver} from './observer.js';
-import type {LaunchPrompt} from './launch-prompt.js';
 import type {WorkflowOptions} from './options.js';
 import type {WorkflowStepResult} from './steps/result.js';
 
@@ -51,7 +50,7 @@ export class WorkflowExecutor {
 
   constructor(
     readonly options: WorkflowOptions,
-    private readonly launchPrompt: LaunchPrompt,
+    private readonly launchPrompt: string,
     private readonly sessions: SessionExecutorFactory,
   ) {}
 
@@ -191,7 +190,7 @@ export class WorkflowExecutor {
         limit: maxIterations,
         retry,
       });
-      const result = await step.execute(this.launchPrompt.text, options);
+      const result = await step.execute(this.launchPrompt, options);
 
       // Observing a different task than the one being counted starts a fresh count.
       if (

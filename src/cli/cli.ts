@@ -72,10 +72,9 @@ export class CLI {
       sessionTimeoutSeconds: options.sessionTimeout,
       cwd: options.cwd,
     };
-    const launchPrompt = {text: resolved.prompt};
     const workflow = new WorkflowExecutor(
       workflowOptions,
-      launchPrompt,
+      resolved.prompt,
       sessionFactory,
     );
 

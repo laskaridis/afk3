@@ -110,7 +110,7 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - Acts as the main user interface and trigger point for the workflow.
 - Uses `agents/AgentRegistry` to retrieve the concrete `agents/AgentAdapter` for the agent specified by the user.
-- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, `workflow/LaunchPrompt` and `reporting/Reporter`.
+- Parses user's input options and provided launch prompt into runtime components, `workflow/WorkflowOptions`, the launch prompt text and `reporting/Reporter`.
 - Instantiates `workflow/WorkflowExecutor` and wires all its dependencies.
 - Instantiates a concrete `reporting/Reporter` and subscribes it to `workflow/WorkflowExecutor`.
 - Runs the workflow with `WorkflowExecutor.run()` and maps the terminal result it returns (a terminal `workflow/WorkflowEvent`) to the process exit code. The CLI is not a `workflow/WorkflowObserver`.
@@ -119,21 +119,9 @@ Dependencies point only downwards: `cli/` -> `reporting/` -> `workflow/` -> `ses
 
 - Creates `workflow/WorkflowOptions`
 - Creates concrete `reporting/Reporter`
-- Creates `workflow/LaunchPrompt`
 - Creates `session/SessionExecutorFactory`
 - Retrieves concrete `agents/AgentAdapter` from `agents/AgentRegistry`
 - Creates and runs `workflow/WorkflowExecutor`, and uses the terminal result returned by `run()`
-
-### `workflow/LaunchPrompt` (concrete class)
-
-**Responsibilities:**
-
-- Builds the initial launch prompt for the workflow.
-
-**Collaborators:**
-
-- Created by `cli/CLI`
-- Used by `workflow/WorkflowExecutor`
 
 ### `workflow/WorkflowOptions` (value class)
 
