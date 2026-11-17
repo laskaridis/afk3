@@ -2,7 +2,7 @@ dist
 coverage
 pnpm-lock.yaml
 specs
-src/workflow/steps/coding-step.md
-src/workflow/steps/verification-step.md
+src/workflow/steps/coding-step-prompt.md
+src/workflow/steps/verification-step-prompt.md
 .worktrees/
 .agents/skills

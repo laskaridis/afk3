@@ -5,14 +5,14 @@
   "tasks": [
     {
       "id": "TASK-001",
-      "objective": "Ship bundled verification instructions as src/workflow/steps/verification-step.md so the harness has a verification contract file to send to an agent.",
+      "objective": "Ship bundled verification instructions as src/workflow/steps/verification-step-prompt.md so the harness has a verification contract file to send to an agent.",
       "status": "completed",
       "stories_enabled": ["US-001"],
       "acceptance_criteria_addressed": ["AC-009"],
       "completion_criteria": [
-        "src/workflow/steps/verification-step.md exists and states the verification response contract: the per-phase outcome vocabulary and required fields of AC-010/AC-017, that the agent is limited-write (writes only its findings file and the task-plan bookkeeping, never source files), that it marks the verified task complete and commits that bookkeeping, that it never edits the implementation notes file, and the naming convention of the findings file described in the specification's assumptions.",
+        "src/workflow/steps/verification-step-prompt.md exists and states the verification response contract: the per-phase outcome vocabulary and required fields of AC-010/AC-017, that the agent is limited-write (writes only its findings file and the task-plan bookkeeping, never source files), that it marks the verified task complete and commits that bookkeeping, that it never edits the implementation notes file, and the naming convention of the findings file described in the specification's assumptions.",
         "The file contains a result-block example wrapped in <afk-harness-result nonce=\"{{NONCE}}\"> from which the session nonce can be read.",
-        "pnpm build copies the file to dist/workflow/steps/verification-step.md with identical content.",
+        "pnpm build copies the file to dist/workflow/steps/verification-step-prompt.md with identical content.",
         "The file is excluded from prettier the same way the coding instructions are, and pnpm format:check passes.",
         "A test demonstrates that the file is present in the built output and carries the nonce example block.",
         "pnpm check passes."
@@ -65,7 +65,7 @@
         "A contract violation is reported as an invalid response and follows the existing one-retry execution-error policy.",
         "no_more_tasks ends the run successfully with the stderr line [afk] Run complete: no more tasks, including on the last allowed iteration.",
         "blocked prints the blocker and ends the run unsuccessfully, as today.",
-        "src/workflow/steps/coding-step.md documents only the new coding vocabulary, in its example block, its rules and its stop conditions; states that the session commits the candidate and never marks a task complete; documents the optional revision field; requires a progress entry in the notes file for every committed candidate, including in a correction iteration, and states that the agent never relies on the verification agent's findings file for its own notes; extends its explicit-assignment rules to a harness-supplied assignment carrying a findings reference, with the specification and task list taken from the assigned task plan file; drops the request to delegate a review of the change; and keeps a validation task that finds a defect recording a follow-up task and reporting task_implemented.",
+        "src/workflow/steps/coding-step-prompt.md documents only the new coding vocabulary, in its example block, its rules and its stop conditions; states that the session commits the candidate and never marks a task complete; documents the optional revision field; requires a progress entry in the notes file for every committed candidate, including in a correction iteration, and states that the agent never relies on the verification agent's findings file for its own notes; extends its explicit-assignment rules to a harness-supplied assignment carrying a findings reference, with the specification and task list taken from the assigned task plan file; drops the request to delegate a review of the change; and keeps a validation task that finds a defect recording a follow-up task and reporting task_implemented.",
         "The former task-failure status line and its step result are gone, and no code path can still produce them.",
         "Unit and integration tests script coding sessions with the new vocabulary and cover each new contract violation; pnpm check passes."
       ],

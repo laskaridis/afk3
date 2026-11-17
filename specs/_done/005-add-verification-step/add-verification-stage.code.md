@@ -6,11 +6,11 @@
 ## 2026-11-13
 - Task id: TASK-001
 - What was implemented:
-  - Added `src/workflow/steps/verification-step.md`: placeholder body stating the verification contract (outcome vocabulary, required fields, limited-write rules, findings-file naming, `{{NONCE}}` example block).
+  - Added `src/workflow/steps/verification-step-prompt.md`: placeholder body stating the verification contract (outcome vocabulary, required fields, limited-write rules, findings-file naming, `{{NONCE}}` example block).
   - `scripts/dist-prepare.mjs` now copies both step files to `dist/workflow/steps/`.
   - Excluded the new file from prettier.
 - Files changed:
-  - src/workflow/steps/verification-step.md (new), scripts/dist-prepare.mjs, .prettierignore
+  - src/workflow/steps/verification-step-prompt.md (new), scripts/dist-prepare.mjs, .prettierignore
   - test/integration/bundled-instructions.test.ts (new)
   - specs/add-verification-stage.plan.json (status), specs/add-verification-stage.code.md (new)
 - Verification:
@@ -49,14 +49,14 @@
 - What was implemented:
   - `parseResultBlock` now validates the coding vocabulary only (task_implemented with optional revision, no_more_tasks, blocked); task_id/task_plan_file required, null rules enforced; findings_file/revision-elsewhere rejected as unsupported fields.
   - Step results `TaskImplemented` (carries revision) and `NoMoreTasks` replace Continue/Finished; StepFailed, its handler, the StepExecutionFailed event and the "Task failure" line are removed. no_more_tasks ends the run via WorkflowFinished, printed as "Run complete: no more tasks". Interim: TaskImplemented continues to the next coding session.
-  - coding-step.md rewritten for the new vocabulary, candidate commits, progress entry per candidate, harness-supplied (correction) assignment, no delegated review.
+  - coding-step-prompt.md rewritten for the new vocabulary, candidate commits, progress entry per candidate, harness-supplied (correction) assignment, no delegated review.
 - Files changed:
-  - src/workflow/{result-block,workflow-event,workflow-executor,workflow-step-result}.ts, src/workflow/steps/{coding-step.ts,coding-step.md}, src/workflow/step-handlers/* (renamed continue->task-implemented, finished->no-more-tasks, failed handler deleted), src/reporting/console-reporter.ts
+  - src/workflow/{result-block,workflow-event,workflow-executor,workflow-step-result}.ts, src/workflow/steps/{coding-step.ts,coding-step-prompt.md}, src/workflow/step-handlers/* (renamed continue->task-implemented, finished->no-more-tasks, failed handler deleted), src/reporting/console-reporter.ts
   - tests: unit result-block, coding-step, step-handlers, executor, reporter, cli; all integration suites migrated to the new vocabulary
   - specs/add-verification-stage.plan.json, specs/add-verification-stage.code.md
 - Verification:
   - `pnpm check` passes (533 tests, typecheck, lint, prettier, depcheck).
-  - Criteria: parser vocabulary/null/revision/findings_file rules covered by unit + integration (final-response) tests; violations follow the one-retry policy (integration "execution error twice"); no_more_tasks incl. last iteration (unit + integration); blocked unchanged; coding-step.md content pinned by unit tests; failure line/result removed (grep of src/ clean).
+  - Criteria: parser vocabulary/null/revision/findings_file rules covered by unit + integration (final-response) tests; violations follow the one-retry policy (integration "execution error twice"); no_more_tasks incl. last iteration (unit + integration); blocked unchanged; coding-step-prompt.md content pinned by unit tests; failure line/result removed (grep of src/ clean).
   - Delegated read-only review: no findings.
 - Learnings for future iterations:
   - Integration tests use `{"outcome":"no_more_tasks","task_id":null,"task_plan_file":"p.json"}` as the "run ends" block and task_implemented with T-1 as "continue".

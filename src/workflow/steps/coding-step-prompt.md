@@ -30,7 +30,7 @@ Before you write a single line of code:
   - If the specified task has pending dependencies, STOP and return `blocked` with that task's exact id, identifying the dependencies that must be completed. Do not implement a dependency instead.
 - If neither the user nor the harness explicitly specified a task, pick the **highest priority** task from the task list provided which is not implemented yet and doesn't have any pending dependencies.
 - Make sure you are working on a single task at a time.
-- Use the tdd skill (RED -> GREEN -> REFACTOR) to implement that single task. Check for any relevant skills available.
+- Use TDD (RED -> GREEN -> REFACTOR) to implement that single task. Check for any relevant skills available.
 - Follow the established ubiquitous domain language used in the project, don't invent your own.
 - Follow the established architecture, domain boundaries, and project conventions. Do not make material architectural or product-policy decisions that contradict or extend the specification.
 - Constrain your changes strictly to the scope of the task implemented. Do not introduce unrelated behavior, speculative abstractions, or unnecessary refactoring.

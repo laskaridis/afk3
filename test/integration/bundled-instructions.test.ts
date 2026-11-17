@@ -5,7 +5,7 @@ import {describe, expect, it} from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-describe.each(['coding-step.md', 'verification-step.md'])(
+describe.each(['coding-step-prompt.md', 'verification-step-prompt.md'])(
   'bundled %s',
   file => {
     const source = readFileSync(
@@ -25,9 +25,9 @@ describe.each(['coding-step.md', 'verification-step.md'])(
   },
 );
 
-describe('verification-step.md contract', () => {
+describe('verification-step-prompt.md contract', () => {
   const text = readFileSync(
-    join(repoRoot, 'src', 'workflow', 'steps', 'verification-step.md'),
+    join(repoRoot, 'src', 'workflow', 'steps', 'verification-step-prompt.md'),
     'utf8',
   );
 
@@ -40,7 +40,7 @@ describe('verification-step.md contract', () => {
     'findings_file',
     'blocker_text',
     '<feature-name-slug>.verify.md',
-    '<feature-name-slug>.code.md',
+    'Leave implementation, tests, documents, and task status unchanged.',
   ])('mentions %s', term => {
     expect(text).toContain(term);
   });

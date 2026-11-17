@@ -6,7 +6,7 @@ import type {WorkflowStepResult} from './result.js';
 
 // Copied next to the compiled `workflow/steps/` folder by the build script.
 const HARNESS = readFileSync(
-  new URL('./verification-step.md', import.meta.url),
+  new URL('./verification-step-prompt.md', import.meta.url),
   'utf8',
 );
 

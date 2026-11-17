@@ -23,7 +23,7 @@ boundaries and the policy ownership the implementation must preserve; it does no
 | `workflow/result-block`                    | Validates a result block **for one phase**: coding and verification vocabularies, required `task_id`/`task_plan_file`, optional `revision`, `findings_file` |
 | `workflow/steps/CodingStep`                | One coding session: builds its prompt from either the launch prompt or a correction assignment, parses the block with the coding vocabulary                 |
 | `workflow/steps/VerificationStep`          | One verification session: builds its prompt from a verification assignment, parses the block with the verification vocabulary                               |
-| `workflow/steps/verification-step.md`      | Bundled verification instructions; the agent-facing contract, carrying the `{{NONCE}}` example block                                                        |
+| `workflow/steps/verification-step-prompt.md`      | Bundled verification instructions; the agent-facing contract, carrying the `{{NONCE}}` example block                                                        |
 | `workflow/` assignment types               | The harness-supplied assignment values: verification assignment (task, plan, optional revision) and correction assignment (task, plan, findings, summary)   |
 | `workflow/WorkflowStepResult` + handlers   | Per-phase outcomes as step results; handlers publish events and request a transition, they decide no policy                                                 |
 | `workflow/WorkflowExecutor`                | The two-phase policy: when to verify, iteration accounting, retry budget, the per-task verification attempt counter and its limit, terminal events          |
@@ -45,7 +45,7 @@ WorkflowExecutor.run()
       task_implemented
          |
          v
-    VerificationStep    prompt = verification assignment + --- + verification-step.md
+    VerificationStep    prompt = verification assignment + --- + verification-step-prompt.md
       (execution error -> one immediate re-run with a new nonce and the same assignment;
        a second consecutive execution error ends the run. Neither consumes an iteration.)
       verification_passed -> iteration n+1, CodingStep with the launch prompt
@@ -84,7 +84,7 @@ WorkflowExecutor.run()
 8. **The verification limit outranks the iteration limit.** When the last allowed coding iteration ends with a
    rejection that reaches the limit, the executor returns the verification-limit terminal event (exit `6`), because
    it names the reason the run cannot continue.
-9. **`verification-step.md` is bundled exactly like `coding-step.md`**: shipped in `src/workflow/steps/`, copied to
+9. **`verification-step-prompt.md` is bundled exactly like `coding-step-prompt.md`**: shipped in `src/workflow/steps/`, copied to
    `dist/` by `scripts/dist-prepare.mjs`, excluded from prettier, read at run time with `{{NONCE}}` substituted, and
    carrying the result-block example the fake agents read the nonce from.
 
