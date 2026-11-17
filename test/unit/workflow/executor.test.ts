@@ -114,7 +114,7 @@ function setup(scripts: Script[], overrides: Partial<WorkflowOptions> = {}) {
       cwd: '/work',
       ...overrides,
     },
-    {text: 'launch'},
+    'launch',
     sessions,
   );
   const events: WorkflowEvent[] = [];

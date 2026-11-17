@@ -192,7 +192,7 @@ describe('CLI entrypoint', () => {
         sessionTimeoutSeconds: 2.5,
         cwd: process.cwd(),
       }),
-      {text: 'prompt'},
+      'prompt',
       expect.anything(),
     );
     expect(mocks.factory).toHaveBeenCalledWith(
@@ -264,7 +264,7 @@ describe('CLI entrypoint', () => {
 
   it('treats help after -- or as an option value as input', async () => {
     expect(await launch(['--', '--help'])).toBe(0);
-    expect(mocks.construct.mock.calls[0]?.[1]).toEqual({text: '--help'});
+    expect(mocks.construct.mock.calls[0]?.[1]).toBe('--help');
   });
 
   it('reads piped stdin in chunks when there is no explicit prompt', async () => {
@@ -288,9 +288,7 @@ describe('CLI entrypoint', () => {
       .mockReturnValue(process.stdin);
     try {
       expect(await launch([])).toBe(0);
-      expect(mocks.construct.mock.calls[0]?.[1]).toEqual({
-        text: 'piped prompt',
-      });
+      expect(mocks.construct.mock.calls[0]?.[1]).toBe('piped prompt');
       expect(encoding).toHaveBeenCalledWith('utf8');
     } finally {
       iterator.mockRestore();
