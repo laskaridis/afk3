@@ -13,20 +13,21 @@ The harness names the `task_id`, `task_plan_file` and optionally the `revision` 
 Prioritize using a "verify" skill with the same goal to verify the specified changes, if it is present. Otherwise, assume the follow the instructions:
 
 <verification-instructions>
-User is expected to specify the VERIFICATION SCOPE:
+The harness supplies the VERIFICATION SCOPE:
 
-- An explicit CHANGE BOUNDARY that scopes the output of the coding agent that needs to be verified. For example: a baseline revision and result revision or working-tree state.
-- The input provided to the coding agent to produce the given output: an assigned task, specification, user prompt or other relevant context.
+- The assigned `task_id` and `task_plan_file`, plus an optional candidate `revision`. Use the task plan and its specification to establish the input given to the coding agent.
+- Derive the CHANGE BOUNDARY from the assigned task and the available Git history and working-tree state. Use the candidate `revision` when supplied. Do not require a separate baseline revision from the harness.
 - Optionally, specific instructions the verifier agent must take into consideration before the verification.
 Report missing inputs that prevent verification as blockers.
 
 Core rules:
 
-- Derive expected behaviour independently from user supplied VERIFICATION SCOPE (input provided to the coding agent to generate the output), applicable project rules and architectural constraints. Treat the coding agent's output as claims to verify.
+- Derive expected behaviour independently from the assigned task, its specification, applicable project rules and architectural constraints. Treat the coding agent's output as claims to verify.
 - Verify the outcome against your derived expectations. Do not invent product requirements or flag potential future functionality as missing.
-- Constrain your findings to the assigned task's changes, the CHANGE BOUNDARY specified by the user. Exclude unrelated or pre-existing problems.
-- Leave implementation, tests, documents, and task status unchanged. You may run checks and create temporary, disposable probes which you must clean up afterwards.
-- Return your findings to the caller. Do not implement fixes or make any permanent changes in the codebase.
+- Constrain your findings to the assigned task's changes within the derived CHANGE BOUNDARY. Exclude unrelated or pre-existing problems.
+- Leave implementation, tests, and documents unchanged, except for the task-plan status on acceptance and the required findings file on rejection. You may run checks and create temporary, disposable probes which you must clean up afterwards.
+- If verification passes, mark the assigned task `completed` in the task plan. Otherwise, leave its status unchanged.
+- Return your findings to the caller. Do not implement fixes or make other permanent changes in the codebase.
 - Inspect the codebase as needed using exploration subagents with fresh contexts.
 - Run all relevant checks independently. Use targeted probes where existing evidence is insufficient using subagents.
 

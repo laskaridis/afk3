@@ -40,7 +40,7 @@ describe('verification-step-prompt.md contract', () => {
     'findings_file',
     'blocker_text',
     '<feature-name-slug>.verify.md',
-    'Leave implementation, tests, documents, and task status unchanged.',
+    'If verification passes, mark the assigned task `completed` in the task plan. Otherwise, leave its status unchanged.',
   ])('mentions %s', term => {
     expect(text).toContain(term);
   });
